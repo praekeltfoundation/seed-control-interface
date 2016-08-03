@@ -8,3 +8,4 @@ Uses seed-control-interface-service for configuration of services
 
 Connects to:
 * seed-identity-store
+# seed-control-interface
