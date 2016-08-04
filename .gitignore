@@ -1,5 +1,6 @@
 .DS_Store
 # Distribution / packaging
+__pycache__/
 .Python
 env/
 build/
