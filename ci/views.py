@@ -139,6 +139,7 @@ def login(request, template_name='ci/login.html',
         redirect_field_name: redirect_to,
         'site': current_site,
         'site_name': current_site.name,
+        'logo_url': settings.CI_LOGO_URL
     }
     if extra_context is not None:
         context.update(extra_context)
@@ -159,4 +160,7 @@ def logout(request):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def index(request):
-    return render(request, 'ci/index.html')
+    context = {
+        "logo_url": settings.CI_LOGO_URL
+    }
+    return render(request, 'ci/index.html', context)

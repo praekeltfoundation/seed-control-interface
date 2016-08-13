@@ -71,7 +71,7 @@
   <div class="container">
 
         <form method="post" action="{% url 'login' %}" class="form-signin">
-            <img src="{% static "ci/img/logo.png" %}" style="width: 230px; height: 147px" />
+            <img src="{{ logo_url }}" style="width: 230px; height: 147px" />
           {% if form.errors %}
           <p>Your username and password didn't match. Please try again.</p>
           {% endif %}

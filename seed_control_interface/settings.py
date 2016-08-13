@@ -140,3 +140,7 @@ CONTROL_INTERFACE_SERVICE_TOKEN = os.environ.get(
 AUTH_SERVICE_URL = os.environ.get(
     'AUTH_SERVICE_URL',
     'http://localhost:8000')
+
+CI_LOGO_URL = os.environ.get(
+    'CI_LOGO_URL',
+    '/static/ci/img/logo.png')
