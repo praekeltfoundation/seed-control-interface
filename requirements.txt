@@ -1,3 +1,2 @@
 # Our dependencies are all specified in setup.py.
--e git+https://github.com/praekeltfoundation/seed-services-client.git@develop#egg=seed_services_client
 -e .

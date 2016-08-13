@@ -18,7 +18,8 @@ setup(
         'whitenoise==2.0.6',
         'pytz==2015.7',
         'python-dateutil==2.5.3',
-        'django-bootstrap-form==3.2.1'
+        'django-bootstrap-form==3.2.1',
+        'seed-services-client==0.1.2'
     ],
     classifiers=[
         'Development Status :: 4 - Beta',
