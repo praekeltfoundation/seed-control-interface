@@ -6,13 +6,14 @@ from django.utils.six.moves.urllib.parse import urlparse
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.contrib.sites.shortcuts import get_current_site
 from django.utils.http import is_safe_url
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, JsonResponse
 from django.template.defaulttags import register
 from django.template.response import TemplateResponse
 from django.conf import settings
 import dateutil.parser
 
 from seed_services_client.control_interface import ControlInterfaceApiClient
+from go_http.metrics import MetricsApiClient
 from .forms import AuthenticationForm
 
 
@@ -191,4 +192,39 @@ def index(request):
 @permission_required(permission='ci:view', login_url='/login/')
 def dashboard(request, dashboard_id):
     context = default_context(request.session)
+    dashboard = ciApi.get_dashboard(int(dashboard_id))
+    context.update({
+        "dashboard": dashboard
+    })
     return render(request, 'ci/dashboard.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+def dashboard_metric(request):
+    client = MetricsApiClient(settings.METRIC_API_TOKEN,
+                              settings.METRIC_API_URL)
+    response = {"objects": []}
+    filters = {
+        "m": [],
+        "start": "",
+        "interval": "",
+        "nulls": ""
+    }
+
+    for k, v in request.GET.lists():
+        filters[k] = v
+
+    for metric in filters['m']:
+        results = client.get_metric(metric,
+                                    filters['start'],
+                                    filters['interval'],
+                                    filters['nulls'])
+        if metric in results:
+            response["objects"].append({
+                "key": metric, "values": results[metric]})
+        else:
+            response["objects"].append({
+                "key": metric, "values": []})
+
+    return JsonResponse(response)
