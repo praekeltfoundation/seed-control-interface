@@ -5,14 +5,16 @@ from django.utils.decorators import available_attrs
 from django.utils.six.moves.urllib.parse import urlparse
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.contrib.sites.shortcuts import get_current_site
+from django.core.urlresolvers import reverse
 from django.utils.http import is_safe_url
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, JsonResponse
 from django.template.defaulttags import register
 from django.template.response import TemplateResponse
 from django.conf import settings
 import dateutil.parser
 
 from seed_services_client.control_interface import ControlInterfaceApiClient
+from go_http.metrics import MetricsApiClient
 from .forms import AuthenticationForm
 
 
@@ -127,6 +129,18 @@ def login(request, template_name='ci/login.html',
             request.session['user_token'] = user["token"]
             request.session['user_email'] = user["email"]
             request.session['user_permissions'] = user["permissions"]
+            request.session['user_id'] = user["id"]
+
+            # Set user dashboards because they are slow to change
+            dashboards = ciApi.get_user_dashboards(user["id"])
+            if len(dashboards["results"]) > 0:
+                request.session['user_dashboards'] = \
+                    dashboards["results"][0]["dashboards"]
+                request.session['user_default_dashboard'] = \
+                    dashboards["results"][0]["default_dashboard"]["id"]
+            else:
+                request.session['user_dashboards'] = []
+                request.session['user_default_dashboard'] = None
 
             return HttpResponseRedirect(redirect_to)
     else:
@@ -152,15 +166,99 @@ def logout(request):
         del request.session['user_token']
         del request.session['user_email']
         del request.session['user_permissions']
+        del request.session['user_id']
+        del request.session['user_dashboards']
+        del request.session['user_default_dashboard']
     except KeyError:
         pass
     return redirect('index')
 
 
+def default_context(session):
+    context = {
+        "logo_url": settings.CI_LOGO_URL,
+        "dashboards": session["user_dashboards"],
+    }
+    return context
+
+
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def index(request):
-    context = {
-        "logo_url": settings.CI_LOGO_URL
+    if "user_default_dashboard" in request.session and \
+            request.session["user_default_dashboard"] is not None:
+        return HttpResponseRedirect(reverse('dashboard', args=(
+            request.session["user_default_dashboard"],)))
+    else:
+        context = default_context(request.session)
+        return render(request, 'ci/index.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+def dashboard(request, dashboard_id):
+    context = default_context(request.session)
+    dashboard = ciApi.get_dashboard(int(dashboard_id))
+    context.update({
+        "dashboard": dashboard
+    })
+    return render(request, 'ci/dashboard.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+def dashboard_metric(request):
+    client = MetricsApiClient(settings.METRIC_API_TOKEN,
+                              settings.METRIC_API_URL)
+    response = {"objects": []}
+    filters = {
+        "m": [],
+        "start": "",
+        "interval": "",
+        "nulls": ""
     }
-    return render(request, 'ci/index.html', context)
+
+    for k, v in request.GET.lists():
+        filters[k] = v
+
+    for metric in filters['m']:
+        results = client.get_metric(metric,
+                                    filters['start'],
+                                    filters['interval'],
+                                    filters['nulls'])
+        if metric in results:
+            response["objects"].append({
+                "key": metric, "values": results[metric]})
+        else:
+            response["objects"].append({
+                "key": metric, "values": []})
+
+    return JsonResponse(response)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+def identities(request):
+    context = default_context(request.session)
+    return render(request, 'ci/identities.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+def registrations(request):
+    context = default_context(request.session)
+    return render(request, 'ci/registrations.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+def subscriptions(request):
+    context = default_context(request.session)
+    return render(request, 'ci/subscriptions.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+def services(request):
+    context = default_context(request.session)
+    return render(request, 'ci/services.html', context)
