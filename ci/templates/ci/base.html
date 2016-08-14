@@ -52,9 +52,10 @@
           <div class="collapse nav-toggleable-sm" id="nav-toggleable-sm">
             <ul class="nav nav-pills nav-stacked">
               <li class="nav-header">Dashboards</li>
-              {% url 'index' as url %}
-              <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">Overview</a></li>
-              <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">Registration</a></li>
+              {% for dashboard in dashboards %}
+               {% url 'dashboard' dashboard.id as url %}
+               <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">{{ dashboard.name }}</a></li>
+              {% endfor %}
               <li class="nav-header">Identities</li>
               {% url 'identity-search' as url %}
               <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">Search</a></li>

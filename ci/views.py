@@ -127,6 +127,18 @@ def login(request, template_name='ci/login.html',
             request.session['user_token'] = user["token"]
             request.session['user_email'] = user["email"]
             request.session['user_permissions'] = user["permissions"]
+            request.session['user_id'] = user["id"]
+
+            # Set user dashboards because they are slow to change
+            dashboards = ciApi.get_user_dashboards(user["id"])
+            if len(dashboards["results"]) > 0:
+                request.session['user_dashboards'] = \
+                    dashboards["results"][0]["dashboards"]
+                request.session['user_default_dashboard'] = \
+                    dashboards["results"][0]["default_dashboard"]["id"]
+            else:
+                request.session['user_dashboards'] = []
+                request.session['user_default_dashboard'] = None
 
             return HttpResponseRedirect(redirect_to)
     else:
@@ -152,15 +164,31 @@ def logout(request):
         del request.session['user_token']
         del request.session['user_email']
         del request.session['user_permissions']
+        del request.session['user_id']
+        del request.session['user_dashboards']
+        del request.session['user_default_dashboard']
     except KeyError:
         pass
     return redirect('index')
 
 
+def default_context(session):
+    context = {
+        "logo_url": settings.CI_LOGO_URL,
+        "dashboards": session["user_dashboards"],
+    }
+    return context
+
+
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def index(request):
-    context = {
-        "logo_url": settings.CI_LOGO_URL
-    }
+    context = default_context(request.session)
     return render(request, 'ci/index.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+def dashboard(request, dashboard_id):
+    context = default_context(request.session)
+    return render(request, 'ci/dashboard.html', context)
