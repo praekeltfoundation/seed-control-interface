@@ -5,6 +5,7 @@ from django.utils.decorators import available_attrs
 from django.utils.six.moves.urllib.parse import urlparse
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.contrib.sites.shortcuts import get_current_site
+from django.core.urlresolvers import reverse
 from django.utils.http import is_safe_url
 from django.http import HttpResponseRedirect, JsonResponse
 from django.template.defaulttags import register
@@ -184,8 +185,13 @@ def default_context(session):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def index(request):
-    context = default_context(request.session)
-    return render(request, 'ci/index.html', context)
+    if "user_default_dashboard" in request.session and \
+            request.session["user_default_dashboard"] is not None:
+        return HttpResponseRedirect(reverse('dashboard', args=(
+            request.session["user_default_dashboard"],)))
+    else:
+        context = default_context(request.session)
+        return render(request, 'ci/index.html', context)
 
 
 @login_required(login_url='/login/')
