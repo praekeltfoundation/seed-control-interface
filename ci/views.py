@@ -234,3 +234,31 @@ def dashboard_metric(request):
                 "key": metric, "values": []})
 
     return JsonResponse(response)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+def identities(request):
+    context = default_context(request.session)
+    return render(request, 'ci/identities.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+def registrations(request):
+    context = default_context(request.session)
+    return render(request, 'ci/registrations.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+def subscriptions(request):
+    context = default_context(request.session)
+    return render(request, 'ci/subscriptions.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+def services(request):
+    context = default_context(request.session)
+    return render(request, 'ci/services.html', context)

@@ -57,16 +57,16 @@
                <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">{{ dashboard.name }}</a></li>
               {% endfor %}
               <li class="nav-header">Identities</li>
-              {% url 'identity-search' as url %}
+              {% url 'identities' as url %}
               <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">Search</a></li>
               <li class="nav-header">Registrations</li>
-              {% url 'registration-list' as url %}
+              {% url 'registrations' as url %}
               <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">View</a></li>
               <li class="nav-header">Subscriptions</li>
-              {% url 'subscription-list' as url %}
+              {% url 'subscriptions' as url %}
               <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">View</a></li>
               <li class="nav-header">More</li>
-              {% url 'service-status' as url %}
+              {% url 'services' as url %}
               <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">Service Status</a></li>
               {% url 'logout' as url %}
               <li><a href="{{ url }}">Logout</a></li>
