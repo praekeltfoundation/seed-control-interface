@@ -1,0 +1,27 @@
+{% extends "ci/base.html" %}
+{% load staticfiles %}
+{% block pagetitle %}Access Denied{% endblock %}
+{% block content %}
+<div class="dashhead">
+  <div class="dashhead-titles">
+    <h6 class="dashhead-subtitle">Seed Control Interface</h6>
+    <h2 class="dashhead-title">Access Denied</h2>
+  </div>
+
+  <div class="btn-toolbar dashhead-toolbar">
+    <div class="btn-toolbar-item input-with-icon">
+      &nbsp;
+    </div>
+  </div>
+</div>
+
+<hr class="m-t">
+
+<div class="row text-center m-t-lg">
+  <p>Access Denied.</p>
+  <p>
+    Please ask your administrator for more
+    permissions to enable to you see information and manage the system.
+  </p>
+</div>
+{% endblock %}

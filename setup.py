@@ -19,7 +19,7 @@ setup(
         'pytz==2015.7',
         'python-dateutil==2.5.3',
         'django-bootstrap-form==3.2.1',
-        'seed-services-client==0.2.0',
+        'seed-services-client',
         'go-http==0.3.0',
     ],
     classifiers=[
