@@ -259,6 +259,13 @@ def denied(request):
 
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
+def not_found(request):
+    context = default_context(request.session)
+    return render(request, 'ci/not_found.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
 def identities(request):
     context = default_context(request.session)
     if "SEED_IDENTITY_SERVICE" not in request.session["user_tokens"]:
@@ -283,6 +290,30 @@ def identities(request):
         })
         context.update(csrf(request))
         return render(request, 'ci/identities.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+def identity(request, identity):
+    context = default_context(request.session)
+    if "SEED_IDENTITY_SERVICE" not in request.session["user_tokens"]:
+        return redirect('denied')
+    else:
+        idApi = IdentityStoreApiClient(
+            api_url=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["url"],  # noqa
+            auth_token=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["token"]  # noqa
+        )
+        if request.method == "POST":
+            pass
+        else:
+            results = idApi.get_identity(identity)
+            if results is None:
+                return redirect('not_found')
+        context.update({
+            "identity": results
+        })
+        context.update(csrf(request))
+        return render(request, 'ci/identities_detail.html', context)
 
 
 @login_required(login_url='/login/')
