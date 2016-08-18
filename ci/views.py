@@ -10,12 +10,25 @@ from django.utils.http import is_safe_url
 from django.http import HttpResponseRedirect, JsonResponse
 from django.template.defaulttags import register
 from django.template.response import TemplateResponse
+from django.core.context_processors import csrf
 from django.conf import settings
 import dateutil.parser
 
 from seed_services_client.control_interface import ControlInterfaceApiClient
+from seed_services_client.identity_store import IdentityStoreApiClient
 from go_http.metrics import MetricsApiClient
-from .forms import AuthenticationForm
+from .forms import AuthenticationForm, IdentitySearchForm
+
+
+@register.filter
+def get_item(dictionary, key):
+    return dictionary.get(key)
+
+
+@register.filter
+def get_date(date_string):
+    if date_string is not None:
+        return dateutil.parser.parse(date_string)
 
 
 ciApi = ControlInterfaceApiClient(
@@ -95,17 +108,6 @@ def permission_required(function=None, permission=None, object_id=None,
     return actual_decorator
 
 
-@register.filter
-def get_item(dictionary, key):
-    return dictionary.get(key)
-
-
-@register.filter
-def get_date(date_string):
-    if date_string is not None:
-        return dateutil.parser.parse(date_string)
-
-
 def login(request, template_name='ci/login.html',
           redirect_field_name=REDIRECT_FIELD_NAME,
           authentication_form=AuthenticationForm,
@@ -141,6 +143,18 @@ def login(request, template_name='ci/login.html',
             else:
                 request.session['user_dashboards'] = []
                 request.session['user_default_dashboard'] = None
+
+            # Get the user access tokens too and format for easy access
+            tokens = ciApi.get_user_service_tokens(
+                params={"user_id": user["id"]})
+            user_tokens = {}
+            if len(tokens["results"]) > 0:
+                for token in tokens["results"]:
+                    user_tokens[token["service"]["name"]] = {
+                        "token": token["token"],
+                        "url": token["service"]["url"] + "/api/v1"
+                    }
+            request.session['user_tokens'] = user_tokens
 
             return HttpResponseRedirect(redirect_to)
     else:
@@ -238,9 +252,37 @@ def dashboard_metric(request):
 
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
+def denied(request):
+    context = default_context(request.session)
+    return render(request, 'ci/denied.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
 def identities(request):
     context = default_context(request.session)
-    return render(request, 'ci/identities.html', context)
+    if "SEED_IDENTITY_SERVICE" not in request.session["user_tokens"]:
+        return redirect('denied')
+    else:
+        idApi = IdentityStoreApiClient(
+            api_url=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["url"],  # noqa
+            auth_token=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["token"]  # noqa
+        )
+        if request.method == "POST":
+            form = IdentitySearchForm(request.POST)
+            if form.is_valid():
+                results = idApi.get_identity_by_address(
+                    address_type=form.cleaned_data['address_type'],
+                    address_value=form.cleaned_data['address_value'])
+            else:
+                results = {"count": form.errors}
+        else:
+            results = idApi.get_identities()
+        context.update({
+            "identities": results
+        })
+        context.update(csrf(request))
+        return render(request, 'ci/identities.html', context)
 
 
 @login_required(login_url='/login/')

@@ -50,3 +50,15 @@ class AuthenticationForm(forms.Form):
 
     def get_user(self):
         return self.user_cache
+
+
+ADDRESS_TYPES = (
+    ("msisdn", "Cell Phone"),
+)
+
+
+class IdentitySearchForm(forms.Form):
+    address_value = forms.CharField(widget=forms.TextInput)
+    address_type = forms.ChoiceField(
+        choices=ADDRESS_TYPES
+    )

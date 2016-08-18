@@ -12,5 +12,6 @@ urlpatterns = [
     url('^registrations/$', views.registrations, name='registrations'),
     url('^subscriptions/$', views.subscriptions, name='subscriptions'),
     url('^services/$', views.services, name='services'),
+    url('^denied/$', views.denied, name='denied'),
     url('', views.index, name='index'),
 ]
