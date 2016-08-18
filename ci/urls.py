@@ -12,6 +12,8 @@ urlpatterns = [
     url(r'^identities/(?P<identity>[^/]+)/$', views.identity,
         name='identities-detail'),
     url('^registrations/$', views.registrations, name='registrations'),
+    url(r'^registrations/(?P<registration>[^/]+)/$', views.registration,
+        name='registrations-detail'),
     url('^subscriptions/$', views.subscriptions, name='subscriptions'),
     url('^services/$', views.services, name='services'),
     url('^denied/$', views.denied, name='denied'),

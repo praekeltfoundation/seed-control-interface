@@ -77,6 +77,35 @@
   </div>
 </div>
 
+<h3>Registrations</h3>
+<div class="table-full">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Registration</th>
+          <th>Validated</th>
+          <th>Stage</th>
+          <th>Created</th>
+          <th>Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for registration in registrations.results %}
+        <tr>
+          {% url 'registrations-detail' registration.id as url %}
+          <td><a href="{{ url }}">{{ registration.id|truncatechars:12 }}</a></td>
+          <td>{{ registration.validated }}</td>
+          <td>{{ registration.stage }}</td>
+          <td>{{ registration.created_at|get_date|date:"D d M Y H:i" }}</td>
+          <td>{{ registration.updated_at|get_date|date:"D d M Y H:i" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
 <!-- <div class="text-center">
   <ul class="pagination">
     <li>

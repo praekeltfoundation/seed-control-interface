@@ -16,8 +16,10 @@ import dateutil.parser
 
 from seed_services_client.control_interface import ControlInterfaceApiClient
 from seed_services_client.identity_store import IdentityStoreApiClient
+from seed_services_client.hub import HubApiClient
 from go_http.metrics import MetricsApiClient
-from .forms import AuthenticationForm, IdentitySearchForm
+from .forms import (AuthenticationForm, IdentitySearchForm,
+                    RegistrationFilterForm)
 
 
 @register.filter
@@ -296,21 +298,31 @@ def identities(request):
 @permission_required(permission='ci:view', login_url='/login/')
 def identity(request, identity):
     context = default_context(request.session)
-    if "SEED_IDENTITY_SERVICE" not in request.session["user_tokens"]:
+    if "SEED_IDENTITY_SERVICE" not in request.session["user_tokens"] and \
+            "HUB" not in request.session["user_tokens"]:
         return redirect('denied')
     else:
         idApi = IdentityStoreApiClient(
             api_url=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["url"],  # noqa
             auth_token=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["token"]  # noqa
         )
+        hubApi = HubApiClient(
+            api_url=request.session["user_tokens"]["HUB"]["url"],  # noqa
+            auth_token=request.session["user_tokens"]["HUB"]["token"]  # noqa
+        )
         if request.method == "POST":
             pass
         else:
             results = idApi.get_identity(identity)
+            reg_filter = {
+                "mother_id": identity
+            }
+            registrations = hubApi.get_registrations(params=reg_filter)
             if results is None:
                 return redirect('not_found')
         context.update({
-            "identity": results
+            "identity": results,
+            "registrations": registrations
         })
         context.update(csrf(request))
         return render(request, 'ci/identities_detail.html', context)
@@ -320,7 +332,57 @@ def identity(request, identity):
 @permission_required(permission='ci:view', login_url='/login/')
 def registrations(request):
     context = default_context(request.session)
-    return render(request, 'ci/registrations.html', context)
+    if "HUB" not in request.session["user_tokens"]:
+        return redirect('denied')
+    else:
+        hubApi = HubApiClient(
+            api_url=request.session["user_tokens"]["HUB"]["url"],  # noqa
+            auth_token=request.session["user_tokens"]["HUB"]["token"]  # noqa
+        )
+        if request.method == "POST":
+            form = RegistrationFilterForm(request.POST)
+            if form.is_valid():
+                reg_filter = {
+                    "stage": form.cleaned_data['stage'],
+                    "validated": form.cleaned_data['validated'],
+                    "mother_id": form.cleaned_data['mother_id']
+                }
+                results = hubApi.get_registrations(params=reg_filter)
+            else:
+                results = {"count": form.errors}
+        else:
+            form = RegistrationFilterForm()
+            results = hubApi.get_registrations()
+        context.update({
+            "registrations": results,
+            "form": form
+        })
+        context.update(csrf(request))
+        return render(request, 'ci/registrations.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+def registration(request, registration):
+    context = default_context(request.session)
+    if "HUB" not in request.session["user_tokens"]:
+        return redirect('denied')
+    else:
+        hubApi = HubApiClient(
+            api_url=request.session["user_tokens"]["HUB"]["url"],  # noqa
+            auth_token=request.session["user_tokens"]["HUB"]["token"]  # noqa
+        )
+        if request.method == "POST":
+            pass
+        else:
+            results = hubApi.get_registration(registration)
+            if results is None:
+                return redirect('not_found')
+        context.update({
+            "registration": results
+        })
+        context.update(csrf(request))
+        return render(request, 'ci/registrations_detail.html', context)
 
 
 @login_required(login_url='/login/')

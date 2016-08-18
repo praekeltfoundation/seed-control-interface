@@ -62,3 +62,28 @@ class IdentitySearchForm(forms.Form):
     address_type = forms.ChoiceField(
         choices=ADDRESS_TYPES
     )
+
+STAGE_CHOICES = (
+    ('', "Stage - all"),
+    ('prebirth', "Mother is pregnant"),
+    ('postbirth', "Baby has been born"),
+    ('loss', "Baby loss")
+)
+
+VALIDATED_CHOICES = (
+    ('', "Validated - all"),
+    ("True", "Valid"),
+    ("False", "Invalid")
+)
+
+
+class RegistrationFilterForm(forms.Form):
+    mother_id = forms.CharField(
+        widget=forms.TextInput(attrs={'placeholder': 'Mother ID'}),
+        required=False)
+    stage = forms.ChoiceField(
+        choices=STAGE_CHOICES, required=False
+    )
+    validated = forms.ChoiceField(
+        choices=VALIDATED_CHOICES, required=False
+    )
