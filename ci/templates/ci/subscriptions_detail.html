@@ -1,0 +1,84 @@
+{% extends "ci/base.html" %}
+{% load staticfiles %}
+{% block pagetitle %}Subscription Management{% endblock %}
+{% block content %}
+<div class="dashhead">
+  <div class="dashhead-titles">
+    <h6 class="dashhead-subtitle">Seed Control Interface</h6>
+    <h2 class="dashhead-title">Subscription Management</h2>
+  </div>
+
+  <div class="btn-toolbar dashhead-toolbar">
+    <div class="btn-toolbar-item input-with-icon">&nbsp;
+    </div>
+  </div>
+</div>
+
+<hr class="m-t">
+
+<h3>Details</h3>
+<div class="table-full">
+  <div class="table-responsive">
+    <table class="table" data-sort="table">
+      <tbody>
+        <tr>
+          <th>Subscription ID:</th><td>{{ subscription.id }}</td>
+        </tr>
+        <tr>
+          <th>Subscriber:</th>
+          {% url 'identities-detail' subscription.identity as url %}
+          <td><a href="{{ url }}">{{ subscription.identity|truncatechars:12 }}</a></td>
+        </tr>
+        <tr>
+          <th>Created:</th><td>{{ subscription.created_at|get_date|date:"D d M Y H:i" }}</td>
+        </tr>
+        <tr>
+          <th>Last Updated:</th><td>{{ subscription.updated_at|get_date|date:"D d M Y H:i" }}</td>
+        </tr>
+        <tr>
+          <th>Message Set:</th><td>{{ messagesets|get_item:subscription.messageset }}</td>
+        </tr>
+        <tr>
+          <th>Next Sequence Number:</th><td>{{ subscription.next_sequence_number }}</td>
+        </tr>
+        <tr>
+          <th>Language:</th><td>{{ subscription.lang }}</td>
+        </tr>
+        <tr>
+          <th>Active:</th><td>{{ subscription.active }}</td>
+        </tr>
+        <tr>
+          <th>Completed:</th><td>{{ subscription.completed }}</td>
+        </tr>
+        <tr>
+          <th>Process Status:</th><td>{{ subscription.process_status }}</td>
+        </tr>
+        <tr>
+          <th>Additional Information:</th><td>{% for k, v in subscription.metadata.items %}<strong>{{ k }}</strong>: {{ v }}<br />{% endfor %}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- <div class="text-center">
+  <ul class="pagination">
+    <li>
+      <a href="#" aria-label="Previous">
+        <span aria-hidden="true">&laquo;</span>
+      </a>
+    </li>
+    <li class="active"><a href="#">1</a></li>
+    <li><a href="#">2</a></li>
+    <li><a href="#">3</a></li>
+    <li><a href="#">4</a></li>
+    <li><a href="#">5</a></li>
+    <li>
+      <a href="#" aria-label="Next">
+        <span aria-hidden="true">&raquo;</span>
+      </a>
+    </li>
+  </ul>
+</div> -->
+{% endblock %}

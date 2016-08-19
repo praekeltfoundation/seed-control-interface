@@ -17,9 +17,11 @@ import dateutil.parser
 from seed_services_client.control_interface import ControlInterfaceApiClient
 from seed_services_client.identity_store import IdentityStoreApiClient
 from seed_services_client.hub import HubApiClient
+from seed_services_client.stage_based_messaging \
+    import StageBasedMessagingApiClient
 from go_http.metrics import MetricsApiClient
 from .forms import (AuthenticationForm, IdentitySearchForm,
-                    RegistrationFilterForm)
+                    RegistrationFilterForm, SubscriptionFilterForm)
 
 
 @register.filter
@@ -299,7 +301,8 @@ def identities(request):
 def identity(request, identity):
     context = default_context(request.session)
     if "SEED_IDENTITY_SERVICE" not in request.session["user_tokens"] and \
-            "HUB" not in request.session["user_tokens"]:
+            "HUB" not in request.session["user_tokens"] and \
+            "SEED_STAGE_BASED_MESSAGING" not in request.session["user_tokens"]:
         return redirect('denied')
     else:
         idApi = IdentityStoreApiClient(
@@ -310,6 +313,14 @@ def identity(request, identity):
             api_url=request.session["user_tokens"]["HUB"]["url"],  # noqa
             auth_token=request.session["user_tokens"]["HUB"]["token"]  # noqa
         )
+        sbmApi = StageBasedMessagingApiClient(
+            api_url=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["url"],  # noqa
+            auth_token=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["token"]  # noqa
+        )
+        messagesets_results = sbmApi.get_messagesets()
+        messagesets = {}
+        for messageset in messagesets_results["results"]:
+            messagesets[messageset["id"]] = messageset["short_name"]
         if request.method == "POST":
             pass
         else:
@@ -318,11 +329,17 @@ def identity(request, identity):
                 "mother_id": identity
             }
             registrations = hubApi.get_registrations(params=reg_filter)
+            sbm_filter = {
+                "identity": identity
+            }
+            subscriptions = sbmApi.get_subscriptions(params=sbm_filter)
             if results is None:
                 return redirect('not_found')
         context.update({
             "identity": results,
-            "registrations": registrations
+            "registrations": registrations,
+            "messagesets": messagesets,
+            "subscriptions": subscriptions
         })
         context.update(csrf(request))
         return render(request, 'ci/identities_detail.html', context)
@@ -389,7 +406,67 @@ def registration(request, registration):
 @permission_required(permission='ci:view', login_url='/login/')
 def subscriptions(request):
     context = default_context(request.session)
-    return render(request, 'ci/subscriptions.html', context)
+    if "SEED_STAGE_BASED_MESSAGING" not in request.session["user_tokens"]:
+        return redirect('denied')
+    else:
+        sbmApi = StageBasedMessagingApiClient(
+            api_url=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["url"],  # noqa
+            auth_token=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["token"]  # noqa
+        )
+        messagesets_results = sbmApi.get_messagesets()
+        messagesets = {}
+        for messageset in messagesets_results["results"]:
+            messagesets[messageset["id"]] = messageset["short_name"]
+        if request.method == "POST":
+            form = SubscriptionFilterForm(request.POST)
+            if form.is_valid():
+                sbm_filter = {
+                    "identity": form.cleaned_data['identity'],
+                    "active": form.cleaned_data['active'],
+                    "completed": form.cleaned_data['completed']
+                }
+                results = sbmApi.get_subscriptions(params=sbm_filter)
+            else:
+                results = {"count": form.errors}
+        else:
+            form = SubscriptionFilterForm()
+            results = sbmApi.get_subscriptions()
+        context.update({
+            "subscriptions": results,
+            "messagesets": messagesets,
+            "form": form
+        })
+        context.update(csrf(request))
+        return render(request, 'ci/subscriptions.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+def subscription(request, subscription):
+    context = default_context(request.session)
+    if "SEED_STAGE_BASED_MESSAGING" not in request.session["user_tokens"]:
+        return redirect('denied')
+    else:
+        sbmApi = StageBasedMessagingApiClient(
+            api_url=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["url"],  # noqa
+            auth_token=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["token"]  # noqa
+        )
+        messagesets_results = sbmApi.get_messagesets()
+        messagesets = {}
+        for messageset in messagesets_results["results"]:
+            messagesets[messageset["id"]] = messageset["short_name"]
+        if request.method == "POST":
+            pass
+        else:
+            results = sbmApi.get_subscription(subscription)
+            if results is None:
+                return redirect('not_found')
+        context.update({
+            "subscription": results,
+            "messagesets": messagesets
+        })
+        context.update(csrf(request))
+        return render(request, 'ci/subscriptions_detail.html', context)
 
 
 @login_required(login_url='/login/')

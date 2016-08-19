@@ -106,6 +106,41 @@
   </div>
 </div>
 
+<h3>Subscriptions</h3>
+<div class="table-full">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Subscription</th>
+          <th>Set</th>
+          <th>Next</th>
+          <th>Language</th>
+          <th>Active</th>
+          <th>Completed</th>
+          <th>Created</th>
+          <th>Last Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for subscription in subscriptions.results %}
+        <tr>
+          {% url 'subscriptions-detail' subscription.id as url %}
+          <td><a href="{{ url }}">{{ subscription.id|truncatechars:12 }}</a></td>
+          <td>{{ messagesets|get_item:subscription.messageset }}</td>
+          <td>{{ subscription.next_sequence_number }}</td>
+          <td>{{ subscription.lang }}</td>
+          <td>{{ subscription.active }}</td>
+          <td>{{ subscription.completed }}</td>
+          <td>{{ subscription.created_at|get_date|date:"D d M Y H:i" }}</td>
+          <td>{{ subscription.updated_at|get_date|date:"D d M Y H:i" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
 <!-- <div class="text-center">
   <ul class="pagination">
     <li>

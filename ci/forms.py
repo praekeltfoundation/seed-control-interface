@@ -87,3 +87,28 @@ class RegistrationFilterForm(forms.Form):
     validated = forms.ChoiceField(
         choices=VALIDATED_CHOICES, required=False
     )
+
+
+ACTIVE_CHOICES = (
+    ('', "Active - all"),
+    ("True", "Active"),
+    ("False", "Inactive")
+)
+
+COMPLETED_CHOICES = (
+    ('', "Completed - all"),
+    ("True", "Completed"),
+    ("False", "Incompleted")
+)
+
+
+class SubscriptionFilterForm(forms.Form):
+    identity = forms.CharField(
+        widget=forms.TextInput(attrs={'placeholder': 'Mother ID'}),
+        required=False)
+    active = forms.ChoiceField(
+        choices=ACTIVE_CHOICES, required=False
+    )
+    completed = forms.ChoiceField(
+        choices=COMPLETED_CHOICES, required=False
+    )

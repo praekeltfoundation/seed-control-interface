@@ -15,6 +15,8 @@ urlpatterns = [
     url(r'^registrations/(?P<registration>[^/]+)/$', views.registration,
         name='registrations-detail'),
     url('^subscriptions/$', views.subscriptions, name='subscriptions'),
+    url(r'^subscriptions/(?P<subscription>[^/]+)/$', views.subscription,
+        name='subscriptions-detail'),
     url('^services/$', views.services, name='services'),
     url('^denied/$', views.denied, name='denied'),
     url('^404/$', views.denied, name='not_found'),
