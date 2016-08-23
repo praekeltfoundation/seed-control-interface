@@ -62,6 +62,9 @@
               <li class="nav-header">Registrations</li>
               {% url 'registrations' as url %}
               <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">View</a></li>
+              <li class="nav-header">Changes</li>
+              {% url 'changes' as url %}
+              <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">View</a></li>
               <li class="nav-header">Subscriptions</li>
               {% url 'subscriptions' as url %}
               <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">View</a></li>
