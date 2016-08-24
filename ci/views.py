@@ -550,4 +550,4 @@ def service(request, service):
         "service": results,
         "service_status": service_status
     })
-    return render(request, 'ci/services_details.html', context)
+    return render(request, 'ci/services_detail.html', context)
