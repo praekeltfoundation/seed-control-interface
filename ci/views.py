@@ -473,4 +473,21 @@ def subscription(request, subscription):
 @permission_required(permission='ci:view', login_url='/login/')
 def services(request):
     context = default_context(request.session)
+    services = ciApi.get_services()
+    context.update({
+        "services": services
+    })
+    return render(request, 'ci/services.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+def service(request, service):
+    context = default_context(request.session)
+    service = ciApi.get_services(service)
+    service_status = ciApi.get_service_status(service)
+    context.update({
+        "service": service,
+        "service_status": service_status
+    })
     return render(request, 'ci/services.html', context)
