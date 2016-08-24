@@ -544,10 +544,10 @@ def services(request):
 @permission_required(permission='ci:view', login_url='/login/')
 def service(request, service):
     context = default_context(request.session)
-    service = ciApi.get_services(service)
+    results = ciApi.get_service(service)
     service_status = ciApi.get_service_status(service)
     context.update({
-        "service": service,
+        "service": results,
         "service_status": service_status
     })
     return render(request, 'ci/services.html', context)
