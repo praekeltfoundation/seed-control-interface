@@ -330,7 +330,7 @@ def identity(request, identity):
                 "mother_id": identity
             }
             registrations = hubApi.get_registrations(params=hub_filter)
-            changes = hubApi.get_changess(params=hub_filter)
+            changes = hubApi.get_changes(params=hub_filter)
             sbm_filter = {
                 "identity": identity
             }
