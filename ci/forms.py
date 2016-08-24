@@ -89,6 +89,29 @@ class RegistrationFilterForm(forms.Form):
     )
 
 
+ACTION_CHOICES = (
+    ('', "Action - all"),
+    ('change_messaging', "Change messaging type and/or reception times"),
+    ('change_loss', "Change to loss messaging"),
+    ('unsubscribe_household_only', "Unsubscribe household msg receiver"),
+    ('unsubscribe_mother_only', "Unsubscribe mother from messages"),
+    ('change_language', "Change language"),
+    ('change_baby', "Change to baby messages")
+)
+
+
+class ChangeFilterForm(forms.Form):
+    mother_id = forms.CharField(
+        widget=forms.TextInput(attrs={'placeholder': 'Mother ID'}),
+        required=False)
+    action = forms.ChoiceField(
+        choices=ACTION_CHOICES, required=False
+    )
+    validated = forms.ChoiceField(
+        choices=VALIDATED_CHOICES, required=False
+    )
+
+
 ACTIVE_CHOICES = (
     ('', "Active - all"),
     ("True", "Active"),

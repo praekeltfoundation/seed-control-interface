@@ -21,7 +21,8 @@ from seed_services_client.stage_based_messaging \
     import StageBasedMessagingApiClient
 from go_http.metrics import MetricsApiClient
 from .forms import (AuthenticationForm, IdentitySearchForm,
-                    RegistrationFilterForm, SubscriptionFilterForm)
+                    RegistrationFilterForm, SubscriptionFilterForm,
+                    ChangeFilterForm)
 
 
 @register.filter
@@ -325,10 +326,11 @@ def identity(request, identity):
             pass
         else:
             results = idApi.get_identity(identity)
-            reg_filter = {
+            hub_filter = {
                 "mother_id": identity
             }
-            registrations = hubApi.get_registrations(params=reg_filter)
+            registrations = hubApi.get_registrations(params=hub_filter)
+            changes = hubApi.get_changes(params=hub_filter)
             sbm_filter = {
                 "identity": identity
             }
@@ -338,6 +340,7 @@ def identity(request, identity):
         context.update({
             "identity": results,
             "registrations": registrations,
+            "changes": changes,
             "messagesets": messagesets,
             "subscriptions": subscriptions
         })
@@ -400,6 +403,63 @@ def registration(request, registration):
         })
         context.update(csrf(request))
         return render(request, 'ci/registrations_detail.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+def changes(request):
+    context = default_context(request.session)
+    if "HUB" not in request.session["user_tokens"]:
+        return redirect('denied')
+    else:
+        hubApi = HubApiClient(
+            api_url=request.session["user_tokens"]["HUB"]["url"],
+            auth_token=request.session["user_tokens"]["HUB"]["token"]
+        )
+        if request.method == "POST":
+            form = ChangeFilterForm(request.POST)
+            if form.is_valid():
+                change_filter = {
+                    "action": form.cleaned_data['action'],
+                    "validated": form.cleaned_data['validated'],
+                    "mother_id": form.cleaned_data['mother_id']
+                }
+                results = hubApi.get_changes(params=change_filter)
+            else:
+                results = {"count": form.errors}
+        else:
+            form = ChangeFilterForm()
+            results = hubApi.get_changes()
+        context.update({
+            "changes": results,
+            "form": form
+        })
+        context.update(csrf(request))
+        return render(request, 'ci/changes.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+def change(request, change):
+    context = default_context(request.session)
+    if "HUB" not in request.session["user_tokens"]:
+        return redirect('denied')
+    else:
+        hubApi = HubApiClient(
+            api_url=request.session["user_tokens"]["HUB"]["url"],
+            auth_token=request.session["user_tokens"]["HUB"]["token"]
+        )
+        if request.method == "POST":
+            pass
+        else:
+            results = hubApi.get_change(change)
+            if results is None:
+                return redirect('not_found')
+        context.update({
+            "change": results
+        })
+        context.update(csrf(request))
+        return render(request, 'ci/changes_detail.html', context)
 
 
 @login_required(login_url='/login/')
