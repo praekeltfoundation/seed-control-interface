@@ -17,9 +17,23 @@
 </div>
 
 <hr class="m-t">
+
+<div class="flextable">
+  <select name="timeframe" onchange="timeframeChange(this)">
+    <option value="yesterday" selected>Yesterday</option>
+    <option value="last-week">Last Week</option>
+    <option value="last-30-days">Last 30 Days</option>
+    <option value="last-3-months">Last 3 Months</option>
+    <option value="last-year">Last Year</option>
+    <option value="all-time">All Time</option>
+  </select>
+</div>
+<hr class="m-t">
+
 <link rel="stylesheet" href="{% static "ci/css/sapphire.css" %}">
 <link rel="stylesheet" href="{% static "ci/css/sapphire-theme.css" %}">
 <div class="sapphire">
+
   <div class="row text-center m-t-lg">
     {% for widget in dashboard.widgets %}
     {% if forloop.counter|divisibleby:4 %}
@@ -180,6 +194,31 @@
       : [widget];
   }
 
+  function timeframeChange(selected) {
+    var start = '-1d';
+    var interval = '1day';
+    switch (selected.value) {
+      case 'last-week':
+        start = '-7d';
+        break;
+      case 'last-30-days':
+        start = '-30d';
+        break;
+      case 'last-3-months':
+        start = '-90d';
+        break;
+      case 'last-year':
+        start = '-365d';
+        break;
+      case 'all-time':
+        pass
+        break;
+    }
+    for (var widget in data['widgets']) {
+      data['widgets'][widget]['start'] = start;
+    }
+    update();
+  }
 
   </script>
 
