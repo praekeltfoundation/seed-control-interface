@@ -19,21 +19,25 @@
 <hr class="m-t">
 
 <div class="flextable">
-  <select name="timeframe" onchange="timeframeChange(this)">
-    <option value="yesterday" selected>Yesterday</option>
-    <option value="last-week">Last Week</option>
-    <option value="last-30-days">Last 30 Days</option>
-    <option value="last-3-months">Last 3 Months</option>
-    <option value="last-year">Last Year</option>
-    <option value="all-time">All Time</option>
-  </select>
+  <div class="form-inline">
+    <div class="form-group">
+      <label for="timeframe">Filter</label>
+      <select class="custom-select form-control" name="timeframe" id="timeframe" onchange="timeframeChange(this)">
+        <option value="yesterday" selected>Yesterday</option>
+        <option value="last-week">Last Week</option>
+        <option value="last-30-days">Last 30 Days</option>
+        <option value="last-3-months">Last 3 Months</option>
+        <option value="last-year">Last Year</option>
+        <option value="all-time">All Time</option>
+      </select>
+    </div>
+  </div>
 </div>
 <hr class="m-t">
 
 <link rel="stylesheet" href="{% static "ci/css/sapphire.css" %}">
 <link rel="stylesheet" href="{% static "ci/css/sapphire-theme.css" %}">
 <div class="sapphire">
-
   <div class="row text-center m-t-lg">
     {% for widget in dashboard.widgets %}
     {% if forloop.counter|divisibleby:4 %}
