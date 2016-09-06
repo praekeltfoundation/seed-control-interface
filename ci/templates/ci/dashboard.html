@@ -200,6 +200,7 @@
 
   function timeframeChange(selected) {
     var start = '-1d';
+    var interval = '1d';
     switch (selected.value) {
       case 'last-week':
         start = '-7d';
@@ -209,12 +210,15 @@
         break;
       case 'last-3-months':
         start = '-90d';
+        interval = '1w';
         break;
       case 'last-year':
         start = '-365d';
+        interval = '1mon';
         break;
       case 'all-time':
-        pass
+        start = '-10y';
+        interval = '1y';
         break;
     }
     for (var widget in data['widgets']) {
