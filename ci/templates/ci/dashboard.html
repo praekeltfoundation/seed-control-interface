@@ -17,6 +17,24 @@
 </div>
 
 <hr class="m-t">
+
+<div class="flextable">
+  <div class="form-inline">
+    <div class="form-group">
+      <label for="timeframe">Filter</label>
+      <select class="custom-select form-control" name="timeframe" id="timeframe" onchange="timeframeChange(this)">
+        <option value="last-30-days" selected>Last 30 Days</option>
+        <option value="yesterday">Yesterday</option>
+        <option value="last-week">Last Week</option>
+        <option value="last-3-months">Last 3 Months</option>
+        <option value="last-year">Last Year</option>
+        <option value="all-time">All Time</option>
+      </select>
+    </div>
+  </div>
+</div>
+<hr class="m-t">
+
 <link rel="stylesheet" href="{% static "ci/css/sapphire.css" %}">
 <link rel="stylesheet" href="{% static "ci/css/sapphire-theme.css" %}">
 <div class="sapphire">
@@ -58,8 +76,8 @@
             {% endfor %}
           ],
           {% endif %}
-          start: '{{ widget.data_from }}',
-          interval: '{{ widget.interval }}',
+          start: '-30d',
+          interval: '1d',
           nulls: '{{ widget.nulls }}',
           type: '{{ widget.type_of}}'
         },
@@ -180,6 +198,35 @@
       : [widget];
   }
 
+  function timeframeChange(selected) {
+    var start = '-1d';
+    var interval = '1d';
+    switch (selected.value) {
+      case 'last-week':
+        start = '-7d';
+        break;
+      case 'last-30-days':
+        start = '-30d';
+        break;
+      case 'last-3-months':
+        start = '-90d';
+        interval = '1w';
+        break;
+      case 'last-year':
+        start = '-365d';
+        interval = '1mon';
+        break;
+      case 'all-time':
+        start = '-10y';
+        interval = '1y';
+        break;
+    }
+    for (var widget in data['widgets']) {
+      data['widgets'][widget]['start'] = start;
+      data['widgets'][widget]['interval'] = interval;
+    }
+    update();
+  }
 
   </script>
 
