@@ -23,9 +23,9 @@
     <div class="form-group">
       <label for="timeframe">Filter</label>
       <select class="custom-select form-control" name="timeframe" id="timeframe" onchange="timeframeChange(this)">
-        <option value="yesterday" selected>Yesterday</option>
+        <option value="last-30-days" selected>Last 30 Days</option>
+        <option value="yesterday">Yesterday</option>
         <option value="last-week">Last Week</option>
-        <option value="last-30-days">Last 30 Days</option>
         <option value="last-3-months">Last 3 Months</option>
         <option value="last-year">Last Year</option>
         <option value="all-time">All Time</option>
@@ -76,8 +76,8 @@
             {% endfor %}
           ],
           {% endif %}
-          start: '{{ widget.data_from }}',
-          interval: '{{ widget.interval }}',
+          start: '-30d',
+          interval: '1d',
           nulls: '{{ widget.nulls }}',
           type: '{{ widget.type_of}}'
         },
@@ -223,6 +223,7 @@
     }
     for (var widget in data['widgets']) {
       data['widgets'][widget]['start'] = start;
+      data['widgets'][widget]['interval'] = interval;
     }
     update();
   }
