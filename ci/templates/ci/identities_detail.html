@@ -43,7 +43,7 @@
         </tr>
         <tr>
           <th>Default Address:</th>
-        {% with addresses=identity.details.addresses|get_item:identity.details.default_addr_type %}
+        {% with addresses=identity|get_identity_addresses %}
         <td>{% for address, info in addresses.items %}{{ address }}{% endfor %}</td>
         {% endwith %}
       </tbody>
