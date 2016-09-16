@@ -17,10 +17,12 @@ class ViewTests(TestCase):
 
     def test_get_identy_addresses_good(self):
         self.assertEqual(get_identity_addresses({
-            'default_addr_type': 'msisdn',
-            'addresses': {
-                'msisdn': {
-                    '1234567890': {},
+            'details': {
+                'default_addr_type': 'msisdn',
+                'addresses': {
+                    'msisdn': {
+                        '1234567890': {},
+                    }
                 }
             }
         }), {'1234567890': {}})
@@ -28,13 +30,17 @@ class ViewTests(TestCase):
     def test_get_identy_addresses_bad(self):
         self.assertEqual(get_identity_addresses({}), {})
         self.assertEqual(get_identity_addresses({
-            'default_addr_type': 'msisdn'
+            'details': {
+                'default_addr_type': 'msisdn'
+            }
         }), {})
         self.assertEqual(get_identity_addresses({
-            'default_addr_type': 'foo',
-            'addresses': {
-                'msisdn': {
-                    '1234567890': {},
+            'details': {
+                'default_addr_type': 'foo',
+                'addresses': {
+                    'msisdn': {
+                        '1234567890': {},
+                    }
                 }
             }
         }), {})
