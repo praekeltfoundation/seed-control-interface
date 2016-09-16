@@ -1,4 +1,5 @@
 from functools import wraps
+import logging
 
 from django.shortcuts import render, redirect, resolve_url
 from django.utils.decorators import available_attrs
@@ -23,6 +24,19 @@ from go_http.metrics import MetricsApiClient
 from .forms import (AuthenticationForm, IdentitySearchForm,
                     RegistrationFilterForm, SubscriptionFilterForm,
                     ChangeFilterForm)
+
+logger = logging.getLogger(__name__)
+
+
+@register.filter
+def get_identity_addresses(identity):
+    details = identity.get('details', {})
+    default_addr_type = details.get('default_addr_type', None)
+    addresses = details.get('addresses', {})
+    if not default_addr_type:
+        logger.warning('No default_addr_type specified for: %r' % (identity,))
+        return {}
+    return addresses.get(default_addr_type, {})
 
 
 @register.filter
