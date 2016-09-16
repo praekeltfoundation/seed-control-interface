@@ -30,8 +30,9 @@ logger = logging.getLogger(__name__)
 
 @register.filter
 def get_identity_addresses(identity):
-    addresses = identity.details.get(['addresses'], {})
-    default_addr_type = identity.details.get('default_addr_type', None)
+    details = identity.get('details', {})
+    default_addr_type = details.get('default_addr_type', None)
+    addresses = details.get('addresses', {})
     if not default_addr_type:
         logger.warn('No default_addr_type specified for: %r' % (identity,))
         return {}
