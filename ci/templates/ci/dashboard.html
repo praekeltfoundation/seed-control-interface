@@ -89,7 +89,15 @@
   // Create the widget components. Widget configuration would be done here.
   var last = sapphire.widgets.last();
   var lines = sapphire.widgets.lines();
-  var pie = sapphire.widgets.pie();
+  var pie = sapphire.widgets.pie()
+    // Format percentages nicely even if they have no data
+    .percentFormat(function(value) {
+      if (isNaN(value)){
+        var value = 0;
+      }
+      var f = d3.format('.0%');
+      return f(value);
+    });
   var bars = sapphire.widgets.bars();
 
 
@@ -176,7 +184,7 @@
     metrics(widget)
       .forEach(function(d) {
         if (widget['type'] == 'pie'){
-          d.value = data[d.key][data[d.key].length-1].y;
+          d.value = data[d.key].length > 0 ? data[d.key][data[d.key].length-1].y : 0;
         } else {
           d.values = data[d.key];
         }
