@@ -184,7 +184,10 @@
     metrics(widget)
       .forEach(function(d) {
         if (widget['type'] == 'pie'){
-          d.value = data[d.key].length > 0 ? data[d.key][data[d.key].length-1].y : 0;
+          d.value = 0;
+          data[d.key].forEach(function(v) {
+            d.value += v.y
+          })
         } else {
           d.values = data[d.key];
         }
