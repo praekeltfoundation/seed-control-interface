@@ -152,3 +152,9 @@ AUTH_SERVICE_URL = os.environ.get(
 CI_LOGO_URL = os.environ.get(
     'CI_LOGO_URL',
     '/static/ci/img/logo.png')
+
+HUB_URL = os.environ.get(
+    'HUB_URL', 'http://localhost:8006/api/v1')
+
+HUB_TOKEN = os.environ.get(
+    'HUB_TOKEN', 'REPLACEME')
