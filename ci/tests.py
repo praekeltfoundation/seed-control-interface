@@ -1,5 +1,4 @@
 import responses
-import os
 
 from tempfile import NamedTemporaryFile
 
