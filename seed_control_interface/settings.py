@@ -158,3 +158,9 @@ HUB_URL = os.environ.get(
 
 HUB_TOKEN = os.environ.get(
     'HUB_TOKEN', 'REPLACEME')
+
+IDENTITY_STORE_URL = os.environ.get(
+    'IDENTITY_STORE_URL', 'http://localhost:8007/api/v1')
+
+IDENTITY_STORE_TOKEN = os.environ.get(
+    'IDENTITY_STORE_TOKEN', 'REPLACEME')

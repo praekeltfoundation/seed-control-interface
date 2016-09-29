@@ -5,12 +5,12 @@ from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
-from django.core.validators import EmailValidator, URLValidator
+from django.core.validators import URLValidator
 from django.utils import timezone
 
 from openpyxl import Workbook
 
-from seed_services_client import HubApiClient
+from seed_services_client import HubApiClient, IdentityStoreApiClient
 
 
 def mk_validator(django_validator):
@@ -74,9 +74,8 @@ class Command(BaseCommand):
 
     workbook_class = ExportWorkbook
 
-    help = (
-        'Generate a CSV report and write it to disk or optionally email '
-        'it to a list of recipients')
+    help = ('Generate an XLS spreadsheet report on registrations '
+            'and write it to disk')
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -91,10 +90,9 @@ class Command(BaseCommand):
             help=('The end of the reporting range (YYYY-MM-DD). '
                   'Defaults to exactly 1 month after `--start`'))
         parser.add_argument(
-            '--email-to', type=mk_validator(EmailValidator),
-            action='append',
-            help=('The email address to send the reports to. '
-                  '(can specify multiple times)'))
+            '--output-file', type=str, default=None,
+            help='The file to write the report to.'
+        )
         parser.add_argument(
             '--hub-url', type=mk_validator(URLValidator),
             default=settings.HUB_URL,
@@ -103,34 +101,50 @@ class Command(BaseCommand):
             '--hub-token', type=str, default=settings.HUB_TOKEN
         )
         parser.add_argument(
-            '--output-file', type=str, default=None,
-            help='The file to write the report to.'
-        )
+            '--identity-store-url', type=mk_validator(URLValidator),
+            default=settings.IDENTITY_STORE_URL)
+        parser.add_argument(
+            '--identity-store-token', type=str,
+            default=settings.IDENTITY_STORE_TOKEN)
 
     def handle(self, *args, **kwargs):
+        self.identity_cache = {}
         hub_token = kwargs['hub_token']
         hub_url = kwargs['hub_url']
+        id_store_token = kwargs['identity_store_token']
+        id_store_url = kwargs['identity_store_url']
+
         start_date = kwargs['start']
         end_date = kwargs['end']
         file_name = kwargs['output_file']
-        recipients = kwargs['email_to']
 
-        if not any([file_name, recipients]):
+        if not file_name:
             raise CommandError(
-                'Please specify --file-name or --email-to.')
+                'Please specify --file-name.')
 
         if end_date is None:
             end_date = one_month_after(start_date)
 
+        hub_client = HubApiClient(hub_token, hub_url)
+        ids_client = IdentityStoreApiClient(id_store_token, id_store_url)
+
         workbook = self.workbook_class()
         sheet = workbook.add_sheet('Registrations by date', 0)
-        self.handle_registrations(
-            sheet, hub_token, hub_url, start_date, end_date)
+        self.handle_registrations(sheet, hub_client, ids_client,
+                                  start_date, end_date)
         workbook.save(file_name)
 
-    def handle_registrations(self, sheet, hub_token, hub_url,
+    def get_identity(self, ids_client, identity):
+        if identity in self.identity_cache:
+            return self.identity_cache[identity]
+
+        identity_object = ids_client.get_identity(identity)
+        self.identity_cache[identity] = identity_object
+        return identity_object
+
+    def handle_registrations(self, sheet, hub_client, ids_client,
                              start_date, end_date):
-        hub_client = HubApiClient(hub_token, hub_url)
+
         registrations = hub_client.get_registrations({
             'created_after': start_date.isoformat(),
             'created_before': end_date.isoformat(),
@@ -153,8 +167,16 @@ class Command(BaseCommand):
             'State',
         ])
 
-        for registration in registrations['results']:
+        for idx, registration in enumerate(registrations['results']):
             data = registration.get('data', {})
+            operator_id = data.get('operator_id')
+            if operator_id:
+                operator_identity = self.get_identity(ids_client, operator_id)
+            else:
+                operator_identity = {}
+
+            details = operator_identity.get('details', {})
+
             sheet.add_row({
                 'Created': registration['created_at'],
                 'gravida': data.get('gravida'),
@@ -166,8 +188,8 @@ class Command(BaseCommand):
                 'Voice_times': data.get('voice_times'),
                 'preg_week': data.get('preg_week'),
                 'reg_type': data.get('reg_type'),
-                'Personnel_code': '',
-                'Facility': '',
-                'Cadre': '',
-                'State': '',
+                'Personnel_code': details.get('personnel_code'),
+                'Facility': details.get('facility_name'),
+                'Cadre': details.get('role'),
+                'State': details.get('state'),
             })
