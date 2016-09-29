@@ -21,6 +21,7 @@ setup(
         'django-bootstrap-form==3.2.1',
         'seed-services-client',
         'go-http==0.3.0',
+        'openpyxl==2.4.0',
     ],
     classifiers=[
         'Development Status :: 4 - Beta',
