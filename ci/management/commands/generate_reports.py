@@ -180,6 +180,8 @@ class Command(BaseCommand):
             if default_addr_type:
                 addresses = details.get('addresses', {})
                 msisdns = addresses.get(default_addr_type, {}).keys()
+            else:
+                msisdns = []
 
             sheet.add_row({
                 'MSISDN': ','.join(msisdns),
