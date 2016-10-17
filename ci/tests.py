@@ -110,8 +110,14 @@ class GenerateReportTest(TestCase):
                 'details': {
                     'personnel_code': 'personnel_code',
                     'facility_name': 'facility_name',
+                    'default_addr_type': 'msisdn',
                     'role': 'role',
                     'state': 'state',
+                    'addresses': {
+                        'msisdn': {
+                            '+2341234567890': {}
+                        }
+                    }
                 }
             },
             status=200,
@@ -128,6 +134,7 @@ class GenerateReportTest(TestCase):
         self.assertSheetRow(
             tmp_file.name, 'Registrations by date', 0,
             [
+                'MSISDN',
                 'Created',
                 'gravida',
                 'msg_type',
@@ -148,6 +155,7 @@ class GenerateReportTest(TestCase):
         self.assertSheetRow(
             tmp_file.name, 'Registrations by date', 1,
             [
+                '+2341234567890',
                 'created-at',
                 'gravida',
                 'msg_type',
