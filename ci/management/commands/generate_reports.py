@@ -150,6 +150,7 @@ class Command(BaseCommand):
         })
 
         sheet.set_header([
+            'MSISDN',
             'Created',
             'gravida',
             'msg_type',
@@ -175,8 +176,13 @@ class Command(BaseCommand):
                 operator_identity = {}
 
             details = operator_identity.get('details', {})
+            default_addr_type = details.get('default_addr_type')
+            if default_addr_type:
+                addresses = details.get('addresses', {})
+                msisdns = addresses.get(default_addr_type, {}).keys()
 
             sheet.add_row({
+                'MSISDN': ','.join(msisdns),
                 'Created': registration['created_at'],
                 'gravida': data.get('gravida'),
                 'msg_type': data.get('msg_type'),
