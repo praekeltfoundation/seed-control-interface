@@ -149,17 +149,13 @@ class Command(BaseCommand):
         return identity_object
 
     def get_registrations(self, hub_client, **kwargs):
-        print 'first round'
         registrations = hub_client.get_registrations(kwargs)
         cursor = registrations['next']
-        print 'first cursor', cursor
         while cursor:
             yield registrations
             params = parse_cursor_params(cursor)
-            print 'later round with ', params
             registrations = hub_client.get_registrations(params)
             cursor = registrations['next']
-            print 'later cursor', cursor
         yield registrations
 
     def handle_registrations(self, sheet, hub_client, ids_client,
