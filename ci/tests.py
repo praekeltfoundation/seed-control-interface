@@ -86,6 +86,7 @@ class GenerateReportTest(TestCase):
                     'created_at': 'created-at',
                     'data': {
                         'operator_id': 'operator_id',
+                        'receiver_id': 'receiver_id',
                         'gravida': 'gravida',
                         'msg_type': 'msg_type',
                         'last_period_date': 'last_period_date',
@@ -110,8 +111,36 @@ class GenerateReportTest(TestCase):
                 'details': {
                     'personnel_code': 'personnel_code',
                     'facility_name': 'facility_name',
+                    'default_addr_type': 'msisdn',
                     'role': 'role',
                     'state': 'state',
+                    'addresses': {
+                        'msisdn': {
+                            '+2340000000000': {}
+                        }
+                    }
+                }
+            },
+            status=200,
+            content_type='application/json')
+
+        # Identities
+        responses.add(
+            responses.GET,
+            'http://idstore/identities/receiver_id/',
+            json={
+                'identity': 'receiver_id',
+                'details': {
+                    'personnel_code': 'personnel_code',
+                    'facility_name': 'facility_name',
+                    'default_addr_type': 'msisdn',
+                    'role': 'role',
+                    'state': 'state',
+                    'addresses': {
+                        'msisdn': {
+                            '+2341111111111': {}
+                        }
+                    }
                 }
             },
             status=200,
@@ -128,6 +157,7 @@ class GenerateReportTest(TestCase):
         self.assertSheetRow(
             tmp_file.name, 'Registrations by date', 0,
             [
+                'MSISDN',
                 'Created',
                 'gravida',
                 'msg_type',
@@ -148,6 +178,7 @@ class GenerateReportTest(TestCase):
         self.assertSheetRow(
             tmp_file.name, 'Registrations by date', 1,
             [
+                '+2341111111111',
                 'created-at',
                 'gravida',
                 'msg_type',
