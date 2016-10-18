@@ -1,5 +1,6 @@
 import pytz
 import calendar
+from urlparse import urlparse, parse_qs
 from datetime import datetime, timedelta
 
 from django.conf import settings
@@ -67,6 +68,12 @@ class ExportWorkbook(object):
 
     def save(self, file_name):
         return self._workbook.save(file_name)
+
+
+def parse_cursor_params(cursor):
+    parse_result = urlparse(cursor)
+    params = parse_qs(parse_result.query)
+    return dict([(key, value[0]) for key, value in params.items()])
 
 
 class Command(BaseCommand):
@@ -141,13 +148,22 @@ class Command(BaseCommand):
         self.identity_cache[identity] = identity_object
         return identity_object
 
+    def get_registrations(self, hub_client, **kwargs):
+        print 'first round'
+        registrations = hub_client.get_registrations(kwargs)
+        cursor = registrations['next']
+        print 'first cursor', cursor
+        while cursor:
+            yield registrations
+            params = parse_cursor_params(cursor)
+            print 'later round with ', params
+            registrations = hub_client.get_registrations(params)
+            cursor = registrations['next']
+            print 'later cursor', cursor
+        yield registrations
+
     def handle_registrations(self, sheet, hub_client, ids_client,
                              start_date, end_date):
-
-        registrations = hub_client.get_registrations({
-            'created_after': start_date.isoformat(),
-            'created_before': end_date.isoformat(),
-        })
 
         sheet.set_header([
             'MSISDN',
@@ -167,44 +183,52 @@ class Command(BaseCommand):
             'State',
         ])
 
-        for idx, registration in enumerate(registrations['results']):
-            data = registration.get('data', {})
-            operator_id = data.get('operator_id')
-            receiver_id = data.get('receiver_id')
+        registrations_iterator = self.get_registrations(
+            hub_client,
+            created_after=start_date.isoformat(),
+            created_before=end_date.isoformat())
 
-            if operator_id:
-                operator_identity = self.get_identity(ids_client, operator_id)
-            else:
-                operator_identity = {}
+        for registrations in registrations_iterator:
+            for idx, registration in enumerate(registrations['results']):
+                data = registration.get('data', {})
+                operator_id = data.get('operator_id')
+                receiver_id = data.get('receiver_id')
 
-            if receiver_id:
-                receiver_identity = self.get_identity(ids_client, receiver_id)
-            else:
-                receiver_identity = {}
+                if operator_id:
+                    operator_identity = self.get_identity(
+                        ids_client, operator_id)
+                else:
+                    operator_identity = {}
 
-            operator_details = operator_identity.get('details', {})
-            receiver_details = receiver_identity.get('details', {})
-            default_addr_type = receiver_details.get('default_addr_type')
-            if default_addr_type:
-                addresses = receiver_details.get('addresses', {})
-                msisdns = addresses.get(default_addr_type, {}).keys()
-            else:
-                msisdns = []
+                if receiver_id:
+                    receiver_identity = self.get_identity(
+                        ids_client, receiver_id)
+                else:
+                    receiver_identity = {}
 
-            sheet.add_row({
-                'MSISDN': ','.join(msisdns),
-                'Created': registration['created_at'],
-                'gravida': data.get('gravida'),
-                'msg_type': data.get('msg_type'),
-                'last_period_date': data.get('last_period_date'),
-                'language': data.get('language'),
-                'msg_receiver': data.get('msg_receiver'),
-                'voice_days': data.get('voice_days'),
-                'Voice_times': data.get('voice_times'),
-                'preg_week': data.get('preg_week'),
-                'reg_type': data.get('reg_type'),
-                'Personnel_code': operator_details.get('personnel_code'),
-                'Facility': operator_details.get('facility_name'),
-                'Cadre': operator_details.get('role'),
-                'State': operator_details.get('state'),
-            })
+                operator_details = operator_identity.get('details', {})
+                receiver_details = receiver_identity.get('details', {})
+                default_addr_type = receiver_details.get('default_addr_type')
+                if default_addr_type:
+                    addresses = receiver_details.get('addresses', {})
+                    msisdns = addresses.get(default_addr_type, {}).keys()
+                else:
+                    msisdns = []
+
+                sheet.add_row({
+                    'MSISDN': ','.join(msisdns),
+                    'Created': registration['created_at'],
+                    'gravida': data.get('gravida'),
+                    'msg_type': data.get('msg_type'),
+                    'last_period_date': data.get('last_period_date'),
+                    'language': data.get('language'),
+                    'msg_receiver': data.get('msg_receiver'),
+                    'voice_days': data.get('voice_days'),
+                    'Voice_times': data.get('voice_times'),
+                    'preg_week': data.get('preg_week'),
+                    'reg_type': data.get('reg_type'),
+                    'Personnel_code': operator_details.get('personnel_code'),
+                    'Facility': operator_details.get('facility_name'),
+                    'Cadre': operator_details.get('role'),
+                    'State': operator_details.get('state'),
+                })
