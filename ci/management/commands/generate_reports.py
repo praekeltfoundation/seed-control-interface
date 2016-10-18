@@ -170,15 +170,23 @@ class Command(BaseCommand):
         for idx, registration in enumerate(registrations['results']):
             data = registration.get('data', {})
             operator_id = data.get('operator_id')
+            receiver_id = data.get('receiver_id')
+
             if operator_id:
                 operator_identity = self.get_identity(ids_client, operator_id)
             else:
                 operator_identity = {}
 
-            details = operator_identity.get('details', {})
-            default_addr_type = details.get('default_addr_type')
+            if receiver_id:
+                receiver_identity = self.get_identity(ids_client, receiver_id)
+            else:
+                receiver_identity = {}
+
+            operator_details = operator_identity.get('details', {})
+            receiver_details = receiver_identity.get('details', {})
+            default_addr_type = receiver_details.get('default_addr_type')
             if default_addr_type:
-                addresses = details.get('addresses', {})
+                addresses = receiver_details.get('addresses', {})
                 msisdns = addresses.get(default_addr_type, {}).keys()
             else:
                 msisdns = []
@@ -195,8 +203,8 @@ class Command(BaseCommand):
                 'Voice_times': data.get('voice_times'),
                 'preg_week': data.get('preg_week'),
                 'reg_type': data.get('reg_type'),
-                'Personnel_code': details.get('personnel_code'),
-                'Facility': details.get('facility_name'),
-                'Cadre': details.get('role'),
-                'State': details.get('state'),
+                'Personnel_code': operator_details.get('personnel_code'),
+                'Facility': operator_details.get('facility_name'),
+                'Cadre': operator_details.get('role'),
+                'State': operator_details.get('state'),
             })
