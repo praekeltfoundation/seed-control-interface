@@ -6,6 +6,7 @@ from openpyxl import load_workbook
 
 from django.test import TestCase, Client, override_settings
 from django.core.management import call_command
+from ci.management.commands.generate_reports import parse_cursor_params
 from .views import get_identity_addresses
 
 
@@ -73,15 +74,45 @@ class GenerateReportTest(TestCase):
         self.addCleanup(tmp_file.close)
         return tmp_file
 
+    def test_parse_cursor_params(self):
+        cursor = ("https://example"
+                  "?created_after=2010-01-01T00%3A00%3A00%2B00%3A00"
+                  "&created_before=2016-10-17T00%3A00%3A00%2B00%3A00"
+                  "&limit=1000&offset=1000")
+        params = parse_cursor_params(cursor)
+        self.assertEqual(params['created_after'], '2010-01-01T00:00:00+00:00')
+        self.assertEqual(params['created_before'], '2016-10-17T00:00:00+00:00')
+        self.assertEqual(params['limit'], '1000')
+        self.assertEqual(params['offset'], '1000')
+
     @responses.activate
     def test_generate_report(self):
 
-        # Registrations
+        # Registrations, first page, just returns empty results to make sure
+        # we're actually paging through the results sets using the `next`
+        # parameter
         responses.add(
             responses.GET,
-            'http://hub/registrations/',
+            ("http://hub/registrations/?"
+             "created_before=2016-02-01T00%3A00%3A00%2B00%3A00"
+             "&created_after=2016-01-01T00%3A00%3A00%2B00%3A00"),
+            match_querystring=True,
             json={
                 'count': 1,
+                'next': 'http://hub/registrations/?foo=bar',
+                'results': [],
+            },
+            status=200,
+            content_type='application/json')
+
+        # Registrations, second page, this one has the results
+        responses.add(
+            responses.GET,
+            'http://hub/registrations/?foo=bar',
+            match_querystring=True,
+            json={
+                'count': 1,
+                'next': None,
                 'results': [{
                     'created_at': 'created-at',
                     'data': {

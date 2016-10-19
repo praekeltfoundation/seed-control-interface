@@ -1,5 +1,10 @@
 import pytz
 import calendar
+# NOTE: Python 3 compatibility
+try:
+    from urlparse import urlparse, parse_qs
+except ImportError:
+    from urllib.parse import urlparse, parse_qs
 from datetime import datetime, timedelta
 
 from django.conf import settings
@@ -67,6 +72,12 @@ class ExportWorkbook(object):
 
     def save(self, file_name):
         return self._workbook.save(file_name)
+
+
+def parse_cursor_params(cursor):
+    parse_result = urlparse(cursor)
+    params = parse_qs(parse_result.query)
+    return dict([(key, value[0]) for key, value in params.items()])
 
 
 class Command(BaseCommand):
@@ -141,13 +152,20 @@ class Command(BaseCommand):
         self.identity_cache[identity] = identity_object
         return identity_object
 
+    def get_registrations(self, hub_client, **kwargs):
+        registrations = hub_client.get_registrations(kwargs)
+        cursor = registrations['next']
+        while cursor:
+            for result in registrations['results']:
+                yield result
+            params = parse_cursor_params(cursor)
+            registrations = hub_client.get_registrations(params)
+            cursor = registrations['next']
+        for result in registrations['results']:
+            yield result
+
     def handle_registrations(self, sheet, hub_client, ids_client,
                              start_date, end_date):
-
-        registrations = hub_client.get_registrations({
-            'created_after': start_date.isoformat(),
-            'created_before': end_date.isoformat(),
-        })
 
         sheet.set_header([
             'MSISDN',
@@ -167,18 +185,25 @@ class Command(BaseCommand):
             'State',
         ])
 
-        for idx, registration in enumerate(registrations['results']):
+        registrations = self.get_registrations(
+            hub_client,
+            created_after=start_date.isoformat(),
+            created_before=end_date.isoformat())
+
+        for idx, registration in enumerate(registrations):
             data = registration.get('data', {})
             operator_id = data.get('operator_id')
             receiver_id = data.get('receiver_id')
 
             if operator_id:
-                operator_identity = self.get_identity(ids_client, operator_id)
+                operator_identity = self.get_identity(
+                    ids_client, operator_id)
             else:
                 operator_identity = {}
 
             if receiver_id:
-                receiver_identity = self.get_identity(ids_client, receiver_id)
+                receiver_identity = self.get_identity(
+                    ids_client, receiver_id)
             else:
                 receiver_identity = {}
 
