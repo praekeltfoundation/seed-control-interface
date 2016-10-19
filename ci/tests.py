@@ -88,10 +88,28 @@ class GenerateReportTest(TestCase):
     @responses.activate
     def test_generate_report(self):
 
-        # Registrations
+        # Registrations, first page, just returns empty results to make sure
+        # we're actually paging through the results sets using the `next`
+        # parameter
         responses.add(
             responses.GET,
-            'http://hub/registrations/',
+            ("http://hub/registrations/?"
+             "created_before=2016-02-01T00%3A00%3A00%2B00%3A00"
+             "&created_after=2016-01-01T00%3A00%3A00%2B00%3A00"),
+            match_querystring=True,
+            json={
+                'count': 1,
+                'next': 'http://hub/registrations/?foo=bar',
+                'results': [],
+            },
+            status=200,
+            content_type='application/json')
+
+        # Registrations, second page, this one has the results
+        responses.add(
+            responses.GET,
+            'http://hub/registrations/?foo=bar',
+            match_querystring=True,
             json={
                 'count': 1,
                 'next': None,
