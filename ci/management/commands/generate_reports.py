@@ -1,6 +1,10 @@
 import pytz
 import calendar
-from urlparse import urlparse, parse_qs
+# NOTE: Python 3 compatibility
+try:
+    from urlparse import urlparse, parse_qs
+except ImportError:
+    from urllib.parse import urlparse, parse_qs
 from datetime import datetime, timedelta
 
 from django.conf import settings
