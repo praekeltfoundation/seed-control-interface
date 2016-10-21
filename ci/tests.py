@@ -5,6 +5,7 @@ from tempfile import NamedTemporaryFile
 from openpyxl import load_workbook
 
 from django.test import TestCase, Client, override_settings
+from django.core import mail
 from django.core.management import call_command
 from ci.management.commands.generate_reports import parse_cursor_params
 from .views import get_identity_addresses
@@ -55,9 +56,9 @@ class ViewTests(TestCase):
 
 
 @override_settings(
-    HUB_URL='http://hub/',
+    HUB_URL='http://hub.example.com/',
     HUB_TOKEN='hubtoken',
-    IDENTITY_STORE_URL='http://idstore/',
+    IDENTITY_STORE_URL='http://idstore.example.com/',
     IDENTITY_STORE_TOKEN='idstoretoken')
 class GenerateReportTest(TestCase):
 
@@ -93,13 +94,13 @@ class GenerateReportTest(TestCase):
         # parameter
         responses.add(
             responses.GET,
-            ("http://hub/registrations/?"
+            ("http://hub.example.com/registrations/?"
              "created_before=2016-02-01T00%3A00%3A00%2B00%3A00"
              "&created_after=2016-01-01T00%3A00%3A00%2B00%3A00"),
             match_querystring=True,
             json={
                 'count': 1,
-                'next': 'http://hub/registrations/?foo=bar',
+                'next': 'http://hub.example.com/registrations/?foo=bar',
                 'results': [],
             },
             status=200,
@@ -108,7 +109,7 @@ class GenerateReportTest(TestCase):
         # Registrations, second page, this one has the results
         responses.add(
             responses.GET,
-            'http://hub/registrations/?foo=bar',
+            'http://hub.example.com/registrations/?foo=bar',
             match_querystring=True,
             json={
                 'count': 1,
@@ -136,7 +137,7 @@ class GenerateReportTest(TestCase):
         # Identities
         responses.add(
             responses.GET,
-            'http://idstore/identities/operator_id/',
+            'http://idstore.example.com/identities/operator_id/',
             json={
                 'identity': 'operator_id',
                 'details': {
@@ -158,7 +159,7 @@ class GenerateReportTest(TestCase):
         # Identities
         responses.add(
             responses.GET,
-            'http://idstore/identities/receiver_id/',
+            'http://idstore.example.com/identities/receiver_id/',
             json={
                 'identity': 'receiver_id',
                 'details': {
@@ -182,7 +183,9 @@ class GenerateReportTest(TestCase):
         call_command(
             'generate_reports',
             '--start', '2016-01-01', '--end', '2016-02-01',
-            '--output-file', tmp_file.name)
+            '--output-file', tmp_file.name,
+            '--email-to', 'foo@example.com',
+            '--email-subject', 'The Email Subject')
 
         # Assert headers are set
         self.assertSheetRow(
@@ -225,3 +228,8 @@ class GenerateReportTest(TestCase):
                 'role',
                 'state',
             ])
+
+        [report_email] = mail.outbox
+        self.assertEqual(report_email.subject, 'The Email Subject')
+        (file_name, data, mimetype) = report_email.attachments[0]
+        self.assertEqual('report-2016-01-01-to-2016-02-01.xlsx', file_name)

@@ -164,3 +164,9 @@ IDENTITY_STORE_URL = os.environ.get(
 
 IDENTITY_STORE_TOKEN = os.environ.get(
     'IDENTITY_STORE_TOKEN', 'REPLACEME')
+
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'localhost')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '25'))
+EMAIL_SUBJECT_PREFIX = os.environ.get('EMAIL_SUBJECT_PREFIX', '[Django]')
