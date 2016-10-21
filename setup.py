@@ -22,6 +22,8 @@ setup(
         'seed-services-client',
         'go-http==0.3.0',
         'openpyxl==2.4.0',
+        'celery==3.1.19',
+        'django-celery==3.1.17',
     ],
     classifiers=[
         'Development Status :: 4 - Beta',
