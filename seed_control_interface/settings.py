@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 import os
 
 import dj_database_url
+from kombu import Exchange, Queue
+import djcelery
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
@@ -43,6 +45,7 @@ INSTALLED_APPS = (
     # 3rd party
     'raven.contrib.django.raven_compat',
     'bootstrapform',
+    'djcelery',
     # us
     'ci',
 
@@ -87,6 +90,32 @@ USE_L10N = True
 
 USE_TZ = True
 
+# Celery configuration options
+CELERY_RESULT_BACKEND = 'djcelery.backends.database:DatabaseBackend'
+CELERYBEAT_SCHEDULER = 'djcelery.schedulers.DatabaseScheduler'
+
+BROKER_URL = os.environ.get('BROKER_URL', 'redis://localhost:6379/0')
+
+CELERY_DEFAULT_QUEUE = 'seed_control_interface'
+CELERY_QUEUES = (
+    Queue('seed_control_interface',
+          Exchange('seed_control_interface'),
+          routing_key='seed_control_interface'),
+)
+
+CELERY_ALWAYS_EAGER = False
+
+# Tell Celery where to find the tasks
+CELERY_IMPORTS = (
+    'ci.tasks',
+)
+
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_IGNORE_RESULT = True
+
+djcelery.setup_loader()
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
