@@ -8,8 +8,9 @@ except ImportError:
 from datetime import datetime, timedelta
 
 from django.conf import settings
+from django.core.mail import EmailMessage
 from django.core.management.base import BaseCommand, CommandError
-from django.core.validators import URLValidator
+from django.core.validators import URLValidator, EmailValidator
 from django.utils import timezone
 
 from openpyxl import Workbook
@@ -19,7 +20,7 @@ from seed_services_client import HubApiClient, IdentityStoreApiClient
 
 def mk_validator(django_validator):
     def validator(inputstr):
-        django_validator(inputstr)
+        django_validator()(inputstr)
         return inputstr
     return validator
 
@@ -104,6 +105,21 @@ class Command(BaseCommand):
             help='The file to write the report to.'
         )
         parser.add_argument(
+            '--email-to', type=mk_validator(EmailValidator),
+            default=[], action='append',
+            help='Who to email the report to.'
+        )
+        parser.add_argument(
+            '--email-from', type=mk_validator(EmailValidator),
+            default=settings.DEFAULT_FROM_EMAIL,
+            help='Which address to send the email from',
+        )
+        parser.add_argument(
+            '--email-subject', type=str,
+            default='Seed Control Interface Generated Report',
+            help='The subject of the email',
+        )
+        parser.add_argument(
             '--hub-url', type=mk_validator(URLValidator),
             default=settings.HUB_URL,
         )
@@ -126,11 +142,15 @@ class Command(BaseCommand):
 
         start_date = kwargs['start']
         end_date = kwargs['end']
-        file_name = kwargs['output_file']
+        output_file = kwargs['output_file']
 
-        if not file_name:
+        email_recipients = kwargs['email_to']
+        email_sender = kwargs['email_from']
+        email_subject = kwargs['email_subject']
+
+        if not output_file:
             raise CommandError(
-                'Please specify --file-name.')
+                'Please specify --output-file.')
 
         if end_date is None:
             end_date = one_month_after(start_date)
@@ -142,7 +162,21 @@ class Command(BaseCommand):
         sheet = workbook.add_sheet('Registrations by date', 0)
         self.handle_registrations(sheet, hub_client, ids_client,
                                   start_date, end_date)
-        workbook.save(file_name)
+        workbook.save(output_file)
+
+        if email_recipients:
+            file_name = 'report-%s-to-%s.xlsx' % (
+                start_date.strftime('%Y-%m-%d'),
+                end_date.strftime('%Y-%m-%d'))
+            self.send_email(email_subject, file_name, output_file,
+                            email_sender, email_recipients)
+
+    def send_email(self, subject, file_name, file_location,
+                   sender, recipients):
+        email = EmailMessage(subject, '', sender, recipients)
+        with open(file_location, 'r') as fp:
+            email.attach(file_name, fp.read(), 'application/vnd.ms-excel')
+        email.send()
 
     def get_identity(self, ids_client, identity):
         if identity in self.identity_cache:
