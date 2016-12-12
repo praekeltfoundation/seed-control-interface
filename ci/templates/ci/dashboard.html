@@ -61,10 +61,6 @@
         {% for widget in dashboard.widgets %}
         w{{ widget.id }}: {
           title: '{{ widget.title }}',
-          {% if widget.data|length == 1 %}
-          key: '{{ widget.data.0.key }}',
-          values: [],
-          {% else %}
           metrics: [
             {% for metric in widget.data %}
             {
@@ -75,7 +71,6 @@
 
             {% endfor %}
           ],
-          {% endif %}
           start: '-30d',
           interval: '1d',
           nulls: '{{ widget.nulls }}',
