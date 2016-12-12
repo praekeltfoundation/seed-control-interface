@@ -82,7 +82,11 @@
 
 
   // Create the widget components. Widget configuration would be done here.
-  var last = sapphire.widgets.last();
+  var last = sapphire.widgets.last()
+    .values(function(widget) {
+      // Multiple 'last' metrics per widget doesn't make sense, use the first
+      return widget.metrics[0].values
+    });
   var lines = sapphire.widgets.lines();
   var pie = sapphire.widgets.pie()
     // Format percentages nicely even if they have no data
@@ -93,7 +97,11 @@
       var f = d3.format('.0%');
       return f(value);
     });
-  var bars = sapphire.widgets.bars();
+  var bars = sapphire.widgets.bars()
+    .values(function(widget) {
+      // Multiple bar metrics per widget doesn't work, use the first
+      return widget.metrics[0].values
+    });
 
 
   // Update the dashboard on page load, then every `data.step` milliseconds.
