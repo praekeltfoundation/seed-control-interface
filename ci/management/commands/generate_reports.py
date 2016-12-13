@@ -174,7 +174,7 @@ class Command(BaseCommand):
     def send_email(self, subject, file_name, file_location,
                    sender, recipients):
         email = EmailMessage(subject, '', sender, recipients)
-        with open(file_location, 'r') as fp:
+        with open(file_location, 'r', encoding="ISO-8859-1") as fp:
             email.attach(file_name, fp.read(), 'application/vnd.ms-excel')
         email.send()
 
