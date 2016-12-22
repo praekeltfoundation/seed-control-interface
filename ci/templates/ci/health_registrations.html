@@ -5,7 +5,7 @@
 <div class="dashhead">
   <div class="dashhead-titles">
     <h6 class="dashhead-subtitle">Seed Control Interface</h6>
-    <h2 class="dashhead-title">System Health - Overview</h2>
+    <h2 class="dashhead-title">System Health &mdash; Registrations</h2>
   </div>
 
   <div class="btn-toolbar dashhead-toolbar">
@@ -19,66 +19,19 @@
 <hr class="m-t">
 
 <div class="charts">
-  <div id="estimated-vs-sent" style="width:100%; height:400px;"></div>
-  <div id="sent-today" style="width:100%; height:400px;"></div>
-  <div id="sent-this-week" style="width:100%; height:400px;"></div>
+  <div id="registrations-today" style="width:100%; height:400px;"></div>
+  <div id="registrations-this-week" style="width:100%; height:400px;"></div>
 </div>
 <script src="{% static "ci/js/highcharts.js" %}"></script>
 <script type="text/javascript">
   $(function () {
-    Highcharts.chart('estimated-vs-sent', {
+    Highcharts.chart('registrations-today', {
       chart: {
         type: 'column'
       },
 
       title: {
-        text: 'Messages sent vs estimated this week'
-      },
-
-      xAxis: {
-        categories: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-      },
-
-      yAxis: {
-        allowDecimals: false,
-        min: 0,
-        title: {
-          text: 'Messages'
-        }
-      },
-
-      tooltip: {
-        headerFormat: '<span style="font-size:10px">{point.key}</span><table>',
-        pointFormat: '<tr><td style="color:{series.color};padding:0">{series.name}: </td>' +
-        '<td style="padding:0"><b>{point.y:.0f}</b></td></tr>',
-        footerFormat: '</table>',
-        shared: true,
-        useHTML: true
-      },
-
-      plotOptions: {
-        column: {
-          pointPadding: 0.1,
-          borderWidth: 0
-        }
-      },
-
-      series: [{
-        name: 'Estimated',
-        data: [10, 200000, 120000, 60000, 240000, 40000, 10]
-
-      }, {
-        name: 'Sent',
-        data: [10, 190000, 100000, 76000, 176000, 32000, 10]
-      }]
-    });
-    Highcharts.chart('sent-today', {
-      chart: {
-        type: 'column'
-      },
-
-      title: {
-        text: 'Messages sent today'
+        text: 'Subscriptions today'
       },
 
       xAxis: {
@@ -89,7 +42,7 @@
         allowDecimals: false,
         min: 0,
         title: {
-          text: 'Messages'
+          text: 'Registrations'
         }
       },
 
@@ -109,18 +62,25 @@
         }
       },
 
+      credits: {
+        enabled: false
+      },
+
       series: [{
         name: 'Yesterday',
         data: [60, 90, 73, 69, 17, 13, 30, 25, 37, 32, 10, 5, 1, 0, 0, 0, 1, 2, 13, 32, 91, 89, 3534, 106]
+      }, {
+        name: 'Today',
+        data: [60, 90, 73, 69, 17, 13, 30, 25, 37, 32, 10, 5, 1, 0, 0, 0, 1, 2, 13, 32, 91, 89, 3534, 106]
       }]
     });
-    Highcharts.chart('sent-this-week', {
+    Highcharts.chart('registrations-this-week', {
       chart: {
         type: 'column'
       },
 
       title: {
-        text: 'Messages sent this week vs last week'
+        text: 'Subscriptions this week vs last week'
       },
 
       xAxis: {
@@ -131,7 +91,7 @@
         allowDecimals: false,
         min: 0,
         title: {
-          text: 'Messages'
+          text: 'Registrations'
         }
       },
 
@@ -149,6 +109,10 @@
           pointPadding: 0.1,
           borderWidth: 0
         }
+      },
+
+      credits: {
+        enabled: false
       },
 
       series: [{
