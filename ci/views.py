@@ -229,6 +229,27 @@ def index(request):
 
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
+def health_messages(request):
+    context = default_context(request.session)
+    return render(request, 'ci/health_messages.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+def health_subscriptions(request):
+    context = default_context(request.session)
+    return render(request, 'ci/health_subscriptions.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+def health_registrations(request):
+    context = default_context(request.session)
+    return render(request, 'ci/health_registrations.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
 def dashboard(request, dashboard_id):
     context = default_context(request.session)
     dashboard = ciApi.get_dashboard(int(dashboard_id))

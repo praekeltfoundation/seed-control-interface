@@ -5,6 +5,11 @@ from . import views
 urlpatterns = [
     url('^login/$', views.login, name='login'),
     url('^logout/$', views.logout, name='logout'),
+    url(r'^health/messages/$', views.health_messages, name='health_messages'),
+    url(r'^health/subscriptions/$', views.health_subscriptions,
+        name='health_subscriptions'),
+    url(r'^health/registrations/$', views.health_registrations,
+        name='health_registrations'),
     url(r'^dashboard/(?P<dashboard_id>\d+)/', views.dashboard,
         name='dashboard'),
     url('^api/v1/metric/$', views.dashboard_metric, name='dashboard_metric'),

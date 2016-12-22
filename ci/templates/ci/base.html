@@ -16,10 +16,7 @@
     </title>
 
     <link href="http://fonts.googleapis.com/css?family=Roboto:300,400,500,700,400italic" rel="stylesheet">
-
-      <link href="{% static "ci/css/toolkit-light.css" %}" rel="stylesheet">
-
-
+    <link href="{% static "ci/css/toolkit-light.css" %}" rel="stylesheet">
     <link href="{% static "ci/css/application.css" %}" rel="stylesheet">
 
     <style>
@@ -31,6 +28,7 @@
         *width: 100%;
       }
     </style>
+    <script src="{% static "ci/js/jquery.min.js" %}"></script>
   </head>
 
 
@@ -51,6 +49,13 @@
 
           <div class="collapse nav-toggleable-sm" id="nav-toggleable-sm">
             <ul class="nav nav-pills nav-stacked">
+              <li class="nav-header">Health</li>
+              {% url 'health_messages' as url %}
+               <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">Messages</a></li>
+              {% url 'health_subscriptions' as url %}
+               <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">Subscriptions</a></li>
+              {% url 'health_registrations' as url %}
+               <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">Registrations</a></li>
               <li class="nav-header">Dashboards</li>
               {% for dashboard in dashboards %}
                {% url 'dashboard' dashboard.id as url %}
@@ -84,9 +89,6 @@
     </div>
   </div>
 
-
-
-    <script src="{% static "ci/js/jquery.min.js" %}"></script>
     <script src="{% static "ci/js/chart.js" %}"></script>
     <script src="{% static "ci/js/tablesorter.min.js" %}"></script>
     <script src="{% static "ci/js/toolkit.js" %}"></script>
