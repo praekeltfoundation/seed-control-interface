@@ -1,5 +1,6 @@
 from functools import wraps
 import logging
+from datetime import timedelta
 
 from django.shortcuts import render, redirect, resolve_url
 from django.utils.decorators import available_attrs
@@ -8,6 +9,7 @@ from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.contrib.sites.shortcuts import get_current_site
 from django.core.urlresolvers import reverse
 from django.utils.http import is_safe_url
+from django.utils.timezone import now
 from django.http import HttpResponseRedirect, JsonResponse
 from django.template.defaulttags import register
 from django.template.response import TemplateResponse
@@ -24,6 +26,7 @@ from go_http.metrics import MetricsApiClient
 from .forms import (AuthenticationForm, IdentitySearchForm,
                     RegistrationFilterForm, SubscriptionFilterForm,
                     ChangeFilterForm)
+from . import utils
 
 logger = logging.getLogger(__name__)
 
@@ -230,6 +233,70 @@ def index(request):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def health_messages(request):
+    if request.is_ajax():
+        METRIC_SENT_SUM = 'message.sent.sum'
+        client = MetricsApiClient(settings.METRIC_API_TOKEN,
+                                  settings.METRIC_API_URL)
+        chart_type = request.GET.get('chart_type', None)
+        today = now()
+        if chart_type == 'estimated-vs-sent':
+            get_days = today.weekday() + 1
+            sent = client.get_metric(METRIC_SENT_SUM, '-%sd' % get_days,
+                                     '1d', 'zeroize')
+            boundries = utils.DTBoundry.week_from_datetime(today)
+            start = utils.get_timestamp(boundries.start)
+            sent_data = utils.transform_timeseries_data(sent, start)
+            sent_data = utils.right_pad_list(sent_data, length=7, value=0)
+
+            # The estimate data is stored as .last metrics with 0 - 6
+            # representing the days of the week. The cron format specifies
+            # 0 = Sunday whereas Python datetime.weekday() specifies
+            # 0 = Monday.
+            estimate_data = []
+            for day in range(7):
+                estimated = client.get_metric(
+                    'subscriptions.send.estimate.%s.last' % day,
+                    '-1d', '1d', 'zeroize')
+                estimate_data.append(
+                    utils.get_last_value_from_timeseries(estimated))
+            return JsonResponse({
+                'Estimated': estimate_data,
+                'Sent': sent_data
+            })
+
+        elif chart_type == 'sent-today':
+            get_hours = 24 - today.hour
+            sent = client.get_metric(METRIC_SENT_SUM, '-%sh' % get_hours,
+                                     '1h', 'zeroize')
+            boundries = utils.DTBoundry.day_from_datetime(today)
+            start = utils.get_timestamp(boundries.start)
+            end = utils.get_timestamp(boundries.end)
+            sent_data = utils.transform_timeseries_data(sent, start, end)
+            sent_data = utils.right_pad_list(sent_data, length=24, value=0)
+            return JsonResponse({
+                'Today': sent_data
+            })
+
+        elif chart_type == 'sent-this-week':
+            get_days = today.weekday() + 7  # Include last week in the set.
+            sent = client.get_metric(METRIC_SENT_SUM, '-%sd' % get_days,
+                                     '1d', 'zeroize')
+            boundries = utils.DTBoundry.week_from_datetime(today)
+            start = utils.get_timestamp(boundries.start)
+            sent_data = utils.transform_timeseries_data(sent, start)
+            sent_data = utils.right_pad_list(sent_data, length=7, value=0)
+            lw_boundries = utils.DTBoundry.week_from_datetime(
+                today-timedelta(weeks=1)
+            )
+            lw_start = utils.get_timestamp(lw_boundries.start)
+            lw_end = utils.get_timestamp(lw_boundries.end)
+            lw_data = utils.transform_timeseries_data(sent, lw_start, lw_end)
+            lw_data = utils.right_pad_list(lw_data, length=7, value=0)
+            return JsonResponse({
+                'Last week': lw_data,
+                'This week': sent_data
+            })
+
     context = default_context(request.session)
     return render(request, 'ci/health_messages.html', context)
 

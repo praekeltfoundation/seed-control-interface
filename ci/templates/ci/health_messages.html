@@ -25,8 +25,27 @@
 </div>
 <script src="{% static "ci/js/highcharts.js" %}"></script>
 <script type="text/javascript">
+  var charts = {
+    'estimated-vs-sent': null,
+    'sent-today': null,
+    'sent-this-week': null,
+  };
+  function updateAll(all_charts) {
+    $.each(all_charts, function(chart_type, chart) {
+      if (chart != null) {
+        $.get('?chart_type=' + chart_type, function(data) {
+          $.each(chart.series, function(index, series) {
+            if (series.name in data) {
+              chart.series[index].setData(data[series.name]);
+            }
+          });
+        });
+      }
+    });
+  };
+
   $(function () {
-    Highcharts.chart('estimated-vs-sent', {
+    charts['estimated-vs-sent'] = Highcharts.chart('estimated-vs-sent', {
       chart: {
         type: 'column'
       },
@@ -36,7 +55,7 @@
       },
 
       xAxis: {
-        categories: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+        categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
       },
 
       yAxis: {
@@ -69,14 +88,14 @@
 
       series: [{
         name: 'Estimated',
-        data: [10, 200000, 120000, 60000, 240000, 40000, 10]
+        data: [0, 0, 0, 0, 0, 0, 0]
 
       }, {
         name: 'Sent',
-        data: [10, 190000, 100000, 76000, 176000, 32000, 10]
+        data: [0, 0, 0, 0, 0, 0, 0]
       }]
     });
-    Highcharts.chart('sent-today', {
+    charts['sent-today'] = Highcharts.chart('sent-today', {
       chart: {
         type: 'column'
       },
@@ -119,10 +138,10 @@
 
       series: [{
         name: 'Today',
-        data: [60, 90, 73, 69, 17, 13, 30, 25, 37, 32, 10, 5, 1, 0, 0, 0, 1, 2, 13, 32, 91, 89, 3534, 106]
+        data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
       }]
     });
-    Highcharts.chart('sent-this-week', {
+    charts['sent-this-week'] = Highcharts.chart('sent-this-week', {
       chart: {
         type: 'column'
       },
@@ -132,7 +151,7 @@
       },
 
       xAxis: {
-        categories: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+        categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
       },
 
       yAxis: {
@@ -165,12 +184,13 @@
 
       series: [{
         name: 'Last week',
-        data: [384, 114011, 1013, 3932, 0, 0, 0]
+        data: [0, 0, 0, 0, 0, 0, 0]
       }, {
         name: 'This week',
-        data: [384, 114011, 1013, 3932, 0, 0, 0]
+        data: [0, 0, 0, 0, 0, 0, 0]
       }]
     });
+    updateAll(charts);
   });
   </script>
 {% endblock %}
