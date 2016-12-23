@@ -84,3 +84,20 @@ def right_pad_list(lst, length, value):
     given value.
     """
     return lst + [value] * (length - len(lst))
+
+
+def get_ranged_data_from_timeseries(timeseries, dt, range_type='week'):
+    if range_type == 'week':
+        get_boundry = DTBoundry.week_from_datetime
+        padding = 7
+    elif range_type == 'day':
+        get_boundry = DTBoundry.day_from_datetime
+        padding = 24
+    else:
+        raise ValueError('Invalid value for range_type')
+
+    boundries = get_boundry(dt)
+    start = get_timestamp(boundries.start)
+    end = get_timestamp(boundries.end)
+    sent_data = transform_timeseries_data(timeseries, start, end)
+    return right_pad_list(sent_data, length=padding, value=0)

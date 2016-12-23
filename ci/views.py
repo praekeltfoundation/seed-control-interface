@@ -243,10 +243,8 @@ def health_messages(request):
             get_days = today.weekday() + 1
             sent = client.get_metric(METRIC_SENT_SUM, '-%sd' % get_days,
                                      '1d', 'zeroize')
-            boundries = utils.DTBoundry.week_from_datetime(today)
-            start = utils.get_timestamp(boundries.start)
-            sent_data = utils.transform_timeseries_data(sent, start)
-            sent_data = utils.right_pad_list(sent_data, length=7, value=0)
+            sent_data = utils.get_ranged_data_from_timeseries(
+                sent, today, range_type='week')
 
             # The estimate data is stored as .last metrics with 0 - 6
             # representing the days of the week. The cron format specifies
@@ -268,11 +266,8 @@ def health_messages(request):
             get_hours = 24 - today.hour
             sent = client.get_metric(METRIC_SENT_SUM, '-%sh' % get_hours,
                                      '1h', 'zeroize')
-            boundries = utils.DTBoundry.day_from_datetime(today)
-            start = utils.get_timestamp(boundries.start)
-            end = utils.get_timestamp(boundries.end)
-            sent_data = utils.transform_timeseries_data(sent, start, end)
-            sent_data = utils.right_pad_list(sent_data, length=24, value=0)
+            sent_data = utils.get_ranged_data_from_timeseries(
+                sent, today, range_type='day')
             return JsonResponse({
                 'Today': sent_data
             })
@@ -281,20 +276,13 @@ def health_messages(request):
             get_days = today.weekday() + 7  # Include last week in the set.
             sent = client.get_metric(METRIC_SENT_SUM, '-%sd' % get_days,
                                      '1d', 'zeroize')
-            boundries = utils.DTBoundry.week_from_datetime(today)
-            start = utils.get_timestamp(boundries.start)
-            sent_data = utils.transform_timeseries_data(sent, start)
-            sent_data = utils.right_pad_list(sent_data, length=7, value=0)
-            lw_boundries = utils.DTBoundry.week_from_datetime(
-                today-timedelta(weeks=1)
-            )
-            lw_start = utils.get_timestamp(lw_boundries.start)
-            lw_end = utils.get_timestamp(lw_boundries.end)
-            lw_data = utils.transform_timeseries_data(sent, lw_start, lw_end)
-            lw_data = utils.right_pad_list(lw_data, length=7, value=0)
+            this_week_data = utils.get_ranged_data_from_timeseries(
+                sent, today, range_type='week')
+            last_week_data = utils.get_ranged_data_from_timeseries(
+                sent, today-timedelta(weeks=1), range_type='week')
             return JsonResponse({
-                'Last week': lw_data,
-                'This week': sent_data
+                'Last week': last_week_data,
+                'This week': this_week_data
             })
 
     context = default_context(request.session)
@@ -304,6 +292,38 @@ def health_messages(request):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def health_subscriptions(request):
+    if request.is_ajax():
+        METRIC_SUBSCRIPTIONS_SUM = 'subscriptions.created.sum'
+        client = MetricsApiClient(settings.METRIC_API_TOKEN,
+                                  settings.METRIC_API_URL)
+        chart_type = request.GET.get('chart_type', None)
+        today = now()
+        if chart_type == 'subscriptions-today':
+            get_hours = 48 - today.hour  # Include yesterday in the set.
+            subscriptions = client.get_metric(
+                METRIC_SUBSCRIPTIONS_SUM, '-%sh' % get_hours, '1h', 'zeroize')
+            today_data = utils.get_ranged_data_from_timeseries(
+                subscriptions, today, range_type='day')
+            yesterday_data = utils.get_ranged_data_from_timeseries(
+                subscriptions, today - timedelta(days=1), range_type='day')
+            return JsonResponse({
+                'Yesterday': yesterday_data,
+                'Today': today_data
+            })
+
+        elif chart_type == 'subscriptions-this-week':
+            get_days = today.weekday() + 7  # Include last week in the set.
+            subscriptions = client.get_metric(
+                METRIC_SUBSCRIPTIONS_SUM, '-%sd' % get_days, '1d', 'zeroize')
+            this_week_data = utils.get_ranged_data_from_timeseries(
+                subscriptions, today, range_type='week')
+            last_week_data = utils.get_ranged_data_from_timeseries(
+                subscriptions, today-timedelta(weeks=1), range_type='week')
+            return JsonResponse({
+                'Last week': last_week_data,
+                'This week': this_week_data
+            })
+
     context = default_context(request.session)
     return render(request, 'ci/health_subscriptions.html', context)
 
