@@ -263,7 +263,7 @@ def health_messages(request):
             })
 
         elif chart_type == 'sent-today':
-            get_hours = 24 - today.hour
+            get_hours = today.hour
             sent = client.get_metric(METRIC_SENT_SUM, '-%sh' % get_hours,
                                      '1h', 'zeroize')
             sent_data = utils.get_ranged_data_from_timeseries(
@@ -299,7 +299,7 @@ def health_subscriptions(request):
         chart_type = request.GET.get('chart_type', None)
         today = now()
         if chart_type == 'subscriptions-today':
-            get_hours = 48 - today.hour  # Include yesterday in the set.
+            get_hours = today.hour + 24  # Include yesterday in the set.
             subscriptions = client.get_metric(
                 METRIC_SUBSCRIPTIONS_SUM, '-%sh' % get_hours, '1h', 'zeroize')
             today_data = utils.get_ranged_data_from_timeseries(

@@ -75,7 +75,7 @@ class DTBoundry(object):
         beginning = dt.replace(hour=0, minute=0, second=0, microsecond=0)
         # now convert localtime to utc
         beginning = beginning.astimezone(timezone.utc)
-        end = beginning + timedelta(hours=24)
+        end = beginning + timedelta(hours=23)
         return cls(start=beginning, end=end)
 
 
