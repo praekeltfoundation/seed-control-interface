@@ -331,6 +331,38 @@ def health_subscriptions(request):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def health_registrations(request):
+    if request.is_ajax():
+        METRIC_REGISTRATIONS_SUM = 'registrations.created.sum'
+        client = MetricsApiClient(settings.METRIC_API_TOKEN,
+                                  settings.METRIC_API_URL)
+        chart_type = request.GET.get('chart_type', None)
+        today = now()
+        if chart_type == 'registrations-today':
+            get_hours = today.hour + 24  # Include yesterday in the set.
+            registrations = client.get_metric(
+                METRIC_REGISTRATIONS_SUM, '-%sh' % get_hours, '1h', 'zeroize')
+            today_data = utils.get_ranged_data_from_timeseries(
+                registrations, today, range_type='day')
+            yesterday_data = utils.get_ranged_data_from_timeseries(
+                registrations, today - timedelta(days=1), range_type='day')
+            return JsonResponse({
+                'Yesterday': yesterday_data,
+                'Today': today_data
+            })
+
+        elif chart_type == 'registrations-this-week':
+            get_days = today.weekday() + 7  # Include last week in the set.
+            registrations = client.get_metric(
+                METRIC_REGISTRATIONS_SUM, '-%sd' % get_days, '1d', 'zeroize')
+            this_week_data = utils.get_ranged_data_from_timeseries(
+                registrations, today, range_type='week')
+            last_week_data = utils.get_ranged_data_from_timeseries(
+                registrations, today-timedelta(weeks=1), range_type='week')
+            return JsonResponse({
+                'Last week': last_week_data,
+                'This week': this_week_data
+            })
+
     context = default_context(request.session)
     return render(request, 'ci/health_registrations.html', context)
 
