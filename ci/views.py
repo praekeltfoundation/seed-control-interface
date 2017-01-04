@@ -1,5 +1,6 @@
 from functools import wraps
 import logging
+from datetime import timedelta
 
 from django.shortcuts import render, redirect, resolve_url
 from django.utils.decorators import available_attrs
@@ -8,6 +9,7 @@ from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.contrib.sites.shortcuts import get_current_site
 from django.core.urlresolvers import reverse
 from django.utils.http import is_safe_url
+from django.utils.timezone import now
 from django.http import HttpResponseRedirect, JsonResponse
 from django.template.defaulttags import register
 from django.template.response import TemplateResponse
@@ -24,6 +26,7 @@ from go_http.metrics import MetricsApiClient
 from .forms import (AuthenticationForm, IdentitySearchForm,
                     RegistrationFilterForm, SubscriptionFilterForm,
                     ChangeFilterForm)
+from . import utils
 
 logger = logging.getLogger(__name__)
 
@@ -225,6 +228,143 @@ def index(request):
     else:
         context = default_context(request.session)
         return render(request, 'ci/index.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+def health_messages(request):
+    if request.is_ajax():
+        METRIC_SENT_SUM = 'message.sent.sum'
+        client = MetricsApiClient(settings.METRIC_API_TOKEN,
+                                  settings.METRIC_API_URL)
+        chart_type = request.GET.get('chart_type', None)
+        today = now()
+        if chart_type == 'estimated-vs-sent':
+            get_days = today.weekday() + 1
+            sent = client.get_metric(METRIC_SENT_SUM, '-%sd' % get_days,
+                                     '1d', 'zeroize')
+            sent_data = utils.get_ranged_data_from_timeseries(
+                sent, today, range_type='week')
+
+            # The estimate data is stored as .last metrics with 0 - 6
+            # representing the days of the week. The cron format specifies
+            # 0 = Sunday whereas Python datetime.weekday() specifies
+            # 0 = Monday.
+            estimate_data = []
+            for day in range(7):
+                estimated = client.get_metric(
+                    'subscriptions.send.estimate.%s.last' % day,
+                    '-1d', '1d', 'zeroize')
+                estimate_data.append(
+                    utils.get_last_value_from_timeseries(estimated))
+            return JsonResponse({
+                'Estimated': estimate_data,
+                'Sent': sent_data
+            })
+
+        elif chart_type == 'sent-today':
+            get_hours = today.hour
+            sent = client.get_metric(METRIC_SENT_SUM, '-%sh' % get_hours,
+                                     '1h', 'zeroize')
+            sent_data = utils.get_ranged_data_from_timeseries(
+                sent, today, range_type='day')
+            return JsonResponse({
+                'Today': sent_data
+            })
+
+        elif chart_type == 'sent-this-week':
+            get_days = today.weekday() + 7  # Include last week in the set.
+            sent = client.get_metric(METRIC_SENT_SUM, '-%sd' % get_days,
+                                     '1d', 'zeroize')
+            this_week_data = utils.get_ranged_data_from_timeseries(
+                sent, today, range_type='week')
+            last_week_data = utils.get_ranged_data_from_timeseries(
+                sent, today-timedelta(weeks=1), range_type='week')
+            return JsonResponse({
+                'Last week': last_week_data,
+                'This week': this_week_data
+            })
+
+    context = default_context(request.session)
+    return render(request, 'ci/health_messages.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+def health_subscriptions(request):
+    if request.is_ajax():
+        METRIC_SUBSCRIPTIONS_SUM = 'subscriptions.created.sum'
+        client = MetricsApiClient(settings.METRIC_API_TOKEN,
+                                  settings.METRIC_API_URL)
+        chart_type = request.GET.get('chart_type', None)
+        today = now()
+        if chart_type == 'subscriptions-today':
+            get_hours = today.hour + 24  # Include yesterday in the set.
+            subscriptions = client.get_metric(
+                METRIC_SUBSCRIPTIONS_SUM, '-%sh' % get_hours, '1h', 'zeroize')
+            today_data = utils.get_ranged_data_from_timeseries(
+                subscriptions, today, range_type='day')
+            yesterday_data = utils.get_ranged_data_from_timeseries(
+                subscriptions, today - timedelta(days=1), range_type='day')
+            return JsonResponse({
+                'Yesterday': yesterday_data,
+                'Today': today_data
+            })
+
+        elif chart_type == 'subscriptions-this-week':
+            get_days = today.weekday() + 7  # Include last week in the set.
+            subscriptions = client.get_metric(
+                METRIC_SUBSCRIPTIONS_SUM, '-%sd' % get_days, '1d', 'zeroize')
+            this_week_data = utils.get_ranged_data_from_timeseries(
+                subscriptions, today, range_type='week')
+            last_week_data = utils.get_ranged_data_from_timeseries(
+                subscriptions, today-timedelta(weeks=1), range_type='week')
+            return JsonResponse({
+                'Last week': last_week_data,
+                'This week': this_week_data
+            })
+
+    context = default_context(request.session)
+    return render(request, 'ci/health_subscriptions.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+def health_registrations(request):
+    if request.is_ajax():
+        METRIC_REGISTRATIONS_SUM = 'registrations.created.sum'
+        client = MetricsApiClient(settings.METRIC_API_TOKEN,
+                                  settings.METRIC_API_URL)
+        chart_type = request.GET.get('chart_type', None)
+        today = now()
+        if chart_type == 'registrations-today':
+            get_hours = today.hour + 24  # Include yesterday in the set.
+            registrations = client.get_metric(
+                METRIC_REGISTRATIONS_SUM, '-%sh' % get_hours, '1h', 'zeroize')
+            today_data = utils.get_ranged_data_from_timeseries(
+                registrations, today, range_type='day')
+            yesterday_data = utils.get_ranged_data_from_timeseries(
+                registrations, today - timedelta(days=1), range_type='day')
+            return JsonResponse({
+                'Yesterday': yesterday_data,
+                'Today': today_data
+            })
+
+        elif chart_type == 'registrations-this-week':
+            get_days = today.weekday() + 7  # Include last week in the set.
+            registrations = client.get_metric(
+                METRIC_REGISTRATIONS_SUM, '-%sd' % get_days, '1d', 'zeroize')
+            this_week_data = utils.get_ranged_data_from_timeseries(
+                registrations, today, range_type='week')
+            last_week_data = utils.get_ranged_data_from_timeseries(
+                registrations, today-timedelta(weeks=1), range_type='week')
+            return JsonResponse({
+                'Last week': last_week_data,
+                'This week': this_week_data
+            })
+
+    context = default_context(request.session)
+    return render(request, 'ci/health_registrations.html', context)
 
 
 @login_required(login_url='/login/')
