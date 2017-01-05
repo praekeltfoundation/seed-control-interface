@@ -1,20 +1,45 @@
+import codecs
+import os
+import re
+
 from setuptools import setup, find_packages
+
+
+HERE = os.path.abspath(os.path.dirname(__file__))
+
+
+def read(*parts):  # Stolen from txacme
+    with codecs.open(os.path.join(HERE, *parts), 'rb', 'utf-8') as f:
+        return f.read()
+
+
+def get_version(package):
+    """
+    Return package version as listed in `__version__` in `init.py`.
+    """
+    init_py = open(os.path.join(package, '__init__.py')).read()
+    return re.search("__version__ = ['\"]([^'\"]+)['\"]", init_py).group(1)
+
+
+version = get_version('seed_scheduler')
+
 
 setup(
     name="seed-control-interface",
-    version="0.1",
+    version=version,
     url='http://github.com/praekelt/seed-control-interface',
     license='BSD',
-    author='Praekelt Foundation',
-    author_email='dev@praekeltfoundation.org',
+    description='Seed Scheduler mircoservice',
+    long_description=read('README.rst'),
+    author='Praekelt.org',
+    author_email='dev@praekelt.org',
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        'Django==1.9.1',
+        'Django==1.9.12',
         'dj-database-url==0.3.0',
-        'psycopg2==2.6.1',
-        'raven==5.10.0',
-        'gunicorn==19.4.5',
+        'psycopg2==2.6.2',
+        'raven==5.32.0',
         'whitenoise==2.0.6',
         'pytz==2015.7',
         'python-dateutil==2.5.3',
