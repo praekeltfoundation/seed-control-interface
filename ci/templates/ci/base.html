@@ -1,4 +1,5 @@
 {% load staticfiles %}
+{% load seed %}
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -86,6 +87,12 @@
       <div class="col-sm-9 content">
         {% block content %}{% endblock %}
       </div>
+    </div>
+  </div>
+
+  <div id="footer">
+    <div class="container text-center">
+      <p class="text-muted credit">v{% current_version %}</p>
     </div>
   </div>
 
