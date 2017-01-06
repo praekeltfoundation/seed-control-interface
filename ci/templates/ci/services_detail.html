@@ -35,10 +35,37 @@
         <tr>
           <th>Last Updated:</th><td>{{ service.updated_at|get_date|date:"D d M Y H:i" }}</td>
         </tr>
+        <tr>
+          <th>Version:</th><td>{{ service_status.results.0.result.version }}</td>
+        </tr>
       </tbody>
     </table>
   </div>
 </div>
+
+{% if service_status.results.0 %}
+<h3>Versions</h3>
+<div class="table-full">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Version</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for name, version in service_status.results.0.result.libraries.items %}
+        <tr>
+          <td>{{ name }}</td>
+          <td>{{ version }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
 
 <h3>Status Checks</h3>
 <div class="table-full">

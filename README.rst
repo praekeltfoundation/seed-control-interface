@@ -1,5 +1,6 @@
-seed-control-interface
-=======================================
+======================
+Seed Control Interface
+======================
 
 Control Interface for Seed Services.
 
