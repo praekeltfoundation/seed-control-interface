@@ -1,0 +1,28 @@
+{% extends "ci/base.html" %}
+{% load staticfiles %}
+{% block pagetitle %}Welcome{% endblock %}
+{% block content %}
+<div class="dashhead">
+  <div class="dashhead-titles">
+    <h6 class="dashhead-subtitle">Seed Control Interface</h6>
+    <h2 class="dashhead-title">Welcome</h2>
+  </div>
+
+  <div class="btn-toolbar dashhead-toolbar">
+    <div class="btn-toolbar-item input-with-icon">
+      <!-- <input type="text" value="01/01/15 - 01/08/15" class="form-control" data-provide="datepicker">
+      <span class="icon icon-calendar"></span> -->
+    </div>
+  </div>
+</div>
+
+<hr class="m-t">
+
+<div class="row text-center m-t-lg">
+  <p>Welcome to the Seed Control Interface.</p>
+  <p>
+    Please ask your administrator for more
+    permissions to enable to you see information and manage the system.
+  </p>
+</div>
+{% endblock %}

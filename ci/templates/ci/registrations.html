@@ -1,0 +1,76 @@
+{% extends "ci/base.html" %}
+{% load staticfiles %}
+{% load bootstrap %}
+{% block pagetitle %}Registration Management{% endblock %}
+{% block content %}
+<div class="dashhead">
+  <div class="dashhead-titles">
+    <h6 class="dashhead-subtitle">Seed Control Interface</h6>
+    <h2 class="dashhead-title">Registration Management</h2>
+  </div>
+
+  <div class="btn-toolbar dashhead-toolbar">
+    <div class="btn-toolbar-item input-with-icon">
+    </div>
+  </div>
+</div>
+
+<hr class="m-t">
+
+<div class="flextable">
+  <form class="form-inline" method="post" action=".">
+    {% csrf_token %}
+    {{ form|bootstrap_inline }}
+    <button type="submit" class="btn btn-default">Filter</button>
+    <b>Results:</b> {{ registrations.count }}
+  </form>
+</div>
+<hr class="m-t">
+<div class="table-full">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Registration</th>
+          <th>Validated</th>
+          <th>Stage</th>
+          <th>Created</th>
+          <th>Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for registration in registrations.results %}
+        <tr>
+          {% url 'registrations-detail' registration.id as url %}
+          <td><a href="{{ url }}">{{ registration.id|truncatechars:12 }}</a></td>
+          <td>{{ registration.validated }}</td>
+          <td>{{ registration.stage }}</td>
+          <td>{{ registration.created_at|get_date|date:"D d M Y H:i" }}</td>
+          <td>{{ registration.updated_at|get_date|date:"D d M Y H:i" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- <div class="text-center">
+  <ul class="pagination">
+    <li>
+      <a href="#" aria-label="Previous">
+        <span aria-hidden="true">&laquo;</span>
+      </a>
+    </li>
+    <li class="active"><a href="#">1</a></li>
+    <li><a href="#">2</a></li>
+    <li><a href="#">3</a></li>
+    <li><a href="#">4</a></li>
+    <li><a href="#">5</a></li>
+    <li>
+      <a href="#" aria-label="Next">
+        <span aria-hidden="true">&raquo;</span>
+      </a>
+    </li>
+  </ul>
+</div> -->
+{% endblock %}

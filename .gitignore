@@ -1,11 +1,6 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-
-# C extensions
-*.so
-
+.DS_Store
 # Distribution / packaging
+__pycache__/
 .Python
 env/
 build/
@@ -55,3 +50,8 @@ docs/_build/
 
 # PyBuilder
 target/
+*.pyc
+
+# Ignore anything in staticfiles
+staticfiles/
+!staticfiles/gitkeep.txt

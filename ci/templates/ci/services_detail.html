@@ -1,0 +1,111 @@
+{% extends "ci/base.html" %}
+{% load staticfiles %}
+{% block pagetitle %}Service Status{% endblock %}
+{% block content %}
+<div class="dashhead">
+  <div class="dashhead-titles">
+    <h6 class="dashhead-subtitle">Seed Control Interface</h6>
+    <h2 class="dashhead-title">Service Status</h2>
+  </div>
+
+  <div class="btn-toolbar dashhead-toolbar">
+    <div class="btn-toolbar-item input-with-icon">
+      <!-- <input type="text" value="01/01/15 - 01/08/15" class="form-control" data-provide="datepicker">
+      <span class="icon icon-calendar"></span> -->
+    </div>
+  </div>
+</div>
+
+<hr class="m-t">
+
+<h3>Details</h3>
+<div class="table-full">
+  <div class="table-responsive">
+    <table class="table" data-sort="table">
+      <tbody>
+        <tr>
+          <th>Name:</th><td>{{ service.name }}</td>
+        </tr>
+        <tr>
+          <th>URL:</th><td>{{ service.url }}</td>
+        </tr>
+        <tr>
+          <th>Created:</th><td>{{ service.created_at|get_date|date:"D d M Y H:i" }}</td>
+        </tr>
+        <tr>
+          <th>Last Updated:</th><td>{{ service.updated_at|get_date|date:"D d M Y H:i" }}</td>
+        </tr>
+        <tr>
+          <th>Version:</th><td>{{ service_status.results.0.result.version }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if service_status.results.0 %}
+<h3>Versions</h3>
+<div class="table-full">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Version</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for name, version in service_status.results.0.result.libraries.items %}
+        <tr>
+          <td>{{ name }}</td>
+          <td>{{ version }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<h3>Status Checks</h3>
+<div class="table-full">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Status</th>
+          <th>Checked At</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for status in service_status.results %}
+        <tr>
+          <td>{{ status.up|yesno:"Up,Down,Unknown" }}</td>
+          <td>{{ status.created_at|get_date|date:"D d M Y H:i" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- <div class="text-center">
+  <ul class="pagination">
+    <li>
+      <a href="#" aria-label="Previous">
+        <span aria-hidden="true">&laquo;</span>
+      </a>
+    </li>
+    <li class="active"><a href="#">1</a></li>
+    <li><a href="#">2</a></li>
+    <li><a href="#">3</a></li>
+    <li><a href="#">4</a></li>
+    <li><a href="#">5</a></li>
+    <li>
+      <a href="#" aria-label="Next">
+        <span aria-hidden="true">&raquo;</span>
+      </a>
+    </li>
+  </ul>
+</div> -->
+{% endblock %}
