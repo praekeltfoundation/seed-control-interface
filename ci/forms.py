@@ -63,6 +63,7 @@ class IdentitySearchForm(forms.Form):
         choices=ADDRESS_TYPES
     )
 
+
 STAGE_CHOICES = (
     ('', "Stage - all"),
     ('prebirth', "Mother is pregnant"),

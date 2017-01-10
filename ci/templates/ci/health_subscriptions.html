@@ -1,0 +1,147 @@
+{% extends "ci/base.html" %}
+{% load staticfiles %}
+{% block pagetitle %}System Health - Overview{% endblock %}
+{% block content %}
+<div class="dashhead">
+  <div class="dashhead-titles">
+    <h6 class="dashhead-subtitle">Seed Control Interface</h6>
+    <h2 class="dashhead-title">System Health &mdash; Subscriptions</h2>
+  </div>
+
+  <div class="btn-toolbar dashhead-toolbar">
+    <div class="btn-toolbar-item input-with-icon">&nbsp;
+      <!-- <input type="text" value="01/01/15 - 01/08/15" class="form-control" data-provide="datepicker">
+      <span class="icon icon-calendar"></span> -->
+    </div>
+  </div>
+</div>
+
+<hr class="m-t">
+
+<div class="charts">
+  <div id="subscriptions-today" style="width:100%; height:400px;"></div>
+  <div id="subscriptions-this-week" style="width:100%; height:400px;"></div>
+</div>
+<script src="{% static "ci/js/highcharts.js" %}"></script>
+<script type="text/javascript">
+  var charts = {
+    'subscriptions-today': null,
+    'subscriptions-this-week': null,
+  };
+  function updateAll(all_charts) {
+    $.each(all_charts, function(chart_type, chart) {
+      if (chart != null) {
+        $.get('?chart_type=' + chart_type, function(data) {
+          $.each(chart.series, function(index, series) {
+            if (series.name in data) {
+              chart.series[index].setData(data[series.name]);
+            }
+          });
+        });
+      }
+    });
+  };
+
+  $(function () {
+    charts['subscriptions-today'] = Highcharts.chart('subscriptions-today', {
+      chart: {
+        type: 'column'
+      },
+
+      title: {
+        text: 'Subscriptions today'
+      },
+
+      xAxis: {
+        categories: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+      },
+
+      yAxis: {
+        allowDecimals: false,
+        min: 0,
+        title: {
+          text: 'Subscriptions'
+        }
+      },
+
+      tooltip: {
+        headerFormat: '<span style="font-size:10px">{point.key}</span><table>',
+        pointFormat: '<tr><td style="color:{series.color};padding:0">{series.name}: </td>' +
+        '<td style="padding:0"><b>{point.y:.0f}</b></td></tr>',
+        footerFormat: '</table>',
+        shared: true,
+        useHTML: true
+      },
+
+      plotOptions: {
+        column: {
+          pointPadding: 0.1,
+          borderWidth: 0
+        }
+      },
+
+      credits: {
+        enabled: false
+      },
+
+      series: [{
+        name: 'Yesterday',
+        data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+      }, {
+        name: 'Today',
+        data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+      }]
+    });
+    charts['subscriptions-this-week'] = Highcharts.chart('subscriptions-this-week', {
+      chart: {
+        type: 'column'
+      },
+
+      title: {
+        text: 'Subscriptions this week vs last week'
+      },
+
+      xAxis: {
+        categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+      },
+
+      yAxis: {
+        allowDecimals: false,
+        min: 0,
+        title: {
+          text: 'Subscriptions'
+        }
+      },
+
+      tooltip: {
+        headerFormat: '<span style="font-size:10px">{point.key}</span><table>',
+        pointFormat: '<tr><td style="color:{series.color};padding:0">{series.name}: </td>' +
+        '<td style="padding:0"><b>{point.y:.0f}</b></td></tr>',
+        footerFormat: '</table>',
+        shared: true,
+        useHTML: true
+      },
+
+      plotOptions: {
+        column: {
+          pointPadding: 0.1,
+          borderWidth: 0
+        }
+      },
+
+      credits: {
+        enabled: false
+      },
+
+      series: [{
+        name: 'Last week',
+        data: [0, 0, 0, 0, 0, 0, 0]
+      }, {
+        name: 'This week',
+        data: [0, 0, 0, 0, 0, 0, 0]
+      }]
+    });
+    updateAll(charts);
+  });
+  </script>
+{% endblock %}
