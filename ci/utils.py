@@ -26,12 +26,12 @@ def transform_timeseries_data(timeseries, start, end=None):
 
 
 def get_last_value_from_timeseries(timeseries):
-    """Gets the most recent value for a .last metric or zero for empty data."""
+    """Gets the most recent non-zero value for a .last metric or zero
+    for empty data."""
     if not timeseries:
         return 0
     for metric, points in timeseries.items():
-        point = points.pop()
-        return point['y']
+        return next((p['y'] for p in reversed(points) if p['y'] > 0), 0)
 
 
 def get_timestamp(dt):

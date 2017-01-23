@@ -254,7 +254,7 @@ def health_messages(request):
             for day in range(7):
                 estimated = client.get_metric(
                     'subscriptions.send.estimate.%s.last' % day,
-                    '-1d', '1d', 'zeroize')
+                    '-7d', '1d', 'zeroize')
                 estimate_data.append(
                     utils.get_last_value_from_timeseries(estimated))
             return JsonResponse({
