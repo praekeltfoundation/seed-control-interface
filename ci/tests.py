@@ -181,6 +181,93 @@ class GenerateReportTest(TestCase):
             status=200,
             content_type='application/json')
 
+        responses.add(
+            responses.GET,
+            'http://idstore.example.com/identities/'
+            '17cf37cf-edd6-4634-88e3-f793575f7e3a/',
+            json={
+                'identity': 'receiver_id',
+                'details': {
+                    'personnel_code': 'personnel_code',
+                    'facility_name': 'facility_name',
+                    'default_addr_type': 'msisdn',
+                    'role': 'role',
+                    'state': 'state',
+                    'addresses': {
+                        'msisdn': {
+                            '+2341111111111': {}
+                        }
+                    }
+                }
+            },
+            status=200,
+            content_type='application/json')
+
+        # Subscriptions, first page, just returns empty results to make sure
+        # we're actually paging through the results sets using the `next`
+        # parameter
+        responses.add(
+            responses.GET,
+            ("http://sbm.example.com/subscriptions/?"
+             "created_before=2016-02-01T00%3A00%3A00%2B00%3A00"),
+            match_querystring=True,
+            json={
+                'count': 1,
+                'next': 'http://sbm.example.com/subscriptions/?foo=bar',
+                'results': [],
+            },
+            status=200,
+            content_type='application/json')
+
+        # Registrations, second page, this one has the results
+        responses.add(
+            responses.GET,
+            'http://sbm.example.com/subscriptions/?foo=bar',
+            match_querystring=True,
+            json={
+                'count': 1,
+                'next': None,
+                'results': [{
+                    'lang': 'eng_NG',
+                    'created_at': '2016-11-22T08:12:45.343829Z',
+                    'messageset': 4,
+                    'schedule': 5,
+                    'url': 'http://stage-based-messaging.mama.qa.p16n.org/api/v1/subscriptions/10176584-2a47-42b6-b9f3-a3a98070f35e/',  # noqa
+                    'completed': False,
+                    'initial_sequence_number': 1,
+                    'updated_at': '2016-11-22T08:12:52.411545Z',
+                    'version': 1,
+                    'next_sequence_number': 1,
+                    'process_status': 0,
+                    'active': True,
+                    'id': '10176584-2a47-42b6-b9f3-a3a98070f35e',
+                    'identity': '17cf37cf-edd6-4634-88e3-f793575f7e3a',
+                    'metadata': {
+                        'scheduler_schedule_id':
+                            'a64d153f-1515-42c1-997a-9a3444c916fc'
+                    }
+                }]
+            },
+            status=200,
+            content_type='application/json')
+
+        # Identities
+        responses.add(
+            responses.GET,
+            'http://sbm.example.com/messageset/4/',
+            json={
+                'created_at': '2016-06-22T10:30:21.186435Z',
+                'short_name': 'prebirth.mother.audio.10_42.tue_thu.9_11',
+                'next_set': 11,
+                'notes': '',
+                'updated_at': '2016-09-13T13:01:32.591754Z',
+                'default_schedule': 5,
+                'content_type': 'audio',
+                'id': 4
+            },
+            status=200,
+            content_type='application/json')
+
         tmp_file = self.mk_tempfile()
 
         call_command(
@@ -188,7 +275,9 @@ class GenerateReportTest(TestCase):
             '--start', '2016-01-01', '--end', '2016-02-01',
             '--output-file', tmp_file.name,
             '--email-to', 'foo@example.com',
-            '--email-subject', 'The Email Subject')
+            '--email-subject', 'The Email Subject',
+            '--sbm-url', 'http://sbm.example.com/',
+            '--sbm-token', 'sbmtoken')
 
         # Assert headers are set
         self.assertSheetRow(

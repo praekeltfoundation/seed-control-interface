@@ -12,10 +12,12 @@ from django.core.mail import EmailMessage
 from django.core.management.base import BaseCommand, CommandError
 from django.core.validators import URLValidator, EmailValidator
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 
 from openpyxl import Workbook
 
-from seed_services_client import HubApiClient, IdentityStoreApiClient
+from seed_services_client import (HubApiClient, IdentityStoreApiClient,
+                                  StageBasedMessagingApiClient)
 
 
 def mk_validator(django_validator):
@@ -57,9 +59,14 @@ class ExportSheet(object):
     def add_row(self, row):
         row_number = self._sheet.max_row + 1
         for key, value in row.items():
+            if isinstance(key, int):
+                col_idx = key
+            else:
+                col_idx = self._headers.index(key) + 1
+
             cell = self._sheet.cell(
                 row=row_number,
-                column=self._headers.index(key) + 1)
+                column=col_idx)
             cell.value = value
 
 
@@ -132,13 +139,28 @@ class Command(BaseCommand):
         parser.add_argument(
             '--identity-store-token', type=str,
             default=settings.IDENTITY_STORE_TOKEN)
+        parser.add_argument(
+            '--sbm-url', type=mk_validator(URLValidator))
+        parser.add_argument(
+            '--sbm-token', type=str)
 
     def handle(self, *args, **kwargs):
         self.identity_cache = {}
+        self.messageset_cache = {}
         hub_token = kwargs['hub_token']
         hub_url = kwargs['hub_url']
         id_store_token = kwargs['identity_store_token']
         id_store_url = kwargs['identity_store_url']
+        sbm_token = kwargs['sbm_token']
+        sbm_url = kwargs['sbm_url']
+
+        if not sbm_url:
+            raise CommandError(
+                'Please make sure the --sbm-url is set.')
+
+        if not sbm_token:
+            raise CommandError(
+                'Please make sure the --sbm-token is set.')
 
         start_date = kwargs['start']
         end_date = kwargs['end']
@@ -157,11 +179,17 @@ class Command(BaseCommand):
 
         hub_client = HubApiClient(hub_token, hub_url)
         ids_client = IdentityStoreApiClient(id_store_token, id_store_url)
+        sbm_client = StageBasedMessagingApiClient(sbm_token, sbm_url)
 
         workbook = self.workbook_class()
         sheet = workbook.add_sheet('Registrations by date', 0)
         self.handle_registrations(sheet, hub_client, ids_client,
                                   start_date, end_date)
+
+        sheet = workbook.add_sheet('Enrollments', 2)
+        self.handle_enrollments(sheet, sbm_client, ids_client, start_date,
+                                end_date)
+
         workbook.save(output_file)
 
         if email_recipients:
@@ -186,6 +214,14 @@ class Command(BaseCommand):
         self.identity_cache[identity] = identity_object
         return identity_object
 
+    def get_messageset(self, sbm_client, messageset):
+        if messageset in self.messageset_cache:
+            return self.messageset_cache[messageset]
+
+        messageset_object = sbm_client.get_messageset(messageset)
+        self.messageset_cache[messageset] = messageset_object
+        return messageset_object
+
     def get_registrations(self, hub_client, **kwargs):
         registrations = hub_client.get_registrations(kwargs)
         cursor = registrations['next']
@@ -197,6 +233,83 @@ class Command(BaseCommand):
             cursor = registrations['next']
         for result in registrations['results']:
             yield result
+
+    def get_subscriptions(self, sbm_client, **kwargs):
+        subscriptions = sbm_client.get_subscriptions(kwargs)
+        cursor = subscriptions['next']
+        while cursor:
+            for result in subscriptions['results']:
+                yield result
+            params = parse_cursor_params(cursor)
+            subscriptions = sbm_client.get_subscriptions(params)
+            cursor = subscriptions['next']
+        for result in subscriptions['results']:
+            yield result
+
+    def handle_enrollments(self, sheet, sbm_client, ids_client, start_date,
+                           end_date):
+
+        sheet.set_header([
+            'Message set',
+            'Roleplayer',
+            'Currently enrolled (snapshot at point y)',
+            'Cumulatively enrolled (in last period x)',
+            'Of the cumulatively enrolled (in last period x), number which '
+            'opted out',
+            'Of the cumulatively enrolled (in last period x), the number which'
+            ' completed messages',
+        ])
+
+        subscriptions = self.get_subscriptions(
+            sbm_client,
+            created_before=end_date.isoformat())
+
+        data = {}
+        for idx, subscription in enumerate(subscriptions):
+            messageset = self.get_messageset(
+                            sbm_client, subscription['messageset'])
+            identity = self.get_identity(ids_client, subscription['identity'])
+
+            messageset_name = messageset['short_name'].split('.')[0]
+
+            receiver_role = 'None'
+            if identity:
+                receiver_role = identity.get('details', {}).get(
+                                    'receiver_role', 'None')
+
+            key = '%s_%s' % (messageset_name, receiver_role)
+
+            if key not in data:
+                data[key] = {
+                    'messageset': messageset_name,
+                    'receiver_role': receiver_role,
+                    'total': 0,
+                    'total_period': 0,
+                    'optouts': 0,
+                    'completed': 0
+                }
+
+            data[key]['total'] += 1
+
+            if parse_datetime(subscription['created_at']) > start_date:
+                data[key]['total_period'] += 1
+
+                if (not subscription['active'] and
+                        not subscription['completed']):
+                    data[key]['optouts'] += 1
+
+                if subscription['completed']:
+                    data[key]['completed'] += 1
+
+        for key in sorted(data.iterkeys()):
+            sheet.add_row({
+                1: data[key]['messageset'],
+                2: data[key]['receiver_role'],
+                3: data[key]['total'],
+                4: data[key]['total_period'],
+                5: data[key]['optouts'],
+                6: data[key]['completed'],
+            })
 
     def handle_registrations(self, sheet, hub_client, ids_client,
                              start_date, end_date):
