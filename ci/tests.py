@@ -90,7 +90,7 @@ class GenerateReportTest(TestCase):
         self.assertEqual(params['offset'], '1000')
 
     @responses.activate
-    def test_generate_report(self):
+    def test_generate_report_registrations(self):
 
         # Registrations, first page, just returns empty results to make sure
         # we're actually paging through the results sets using the `next`
@@ -230,6 +230,155 @@ class GenerateReportTest(TestCase):
                 'facility_name',
                 'role',
                 'state',
+            ])
+
+        [report_email] = mail.outbox
+        self.assertEqual(report_email.subject, 'The Email Subject')
+        (file_name, data, mimetype) = report_email.attachments[0]
+        self.assertEqual('report-2016-01-01-to-2016-02-01.xlsx', file_name)
+
+    @responses.activate
+    def test_generate_report_health_worker_registrations(self):
+        """
+        When generating a report, the second tab should be registrations per
+        health worker, and it should have the correct information.
+        """
+
+        # Registrations, first page, just returns empty results to make sure
+        # we're actually paging through the results sets using the `next`
+        # parameter
+        responses.add(
+            responses.GET,
+            ("http://hub.example.com/registrations/?"
+             "created_before=2016-02-01T00%3A00%3A00%2B00%3A00"
+             "&created_after=2016-01-01T00%3A00%3A00%2B00%3A00"),
+            match_querystring=True,
+            json={
+                'count': 1,
+                'next': 'http://hub.example.com/registrations/?foo=bar',
+                'results': [],
+            },
+            status=200,
+            content_type='application/json')
+
+        # Registrations, second page, this one has the results
+        # 2 registrations for 1 operator
+        responses.add(
+            responses.GET,
+            'http://hub.example.com/registrations/?foo=bar',
+            match_querystring=True,
+            json={
+                'count': 2,
+                'next': None,
+                'results': [{
+                    'created_at': 'created-at',
+                    'data': {
+                        'operator_id': 'operator_id',
+                        'receiver_id': 'receiver_id',
+                        'gravida': 'gravida',
+                        'msg_type': 'msg_type',
+                        'last_period_date': 'last_period_date',
+                        'language': 'language',
+                        'msg_receiver': 'msg_receiver',
+                        'voice_days': 'voice_days',
+                        'voice_times': 'voice_times',
+                        'preg_week': 'preg_week',
+                        'reg_type': 'reg_type',
+                    },
+                },
+                    {
+                    'created_at': 'created-at',
+                    'data': {
+                        'operator_id': 'operator_id',
+                        'receiver_id': 'receiver_id',
+                        'gravida': 'gravida',
+                        'msg_type': 'msg_type',
+                        'last_period_date': 'last_period_date',
+                        'language': 'language',
+                        'msg_receiver': 'msg_receiver',
+                        'voice_days': 'voice_days',
+                        'voice_times': 'voice_times',
+                        'preg_week': 'preg_week',
+                        'reg_type': 'reg_type',
+                    },
+                }]
+            },
+            status=200,
+            content_type='application/json')
+
+        # Identity for hcw
+        responses.add(
+            responses.GET,
+            'http://idstore.example.com/identities/operator_id/',
+            json={
+                'identity': 'operator_id',
+                'details': {
+                    'personnel_code': 'personnel_code',
+                    'facility_name': 'facility_name',
+                    'default_addr_type': 'msisdn',
+                    'role': 'role',
+                    'state': 'state',
+                    'addresses': {
+                        'msisdn': {
+                            '+2340000000000': {}
+                        }
+                    }
+                }
+            },
+            status=200,
+            content_type='application/json')
+
+        # identity for receiver, for first report
+        responses.add(
+            responses.GET,
+            'http://idstore.example.com/identities/receiver_id/',
+            json={
+                'identity': 'receiver_id',
+                'details': {
+                    'personnel_code': 'personnel_code',
+                    'facility_name': 'facility_name',
+                    'default_addr_type': 'msisdn',
+                    'role': 'role',
+                    'state': 'state',
+                    'addresses': {
+                        'msisdn': {
+                            '+2341111111111': {}
+                        }
+                    }
+                }
+            },
+            status=200,
+            content_type='application/json')
+
+        tmp_file = self.mk_tempfile()
+
+        call_command(
+            'generate_reports',
+            '--start', '2016-01-01', '--end', '2016-02-01',
+            '--output-file', tmp_file.name,
+            '--email-to', 'foo@example.com',
+            '--email-subject', 'The Email Subject')
+
+        # Assert headers are set
+        self.assertSheetRow(
+            tmp_file.name, 'Health worker registrations', 0,
+            [
+                'Unique Personnel Code',
+                'Facility',
+                'State',
+                'Cadre',
+                'Number of Registrations',
+            ])
+
+        # Assert 1 row is written
+        self.assertSheetRow(
+            tmp_file.name, 'Health worker registrations', 1,
+            [
+                'personnel_code',
+                'facility_name',
+                'state',
+                'role',
+                2,
             ])
 
         [report_email] = mail.outbox
