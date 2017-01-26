@@ -408,7 +408,7 @@ class Command(BaseCommand):
                 if subscription['completed']:
                     data[key]['completed'] += 1
 
-        for key in sorted(data.iterkeys()):
+        for key in sorted(data.keys()):
             sheet.add_row({
                 1: data[key]['messageset'],
                 2: data[key]['receiver_role'],
