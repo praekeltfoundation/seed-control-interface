@@ -89,12 +89,10 @@ class GenerateReportTest(TestCase):
         self.assertEqual(params['limit'], '1000')
         self.assertEqual(params['offset'], '1000')
 
-    @responses.activate
-    def test_generate_report(self):
+    def add_blank_registration_callback(self, next_='?foo=bar'):
+        if next_:
+            next_ = 'http://hub.example.com/registrations/{}'.format(next_)
 
-        # Registrations, first page, just returns empty results to make sure
-        # we're actually paging through the results sets using the `next`
-        # parameter
         responses.add(
             responses.GET,
             ("http://hub.example.com/registrations/?"
@@ -102,47 +100,49 @@ class GenerateReportTest(TestCase):
              "&created_after=2016-01-01T00%3A00%3A00%2B00%3A00"),
             match_querystring=True,
             json={
-                'count': 1,
-                'next': 'http://hub.example.com/registrations/?foo=bar',
+                'count': 0,
+                'next': next_,
                 'results': [],
             },
             status=200,
             content_type='application/json')
 
-        # Registrations, second page, this one has the results
+    def add_registrations_callback(self, path='?foo=bar', num=1):
+        registrations = [{
+                'created_at': 'created-at',
+                'data': {
+                    'operator_id': 'operator_id',
+                    'receiver_id': 'receiver_id',
+                    'gravida': 'gravida',
+                    'msg_type': 'msg_type',
+                    'last_period_date': 'last_period_date',
+                    'language': 'language',
+                    'msg_receiver': 'msg_receiver',
+                    'voice_days': 'voice_days',
+                    'voice_times': 'voice_times',
+                    'preg_week': 'preg_week',
+                    'reg_type': 'reg_type',
+                }
+            }] * num
+
         responses.add(
             responses.GET,
             'http://hub.example.com/registrations/?foo=bar',
             match_querystring=True,
             json={
-                'count': 1,
+                'count': num,
                 'next': None,
-                'results': [{
-                    'created_at': 'created-at',
-                    'data': {
-                        'operator_id': 'operator_id',
-                        'receiver_id': 'receiver_id',
-                        'gravida': 'gravida',
-                        'msg_type': 'msg_type',
-                        'last_period_date': 'last_period_date',
-                        'language': 'language',
-                        'msg_receiver': 'msg_receiver',
-                        'voice_days': 'voice_days',
-                        'voice_times': 'voice_times',
-                        'preg_week': 'preg_week',
-                        'reg_type': 'reg_type',
-                    }
-                }]
+                'results': registrations,
             },
             status=200,
             content_type='application/json')
 
-        # Identities
+    def add_identity_callback(self, identity='operator_id'):
         responses.add(
             responses.GET,
-            'http://idstore.example.com/identities/operator_id/',
+            'http://idstore.example.com/identities/{}/'.format(identity),
             json={
-                'identity': 'operator_id',
+                'identity': identity,
                 'details': {
                     'personnel_code': 'personnel_code',
                     'facility_name': 'facility_name',
@@ -159,99 +159,58 @@ class GenerateReportTest(TestCase):
             status=200,
             content_type='application/json')
 
-        # Identities
-        responses.add(
-            responses.GET,
-            'http://idstore.example.com/identities/receiver_id/',
-            json={
-                'identity': 'receiver_id',
-                'details': {
-                    'personnel_code': 'personnel_code',
-                    'facility_name': 'facility_name',
-                    'default_addr_type': 'msisdn',
-                    'role': 'role',
-                    'state': 'state',
-                    'addresses': {
-                        'msisdn': {
-                            '+2341111111111': {}
-                        }
-                    }
-                }
-            },
-            status=200,
-            content_type='application/json')
+    def add_blank_subscription_callback(self, next_='?foo=bar'):
+        if next_:
+            next_ = 'http://sbm.example.com/subscriptions/{}'.format(next_)
 
-        responses.add(
-            responses.GET,
-            'http://idstore.example.com/identities/'
-            '17cf37cf-edd6-4634-88e3-f793575f7e3a/',
-            json={
-                'identity': 'receiver_id',
-                'details': {
-                    'personnel_code': 'personnel_code',
-                    'facility_name': 'facility_name',
-                    'default_addr_type': 'msisdn',
-                    'role': 'role',
-                    'state': 'state',
-                    'addresses': {
-                        'msisdn': {
-                            '+2341111111111': {}
-                        }
-                    }
-                }
-            },
-            status=200,
-            content_type='application/json')
-
-        # Subscriptions, first page, just returns empty results to make sure
-        # we're actually paging through the results sets using the `next`
-        # parameter
         responses.add(
             responses.GET,
             ("http://sbm.example.com/subscriptions/?"
              "created_before=2016-02-01T00%3A00%3A00%2B00%3A00"),
             match_querystring=True,
             json={
-                'count': 1,
-                'next': 'http://sbm.example.com/subscriptions/?foo=bar',
+                'count': 0,
+                'next': next_,
                 'results': [],
             },
             status=200,
             content_type='application/json')
 
-        # Registrations, second page, this one has the results
+    def add_subscriptions_callback(self, path='?foo=bar', num=1):
+        subscriptions = [{
+            'lang': 'eng_NG',
+            'created_at': '2016-11-22T08:12:45.343829Z',
+            'messageset': 4,
+            'schedule': 5,
+            'url': 'url',
+            'completed': False,
+            'initial_sequence_number': 1,
+            'updated_at': '2016-11-22T08:12:52.411545Z',
+            'version': 1,
+            'next_sequence_number': 1,
+            'process_status': 0,
+            'active': True,
+            'id': '10176584-2a47-42b6-b9f3-a3a98070f35e',
+            'identity': '17cf37cf-edd6-4634-88e3-f793575f7e3a',
+            'metadata': {
+                'scheduler_schedule_id':
+                    'a64d153f-1515-42c1-997a-9a3444c916fc'
+            }
+        }] * num
+
         responses.add(
             responses.GET,
             'http://sbm.example.com/subscriptions/?foo=bar',
             match_querystring=True,
             json={
-                'count': 1,
+                'count': num,
                 'next': None,
-                'results': [{
-                    'lang': 'eng_NG',
-                    'created_at': '2016-11-22T08:12:45.343829Z',
-                    'messageset': 4,
-                    'schedule': 5,
-                    'url': 'http://stage-based-messaging.mama.qa.p16n.org/api/v1/subscriptions/10176584-2a47-42b6-b9f3-a3a98070f35e/',  # noqa
-                    'completed': False,
-                    'initial_sequence_number': 1,
-                    'updated_at': '2016-11-22T08:12:52.411545Z',
-                    'version': 1,
-                    'next_sequence_number': 1,
-                    'process_status': 0,
-                    'active': True,
-                    'id': '10176584-2a47-42b6-b9f3-a3a98070f35e',
-                    'identity': '17cf37cf-edd6-4634-88e3-f793575f7e3a',
-                    'metadata': {
-                        'scheduler_schedule_id':
-                            'a64d153f-1515-42c1-997a-9a3444c916fc'
-                    }
-                }]
+                'results': subscriptions,
             },
             status=200,
             content_type='application/json')
 
-        # Identities
+    def add_messageset_callback(self):
         responses.add(
             responses.GET,
             'http://sbm.example.com/messageset/4/',
@@ -268,6 +227,7 @@ class GenerateReportTest(TestCase):
             status=200,
             content_type='application/json')
 
+    def generate_report(self):
         tmp_file = self.mk_tempfile()
 
         call_command(
@@ -278,6 +238,55 @@ class GenerateReportTest(TestCase):
             '--email-subject', 'The Email Subject',
             '--sbm-url', 'http://sbm.example.com/',
             '--sbm-token', 'sbmtoken')
+
+        return tmp_file
+
+    @responses.activate
+    def test_generate_report_email(self):
+        """
+        Generating a report should create an email with the correct address,
+        subject, and attachment.
+        """
+        self.add_blank_registration_callback(next_=None)
+        self.add_blank_subscription_callback(next_=None)
+        self.generate_report()
+        [report_email] = mail.outbox
+        self.assertEqual(report_email.subject, 'The Email Subject')
+        (file_name, data, mimetype) = report_email.attachments[0]
+        self.assertEqual('report-2016-01-01-to-2016-02-01.xlsx', file_name)
+
+    @responses.activate
+    def test_generate_report_registrations(self):
+        """
+        When generating a report, the first tab should be a list of
+        registrations with the relevant registration details.
+        """
+        # Registrations, first page, just returns empty results to make sure
+        # we're actually paging through the results sets using the `next`
+        # parameter
+        self.add_blank_registration_callback()
+
+        # Registrations, second page, this one has the results
+        self.add_registrations_callback()
+
+        # HCW Identity
+        self.add_identity_callback()
+
+        # Receiver Identity
+        self.add_identity_callback('receiver_id')
+
+        # Subscriptions, first page, just returns empty results to make sure
+        # we're actually paging through the results sets using the `next`
+        # parameter
+        self.add_blank_subscription_callback()
+
+        self.add_subscriptions_callback()
+
+        self.add_messageset_callback()
+
+        self.add_identity_callback('17cf37cf-edd6-4634-88e3-f793575f7e3a')
+
+        tmp_file = self.generate_report()
 
         # Assert headers are set
         self.assertSheetRow(
@@ -304,7 +313,7 @@ class GenerateReportTest(TestCase):
         self.assertSheetRow(
             tmp_file.name, 'Registrations by date', 1,
             [
-                '+2341111111111',
+                '+2340000000000',
                 'created-at',
                 'gravida',
                 'msg_type',
@@ -321,10 +330,114 @@ class GenerateReportTest(TestCase):
                 'state',
             ])
 
-        [report_email] = mail.outbox
-        self.assertEqual(report_email.subject, 'The Email Subject')
-        (file_name, data, mimetype) = report_email.attachments[0]
-        self.assertEqual('report-2016-01-01-to-2016-02-01.xlsx', file_name)
+    @responses.activate
+    def test_generate_report_health_worker_registrations(self):
+        """
+        When generating a report, the second tab should be registrations per
+        health worker, and it should have the correct information.
+        """
+        # Registrations, first page, just returns empty results to make sure
+        # we're actually paging through the results sets using the `next`
+        # parameter
+        self.add_blank_registration_callback()
+
+        # Registrations, second page, this one has the results
+        # 2 registrations for 1 operator
+        self.add_registrations_callback(num=2)
+
+        # Identity for hcw
+        self.add_identity_callback('operator_id')
+
+        # identity for receiver, for first report
+        self.add_identity_callback('receiver_id')
+
+        # Subscriptions, first page, just returns empty results to make sure
+        # we're actually paging through the results sets using the `next`
+        # parameter
+        self.add_blank_subscription_callback()
+
+        self.add_subscriptions_callback(num=2)
+
+        self.add_messageset_callback()
+
+        self.add_identity_callback('17cf37cf-edd6-4634-88e3-f793575f7e3a')
+
+        tmp_file = self.generate_report()
+
+        # Assert headers are set
+        self.assertSheetRow(
+            tmp_file.name, 'Health worker registrations', 0,
+            [
+                'Unique Personnel Code',
+                'Facility',
+                'State',
+                'Cadre',
+                'Number of Registrations',
+            ])
+
+        # Assert 1 row is written
+        self.assertSheetRow(
+            tmp_file.name, 'Health worker registrations', 1,
+            [
+                'personnel_code',
+                'facility_name',
+                'state',
+                'role',
+                2,
+            ])
+
+    @responses.activate
+    def test_generate_report_enrollments(self):
+        """
+        When generating a report, the third tab should be enrollments,
+        and it should have the correct information.
+        """
+        # Registrations, first page, just returns empty results to make sure
+        # we're actually paging through the results sets using the `next`
+        # parameter
+        self.add_blank_registration_callback()
+
+        # Registrations, second page, this one has the results
+        # 2 registrations for 1 operator
+        self.add_registrations_callback(num=2)
+
+        # Identity for hcw
+        self.add_identity_callback('operator_id')
+
+        # identity for receiver, for first report
+        self.add_identity_callback('receiver_id')
+
+        # Subscriptions, first page, just returns empty results to make sure
+        # we're actually paging through the results sets using the `next`
+        # parameter
+        self.add_blank_subscription_callback()
+
+        self.add_subscriptions_callback(num=2)
+
+        self.add_messageset_callback()
+
+        self.add_identity_callback('17cf37cf-edd6-4634-88e3-f793575f7e3a')
+
+        tmp_file = self.generate_report()
+
+        # Assert headers are set
+        self.assertSheetRow(
+            tmp_file.name, 'Enrollments', 0,
+            [
+                'Message set',
+                'Roleplayer',
+                'Currently enrolled (snapshot at point y)',
+                'Cumulatively enrolled (in last period x)',
+                'Of the cumulatively enrolled (in last period x), number '
+                'which opted out',
+                'Of the cumulatively enrolled (in last period x), the number'
+                ' which completed messages',
+            ])
+
+        # Assert 1 row is written
+        self.assertSheetRow(
+            tmp_file.name, 'Enrollments', 1,
+            ['prebirth', 'None', 2, 2, 0, 0])
 
 
 class UtilsTests(TestCase):

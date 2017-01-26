@@ -1,5 +1,6 @@
 import pytz
 import calendar
+import collections
 # NOTE: Python 3 compatibility
 try:
     from urlparse import urlparse, parse_qs
@@ -186,6 +187,10 @@ class Command(BaseCommand):
         self.handle_registrations(sheet, hub_client, ids_client,
                                   start_date, end_date)
 
+        sheet = workbook.add_sheet('Health worker registrations', 1)
+        self.handle_health_worker_registrations(
+            sheet, hub_client, ids_client, start_date, end_date)
+
         sheet = workbook.add_sheet('Enrollments', 2)
         self.handle_enrollments(sheet, sbm_client, ids_client, start_date,
                                 end_date)
@@ -245,71 +250,6 @@ class Command(BaseCommand):
             cursor = subscriptions['next']
         for result in subscriptions['results']:
             yield result
-
-    def handle_enrollments(self, sheet, sbm_client, ids_client, start_date,
-                           end_date):
-
-        sheet.set_header([
-            'Message set',
-            'Roleplayer',
-            'Currently enrolled (snapshot at point y)',
-            'Cumulatively enrolled (in last period x)',
-            'Of the cumulatively enrolled (in last period x), number which '
-            'opted out',
-            'Of the cumulatively enrolled (in last period x), the number which'
-            ' completed messages',
-        ])
-
-        subscriptions = self.get_subscriptions(
-            sbm_client,
-            created_before=end_date.isoformat())
-
-        data = {}
-        for idx, subscription in enumerate(subscriptions):
-            messageset = self.get_messageset(
-                            sbm_client, subscription['messageset'])
-            identity = self.get_identity(ids_client, subscription['identity'])
-
-            messageset_name = messageset['short_name'].split('.')[0]
-
-            receiver_role = 'None'
-            if identity:
-                receiver_role = identity.get('details', {}).get(
-                                    'receiver_role', 'None')
-
-            key = '%s_%s' % (messageset_name, receiver_role)
-
-            if key not in data:
-                data[key] = {
-                    'messageset': messageset_name,
-                    'receiver_role': receiver_role,
-                    'total': 0,
-                    'total_period': 0,
-                    'optouts': 0,
-                    'completed': 0
-                }
-
-            data[key]['total'] += 1
-
-            if parse_datetime(subscription['created_at']) > start_date:
-                data[key]['total_period'] += 1
-
-                if (not subscription['active'] and
-                        not subscription['completed']):
-                    data[key]['optouts'] += 1
-
-                if subscription['completed']:
-                    data[key]['completed'] += 1
-
-        for key in sorted(data.iterkeys()):
-            sheet.add_row({
-                1: data[key]['messageset'],
-                2: data[key]['receiver_role'],
-                3: data[key]['total'],
-                4: data[key]['total_period'],
-                5: data[key]['optouts'],
-                6: data[key]['completed'],
-            })
 
     def handle_registrations(self, sheet, hub_client, ids_client,
                              start_date, end_date):
@@ -379,4 +319,101 @@ class Command(BaseCommand):
                 'Facility': operator_details.get('facility_name'),
                 'Cadre': operator_details.get('role'),
                 'State': operator_details.get('state'),
+            })
+
+    def handle_health_worker_registrations(
+            self, sheet, hub_client, ids_client, start_date, end_date):
+        sheet.set_header([
+            'Unique Personnel Code',
+            'Facility',
+            'State',
+            'Cadre',
+            'Number of Registrations'])
+
+        registrations = self.get_registrations(
+            hub_client,
+            created_after=start_date.isoformat(),
+            created_before=end_date.isoformat())
+
+        registrations_per_operator = collections.defaultdict(int)
+
+        for registration in registrations:
+            operator_id = registration.get('data', {}).get('operator_id')
+            registrations_per_operator[operator_id] += 1
+
+        for operator_id, count in registrations_per_operator.items():
+            operator = self.get_identity(ids_client, operator_id) or {}
+            operator_details = operator.get('details', {})
+            sheet.add_row({
+                'Unique Personnel Code': operator_details.get(
+                    'personnel_code'),
+                'Facility': operator_details.get('facility_name'),
+                'State': operator_details.get('state'),
+                'Cadre': operator_details.get('role'),
+                'Number of Registrations': count,
+            })
+
+    def handle_enrollments(self, sheet, sbm_client, ids_client, start_date,
+                           end_date):
+
+        sheet.set_header([
+            'Message set',
+            'Roleplayer',
+            'Currently enrolled (snapshot at point y)',
+            'Cumulatively enrolled (in last period x)',
+            'Of the cumulatively enrolled (in last period x), number which '
+            'opted out',
+            'Of the cumulatively enrolled (in last period x), the number which'
+            ' completed messages',
+        ])
+
+        subscriptions = self.get_subscriptions(
+            sbm_client,
+            created_before=end_date.isoformat())
+
+        data = {}
+        for idx, subscription in enumerate(subscriptions):
+            messageset = self.get_messageset(
+                            sbm_client, subscription['messageset'])
+            identity = self.get_identity(ids_client, subscription['identity'])
+
+            messageset_name = messageset['short_name'].split('.')[0]
+
+            receiver_role = 'None'
+            if identity:
+                receiver_role = identity.get('details', {}).get(
+                                    'receiver_role', 'None')
+
+            key = '%s_%s' % (messageset_name, receiver_role)
+
+            if key not in data:
+                data[key] = {
+                    'messageset': messageset_name,
+                    'receiver_role': receiver_role,
+                    'total': 0,
+                    'total_period': 0,
+                    'optouts': 0,
+                    'completed': 0
+                }
+
+            data[key]['total'] += 1
+
+            if parse_datetime(subscription['created_at']) > start_date:
+                data[key]['total_period'] += 1
+
+                if (not subscription['active'] and
+                        not subscription['completed']):
+                    data[key]['optouts'] += 1
+
+                if subscription['completed']:
+                    data[key]['completed'] += 1
+
+        for key in sorted(data.iterkeys()):
+            sheet.add_row({
+                1: data[key]['messageset'],
+                2: data[key]['receiver_role'],
+                3: data[key]['total'],
+                4: data[key]['total_period'],
+                5: data[key]['optouts'],
+                6: data[key]['completed'],
             })
