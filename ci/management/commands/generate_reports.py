@@ -1,5 +1,6 @@
 import pytz
 import calendar
+import collections
 # NOTE: Python 3 compatibility
 try:
     from urlparse import urlparse, parse_qs
@@ -162,6 +163,9 @@ class Command(BaseCommand):
         sheet = workbook.add_sheet('Registrations by date', 0)
         self.handle_registrations(sheet, hub_client, ids_client,
                                   start_date, end_date)
+        sheet = workbook.add_sheet('Health worker registrations', 1)
+        self.handle_health_worker_registrations(
+            sheet, hub_client, ids_client, start_date, end_date)
         workbook.save(output_file)
 
         if email_recipients:
@@ -266,4 +270,36 @@ class Command(BaseCommand):
                 'Facility': operator_details.get('facility_name'),
                 'Cadre': operator_details.get('role'),
                 'State': operator_details.get('state'),
+            })
+
+    def handle_health_worker_registrations(
+            self, sheet, hub_client, ids_client, start_date, end_date):
+        sheet.set_header([
+            'Unique Personnel Code',
+            'Facility',
+            'State',
+            'Cadre',
+            'Number of Registrations'])
+
+        registrations = self.get_registrations(
+            hub_client,
+            created_after=start_date.isoformat(),
+            created_before=end_date.isoformat())
+
+        registrations_per_operator = collections.defaultdict(int)
+
+        for registration in registrations:
+            operator_id = registration.get('data', {}).get('operator_id')
+            registrations_per_operator[operator_id] += 1
+
+        for operator_id, count in registrations_per_operator.items():
+            operator = self.get_identity(ids_client, operator_id) or {}
+            operator_details = operator.get('details', {})
+            sheet.add_row({
+                'Unique Personnel Code': operator_details.get(
+                    'personnel_code'),
+                'Facility': operator_details.get('facility_name'),
+                'State': operator_details.get('state'),
+                'Cadre': operator_details.get('role'),
+                'Number of Registrations': count,
             })
