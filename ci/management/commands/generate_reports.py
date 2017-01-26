@@ -292,7 +292,7 @@ class Command(BaseCommand):
             operator_id = registration.get('data', {}).get('operator_id')
             registrations_per_operator[operator_id] += 1
 
-        for operator_id, count in registrations_per_operator.iteritems():
+        for operator_id, count in registrations_per_operator.items():
             operator = self.get_identity(ids_client, operator_id) or {}
             operator_details = operator.get('details', {})
             sheet.add_row({
