@@ -278,7 +278,7 @@ class GenerateReportTest(TestCase):
         # Subscriptions, first page, just returns empty results to make sure
         # we're actually paging through the results sets using the `next`
         # parameter
-        self.add_blank_subscription_callback()
+        self.add_blank_subscription_callback(next_=None)
 
         self.add_subscriptions_callback()
 
@@ -354,7 +354,7 @@ class GenerateReportTest(TestCase):
         # Subscriptions, first page, just returns empty results to make sure
         # we're actually paging through the results sets using the `next`
         # parameter
-        self.add_blank_subscription_callback()
+        self.add_blank_subscription_callback(next_=None)
 
         self.add_subscriptions_callback(num=2)
 
@@ -426,12 +426,10 @@ class GenerateReportTest(TestCase):
             [
                 'Message set',
                 'Roleplayer',
-                'Currently enrolled (snapshot at point y)',
-                'Cumulatively enrolled (in last period x)',
-                'Of the cumulatively enrolled (in last period x), number '
-                'which opted out',
-                'Of the cumulatively enrolled (in last period x), the number'
-                ' which completed messages',
+                'Total enrolled',
+                'Enrolled in period',
+                'Enrolled and opted out in period',
+                'Enrolled and completed in period',
             ])
 
         # Assert 1 row is written

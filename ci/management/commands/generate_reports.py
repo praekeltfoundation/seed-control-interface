@@ -1,6 +1,8 @@
 import pytz
 import calendar
 import collections
+from functools import partial
+
 # NOTE: Python 3 compatibility
 try:
     from urlparse import urlparse, parse_qs
@@ -359,20 +361,18 @@ class Command(BaseCommand):
         sheet.set_header([
             'Message set',
             'Roleplayer',
-            'Currently enrolled (snapshot at point y)',
-            'Cumulatively enrolled (in last period x)',
-            'Of the cumulatively enrolled (in last period x), number which '
-            'opted out',
-            'Of the cumulatively enrolled (in last period x), the number which'
-            ' completed messages',
+            'Total enrolled',
+            'Enrolled in period',
+            'Enrolled and opted out in period',
+            'Enrolled and completed in period',
         ])
 
         subscriptions = self.get_subscriptions(
             sbm_client,
             created_before=end_date.isoformat())
 
-        data = {}
-        for idx, subscription in enumerate(subscriptions):
+        data = collections.defaultdict(partial(collections.defaultdict, int))
+        for subscription in subscriptions:
             messageset = self.get_messageset(
                             sbm_client, subscription['messageset'])
             identity = self.get_identity(ids_client, subscription['identity'])
@@ -384,34 +384,22 @@ class Command(BaseCommand):
                 receiver_role = identity.get('details', {}).get(
                                     'receiver_role', 'None')
 
-            key = '%s_%s' % (messageset_name, receiver_role)
-
-            if key not in data:
-                data[key] = {
-                    'messageset': messageset_name,
-                    'receiver_role': receiver_role,
-                    'total': 0,
-                    'total_period': 0,
-                    'optouts': 0,
-                    'completed': 0
-                }
-
-            data[key]['total'] += 1
+            data[messageset_name, receiver_role]['total'] += 1
 
             if parse_datetime(subscription['created_at']) > start_date:
-                data[key]['total_period'] += 1
+                data[messageset_name, receiver_role]['total_period'] += 1
 
                 if (not subscription['active'] and
                         not subscription['completed']):
-                    data[key]['optouts'] += 1
+                    data[messageset_name, receiver_role]['optouts'] += 1
 
                 if subscription['completed']:
-                    data[key]['completed'] += 1
+                    data[messageset_name, receiver_role]['completed'] += 1
 
         for key in sorted(data.keys()):
             sheet.add_row({
-                1: data[key]['messageset'],
-                2: data[key]['receiver_role'],
+                1: key[0],
+                2: key[1],
                 3: data[key]['total'],
                 4: data[key]['total_period'],
                 5: data[key]['optouts'],
