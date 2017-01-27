@@ -217,6 +217,7 @@ class GenerateReportTest(TestCase):
         responses.add(
             responses.GET,
             ("http://ms.example.com/outbound/?"
+             "ordering=created_at&"
              "created_before=2016-02-01T00%3A00%3A00%2B00%3A00"
              "&created_after=2016-01-01T00%3A00%3A00%2B00%3A00"),
             match_querystring=True,

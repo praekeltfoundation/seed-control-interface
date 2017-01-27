@@ -443,7 +443,7 @@ class Command(BaseCommand):
             ms_client,
             created_after=start_date.isoformat(),
             created_before=end_date.isoformat(),
-            # ordering='created_at'
+            ordering='created_at'
         )
 
         data = collections.defaultdict(partial(collections.defaultdict, int))
