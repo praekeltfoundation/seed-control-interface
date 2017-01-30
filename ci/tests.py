@@ -537,6 +537,19 @@ class GenerateReportTest(TestCase):
                 "Test reason",
             ])
 
+        # Assert that warning is written
+        self.assertSheetRow(
+            tmp_file.name, 'Opt Outs by Subscription', 2,
+            [
+                "NOTE: The message set is not guaranteed to be correct, as "
+                "the current structure of the data does not allow us to link "
+                "the opt out to a subscription, so this is a best-effort "
+                "guess.",
+                None,
+                None,
+                None,
+            ])
+
 
 class UtilsTests(TestCase):
 

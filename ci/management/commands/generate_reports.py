@@ -464,3 +464,13 @@ class Command(BaseCommand):
                 "Receiver's Role": receivers_role,
                 "Reason": optout['reason'],
             })
+
+        # Add a warning to the sheet, because we cannot guarantee that the
+        # subscription that we choose is the subscription that was opted out of
+        sheet.add_row({
+            "Timestamp": (
+                "NOTE: The message set is not guaranteed to be correct, as "
+                "the current structure of the data does not allow us to link "
+                "the opt out to a subscription, so this is a best-effort "
+                "guess."),
+        })
