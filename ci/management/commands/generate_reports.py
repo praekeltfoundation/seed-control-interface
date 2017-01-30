@@ -197,6 +197,10 @@ class Command(BaseCommand):
         self.handle_enrollments(sheet, sbm_client, ids_client, start_date,
                                 end_date)
 
+        sheet = workbook.add_sheet('Opt Outs by Subscription', 3)
+        self.handle_optouts_by_subscription(
+            sheet, sbm_client, ids_client, start_date, end_date)
+
         workbook.save(output_file)
 
         if email_recipients:
@@ -251,6 +255,18 @@ class Command(BaseCommand):
             subscriptions = sbm_client.get_subscriptions(params)
             cursor = subscriptions['next']
         for result in subscriptions['results']:
+            yield result
+
+    def get_optouts(self, ids_client, **kwargs):
+        optouts = ids_client.get_optouts(kwargs)
+        cursor = optouts['next']
+        while cursor:
+            for result in optouts['results']:
+                yield result
+            params = parse_cursor_params(cursor)
+            optouts = ids_client.get_optouts(params)
+            cursor = optouts['next']
+        for result in optouts['results']:
             yield result
 
     def handle_registrations(self, sheet, hub_client, ids_client,
@@ -404,4 +420,47 @@ class Command(BaseCommand):
                 4: data[key]['total_period'],
                 5: data[key]['optouts'],
                 6: data[key]['completed'],
+            })
+
+    def handle_optouts_by_subscription(
+            self, sheet, sbm_client, ids_client, start_date, end_date):
+
+        sheet.set_header([
+            "Timestamp",
+            "Subscription Message Set",
+            "Receiver's Role",
+            "Reason",
+        ])
+
+        optouts = self.get_optouts(
+            ids_client, created_at__gte=start_date.isoformat(),
+            created_at__lte=end_date.isoformat())
+
+        for optout in optouts:
+            if 'identity' not in optout or not optout['identity']:
+                message_set = "Unknown"
+                receivers_role = "Unknown"
+            else:
+                identity = self.get_identity(ids_client, optout['identity'])
+                receivers_role = identity.get('data', {}).get(
+                    'role', 'Unknown')
+                # Get the last subscription before the optout that is inactive
+                subscriptions = list(self.get_subscriptions(
+                    sbm_client, identity=optout['identity'],
+                    created_to=optout['created_at'],
+                    active=False, completed=False))
+                subscriptions.sort(key=lambda s: s['created_at'], reverse=True)
+                try:
+                    subscription = subscriptions[0]
+                except IndexError:
+                    message_set = "Unknown"
+                else:
+                    message_set = self.get_messageset(
+                        sbm_client, subscription['messageset'])['short_name']
+
+            sheet.add_row({
+                "Timestamp": optout['created_at'],
+                "Subscription Message Set": message_set,
+                "Receiver's Role": receivers_role,
+                "Reason": optout['reason'],
             })
