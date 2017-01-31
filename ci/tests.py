@@ -200,7 +200,7 @@ class GenerateReportTest(TestCase):
 
         responses.add(
             responses.GET,
-            'http://sbm.example.com/subscriptions/?foo=bar',
+            'http://sbm.example.com/subscriptions/{}'.format(path),
             match_querystring=True,
             json={
                 'count': num,
@@ -227,6 +227,50 @@ class GenerateReportTest(TestCase):
             status=200,
             content_type='application/json')
 
+    def add_blank_optouts_callback(self, next_='?foo=bar'):
+        if next_:
+            next_ = 'http://idstore.example.com/optouts/search/{}'.format(
+                next_)
+
+        responses.add(
+            responses.GET,
+            ("http://idstore.example.com/optouts/search/?"
+             "created_at__lte=2016-02-01T00%3A00%3A00%2B00%3A00&"
+             "created_at__gte=2016-01-01T00%3A00%3A00%2B00%3A00"),
+            match_querystring=True,
+            json={
+                'count': 0,
+                'next': next_,
+                'results': [],
+            },
+            status=200,
+            content_type='application/json')
+
+    def add_optouts_callback(self, path='?foo=bar', num=1):
+        optouts = [{
+            "id": "e5210c99-8d8a-40f1-8e7f-8a66c4de9e29",
+            "optout_type": "stop",
+            "identity": "8311c23d-f3c4-4cab-9e20-5208d77dcd1b",
+            "address_type": "msisdn",
+            "address": "+1234",
+            "request_source": "testsource",
+            "requestor_source_id": "1",
+            "reason": "Test reason",
+            "created_at": "2017-01-27T10:00:06.354178Z"
+        }] * num
+
+        responses.add(
+            responses.GET,
+            'http://idstore.example.com/optouts/search/{}'.format(path),
+            match_querystring=True,
+            json={
+                'count': num,
+                'next': None,
+                'results': optouts,
+            },
+            status=200,
+            content_type='application/json')
+
     def generate_report(self):
         tmp_file = self.mk_tempfile()
 
@@ -249,6 +293,7 @@ class GenerateReportTest(TestCase):
         """
         self.add_blank_registration_callback(next_=None)
         self.add_blank_subscription_callback(next_=None)
+        self.add_blank_optouts_callback(next_=None)
         self.generate_report()
         [report_email] = mail.outbox
         self.assertEqual(report_email.subject, 'The Email Subject')
@@ -285,6 +330,9 @@ class GenerateReportTest(TestCase):
         self.add_messageset_callback()
 
         self.add_identity_callback('17cf37cf-edd6-4634-88e3-f793575f7e3a')
+
+        # No opt outs, we're not testing optout by subscription
+        self.add_blank_optouts_callback(next_=None)
 
         tmp_file = self.generate_report()
 
@@ -362,6 +410,9 @@ class GenerateReportTest(TestCase):
 
         self.add_identity_callback('17cf37cf-edd6-4634-88e3-f793575f7e3a')
 
+        # No opt outs, we're not testing optout by subscription
+        self.add_blank_optouts_callback(next_=None)
+
         tmp_file = self.generate_report()
 
         # Assert headers are set
@@ -418,6 +469,9 @@ class GenerateReportTest(TestCase):
 
         self.add_identity_callback('17cf37cf-edd6-4634-88e3-f793575f7e3a')
 
+        # No opt outs, we're not testing optout by subscription
+        self.add_blank_optouts_callback(next_=None)
+
         tmp_file = self.generate_report()
 
         # Assert headers are set
@@ -436,6 +490,65 @@ class GenerateReportTest(TestCase):
         self.assertSheetRow(
             tmp_file.name, 'Enrollments', 1,
             ['prebirth', 'None', 2, 2, 0, 0])
+
+    @responses.activate
+    def test_generate_report_optout_by_subscription(self):
+        # Return no registrations or subscriptions for other reports
+        self.add_blank_registration_callback(next_=None)
+        self.add_blank_subscription_callback(next_=None)
+
+        # Optouts, first page no results to make sure that we're paging
+        self.add_blank_optouts_callback()
+        self.add_optouts_callback()
+
+        # Add identity for optout
+        self.add_identity_callback('8311c23d-f3c4-4cab-9e20-5208d77dcd1b')
+
+        # Add subscription result for identity
+        self.add_subscriptions_callback(
+            path=(
+                '?active=False&completed=False&'
+                'created_to=2017-01-27T10%3A00%3A06.354178Z&'
+                'identity=8311c23d-f3c4-4cab-9e20-5208d77dcd1b')
+        )
+
+        # Add messageset for subscription
+        self.add_messageset_callback()
+
+        tmp_file = self.generate_report()
+
+        # Assert headers are set
+        self.assertSheetRow(
+            tmp_file.name, 'Opt Outs by Subscription', 0,
+            [
+                "Timestamp",
+                "Subscription Message Set",
+                "Receiver's Role",
+                "Reason",
+            ])
+
+        # Assert row 1 is written
+        self.assertSheetRow(
+            tmp_file.name, 'Opt Outs by Subscription', 1,
+            [
+                "2017-01-27T10:00:06.354178Z",
+                "prebirth.mother.audio.10_42.tue_thu.9_11",
+                "Unknown",
+                "Test reason",
+            ])
+
+        # Assert that warning is written
+        self.assertSheetRow(
+            tmp_file.name, 'Opt Outs by Subscription', 2,
+            [
+                "NOTE: The message set is not guaranteed to be correct, as "
+                "the current structure of the data does not allow us to link "
+                "the opt out to a subscription, so this is a best-effort "
+                "guess.",
+                None,
+                None,
+                None,
+            ])
 
 
 class UtilsTests(TestCase):
