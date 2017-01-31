@@ -442,27 +442,20 @@ class Command(BaseCommand):
         outbounds = self.get_outbounds(
             ms_client,
             created_after=start_date.isoformat(),
-            created_before=end_date.isoformat(),
-            ordering='created_at'
+            created_before=end_date.isoformat()
         )
 
-        data = collections.defaultdict(partial(collections.defaultdict, int))
+        data = collections.defaultdict(dict)
         count = collections.defaultdict(int)
         for outbound in outbounds:
-
             if 'voice_speech_url' not in outbound.get('metadata', {}):
 
                 count[outbound['to_addr']] += 1
-                data[outbound['to_addr']][count[outbound['to_addr']]]\
-                    = outbound['delivered']
+                data[outbound['to_addr']][outbound['created_at']] = \
+                    outbound['delivered']
 
         if count != {}:
-            def keywithmaxval(d):
-                v = list(d.values())
-                k = list(d.keys())
-                return k[v.index(max(v))]
-
-            max_col = count[keywithmaxval(count)]
+            max_col = max(count.values())
 
             header = ['MSISDN']
             for col_idx in range(0, max_col):
@@ -474,7 +467,7 @@ class Command(BaseCommand):
 
                 row = {1: msisdn}
 
-                for key, delivered in sms_data.items():
-                    row[key+1] = 'Yes' if delivered else 'No'
+                for index, (key, state) in enumerate(sorted(sms_data.items())):
+                    row[index+2] = 'Yes' if state else 'No'
 
                 sheet.add_row(row)

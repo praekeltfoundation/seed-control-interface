@@ -217,7 +217,6 @@ class GenerateReportTest(TestCase):
         responses.add(
             responses.GET,
             ("http://ms.example.com/outbound/?"
-             "ordering=created_at&"
              "created_before=2016-02-01T00%3A00%3A00%2B00%3A00"
              "&created_after=2016-01-01T00%3A00%3A00%2B00%3A00"),
             match_querystring=True,
@@ -236,7 +235,8 @@ class GenerateReportTest(TestCase):
             outbounds.append({
                 'to_addr': 'addr',
                 'content': 'content',
-                'delivered': True if i % 2 == 0 else False
+                'delivered': True if i % 2 == 0 else False,
+                'created_at': '2016-01-01T10:30:21.{}Z'.format(i)
             })
 
         responses.add(
