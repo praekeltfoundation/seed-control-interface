@@ -513,7 +513,7 @@ class Command(BaseCommand):
                 # Get the last subscription before the optout that is inactive
                 subscriptions = list(self.get_subscriptions(
                     sbm_client, identity=optout['identity'],
-                    created_to=optout['created_at'],
+                    created_before=optout['created_at'],
                     active=False, completed=False))
                 subscriptions.sort(key=lambda s: s['created_at'], reverse=True)
                 try:
