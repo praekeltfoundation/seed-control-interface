@@ -20,7 +20,8 @@ from django.utils.dateparse import parse_datetime
 from openpyxl import Workbook
 
 from seed_services_client import (HubApiClient, IdentityStoreApiClient,
-                                  StageBasedMessagingApiClient)
+                                  StageBasedMessagingApiClient,
+                                  MessageSenderApiClient)
 
 
 def mk_validator(django_validator):
@@ -146,6 +147,10 @@ class Command(BaseCommand):
             '--sbm-url', type=mk_validator(URLValidator))
         parser.add_argument(
             '--sbm-token', type=str)
+        parser.add_argument(
+            '--ms-url', type=mk_validator(URLValidator))
+        parser.add_argument(
+            '--ms-token', type=str)
 
     def handle(self, *args, **kwargs):
         self.identity_cache = {}
@@ -156,6 +161,15 @@ class Command(BaseCommand):
         id_store_url = kwargs['identity_store_url']
         sbm_token = kwargs['sbm_token']
         sbm_url = kwargs['sbm_url']
+        ms_token = kwargs['ms_token']
+        ms_url = kwargs['ms_url']
+        start_date = kwargs['start']
+        end_date = kwargs['end']
+        output_file = kwargs['output_file']
+
+        email_recipients = kwargs['email_to']
+        email_sender = kwargs['email_from']
+        email_subject = kwargs['email_subject']
 
         if not sbm_url:
             raise CommandError(
@@ -165,13 +179,13 @@ class Command(BaseCommand):
             raise CommandError(
                 'Please make sure the --sbm-token is set.')
 
-        start_date = kwargs['start']
-        end_date = kwargs['end']
-        output_file = kwargs['output_file']
+        if not ms_url:
+            raise CommandError(
+                'Please make sure the --ms-url is set.')
 
-        email_recipients = kwargs['email_to']
-        email_sender = kwargs['email_from']
-        email_subject = kwargs['email_subject']
+        if not ms_token:
+            raise CommandError(
+                'Please make sure the --ms-token is set.')
 
         if not output_file:
             raise CommandError(
@@ -183,6 +197,7 @@ class Command(BaseCommand):
         hub_client = HubApiClient(hub_token, hub_url)
         ids_client = IdentityStoreApiClient(id_store_token, id_store_url)
         sbm_client = StageBasedMessagingApiClient(sbm_token, sbm_url)
+        ms_client = MessageSenderApiClient(ms_token, ms_url)
 
         workbook = self.workbook_class()
         sheet = workbook.add_sheet('Registrations by date', 0)
@@ -197,7 +212,10 @@ class Command(BaseCommand):
         self.handle_enrollments(sheet, sbm_client, ids_client, start_date,
                                 end_date)
 
-        sheet = workbook.add_sheet('Opt Outs by Subscription', 3)
+        sheet = workbook.add_sheet('SMS delivery per MSISDN', 3)
+        self.handle_sms_delivery_msisdn(sheet, ms_client, start_date, end_date)
+
+        sheet = workbook.add_sheet('Opt Outs by Subscription', 4)
         self.handle_optouts_by_subscription(
             sheet, sbm_client, ids_client, start_date, end_date)
 
@@ -255,6 +273,18 @@ class Command(BaseCommand):
             subscriptions = sbm_client.get_subscriptions(params)
             cursor = subscriptions['next']
         for result in subscriptions['results']:
+            yield result
+
+    def get_outbounds(self, ms_client, **kwargs):
+        outbounds = ms_client.get_outbounds(kwargs)
+        cursor = outbounds['next']
+        while cursor:
+            for result in outbounds['results']:
+                yield result
+            params = parse_cursor_params(cursor)
+            outbounds = ms_client.get_outbounds(params)
+            cursor = outbounds['next']
+        for result in outbounds['results']:
             yield result
 
     def get_optouts(self, ids_client, **kwargs):
@@ -421,6 +451,42 @@ class Command(BaseCommand):
                 5: data[key]['optouts'],
                 6: data[key]['completed'],
             })
+
+    def handle_sms_delivery_msisdn(
+            self, sheet, ms_client, start_date, end_date):
+
+        outbounds = self.get_outbounds(
+            ms_client,
+            created_after=start_date.isoformat(),
+            created_before=end_date.isoformat()
+        )
+
+        data = collections.defaultdict(dict)
+        count = collections.defaultdict(int)
+        for outbound in outbounds:
+            if 'voice_speech_url' not in outbound.get('metadata', {}):
+
+                count[outbound['to_addr']] += 1
+                data[outbound['to_addr']][outbound['created_at']] = \
+                    outbound['delivered']
+
+        if count != {}:
+            max_col = max(count.values())
+
+            header = ['MSISDN']
+            for col_idx in range(0, max_col):
+                header.append('SMS {}'.format(col_idx + 1))
+
+            sheet.set_header(header)
+
+            for msisdn, sms_data in data.items():
+
+                row = {1: msisdn}
+
+                for index, (key, state) in enumerate(sorted(sms_data.items())):
+                    row[index+2] = 'Yes' if state else 'No'
+
+                sheet.add_row(row)
 
     def handle_optouts_by_subscription(
             self, sheet, sbm_client, ids_client, start_date, end_date):

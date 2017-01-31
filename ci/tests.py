@@ -210,6 +210,47 @@ class GenerateReportTest(TestCase):
             status=200,
             content_type='application/json')
 
+    def add_blank_outbound_callback(self, next_='?foo=bar'):
+        if next_:
+            next_ = 'http://ms.example.com/outbound/{}'.format(next_)
+
+        responses.add(
+            responses.GET,
+            ("http://ms.example.com/outbound/?"
+             "created_before=2016-02-01T00%3A00%3A00%2B00%3A00"
+             "&created_after=2016-01-01T00%3A00%3A00%2B00%3A00"),
+            match_querystring=True,
+            json={
+                'count': 0,
+                'next': next_,
+                'results': [],
+            },
+            status=200,
+            content_type='application/json')
+
+    def add_outbound_callback(self, path='?foo=bar', num=1):
+        outbounds = []
+
+        for i in range(0, num):
+            outbounds.append({
+                'to_addr': 'addr',
+                'content': 'content',
+                'delivered': True if i % 2 == 0 else False,
+                'created_at': '2016-01-01T10:30:21.{}Z'.format(i)
+            })
+
+        responses.add(
+            responses.GET,
+            'http://ms.example.com/outbound/?foo=bar',
+            match_querystring=True,
+            json={
+                'count': num,
+                'next': None,
+                'results': outbounds,
+            },
+            status=200,
+            content_type='application/json')
+
     def add_messageset_callback(self):
         responses.add(
             responses.GET,
@@ -281,7 +322,9 @@ class GenerateReportTest(TestCase):
             '--email-to', 'foo@example.com',
             '--email-subject', 'The Email Subject',
             '--sbm-url', 'http://sbm.example.com/',
-            '--sbm-token', 'sbmtoken')
+            '--sbm-token', 'sbmtoken',
+            '--ms-url', 'http://ms.example.com/',
+            '--ms-token', 'mstoken')
 
         return tmp_file
 
@@ -293,6 +336,7 @@ class GenerateReportTest(TestCase):
         """
         self.add_blank_registration_callback(next_=None)
         self.add_blank_subscription_callback(next_=None)
+        self.add_blank_outbound_callback(next_=None)
         self.add_blank_optouts_callback(next_=None)
         self.generate_report()
         [report_email] = mail.outbox
@@ -330,6 +374,10 @@ class GenerateReportTest(TestCase):
         self.add_messageset_callback()
 
         self.add_identity_callback('17cf37cf-edd6-4634-88e3-f793575f7e3a')
+
+        self.add_blank_outbound_callback(next_=None)
+
+        self.add_outbound_callback()
 
         # No opt outs, we're not testing optout by subscription
         self.add_blank_optouts_callback(next_=None)
@@ -410,6 +458,10 @@ class GenerateReportTest(TestCase):
 
         self.add_identity_callback('17cf37cf-edd6-4634-88e3-f793575f7e3a')
 
+        self.add_blank_outbound_callback(next_=None)
+
+        self.add_outbound_callback()
+
         # No opt outs, we're not testing optout by subscription
         self.add_blank_optouts_callback(next_=None)
 
@@ -469,6 +521,10 @@ class GenerateReportTest(TestCase):
 
         self.add_identity_callback('17cf37cf-edd6-4634-88e3-f793575f7e3a')
 
+        self.add_blank_outbound_callback(next_=None)
+
+        self.add_outbound_callback()
+
         # No opt outs, we're not testing optout by subscription
         self.add_blank_optouts_callback(next_=None)
 
@@ -490,6 +546,63 @@ class GenerateReportTest(TestCase):
         self.assertSheetRow(
             tmp_file.name, 'Enrollments', 1,
             ['prebirth', 'None', 2, 2, 0, 0])
+
+    @responses.activate
+    def test_generate_report_sms_per_msisdn(self):
+        """
+        When generating a report, the fourth tab should be SMS delivery per
+        MSISDN, and it should have the correct information.
+        """
+        # Registrations, first page, just returns empty results to make sure
+        # we're actually paging through the results sets using the `next`
+        # parameter
+        self.add_blank_registration_callback()
+
+        # Registrations, second page, this one has the results
+        # 2 registrations for 1 operator
+        self.add_registrations_callback(num=2)
+
+        # Identity for hcw
+        self.add_identity_callback('operator_id')
+
+        # identity for receiver, for first report
+        self.add_identity_callback('receiver_id')
+
+        # Subscriptions, first page, just returns empty results to make sure
+        # we're actually paging through the results sets using the `next`
+        # parameter
+        self.add_blank_subscription_callback()
+
+        self.add_subscriptions_callback()
+
+        self.add_messageset_callback()
+
+        self.add_identity_callback('17cf37cf-edd6-4634-88e3-f793575f7e3a')
+
+        self.add_blank_outbound_callback()
+
+        self.add_outbound_callback(num=4)
+
+        # No opt outs, we're not testing optout by subscription
+        self.add_blank_optouts_callback(next_=None)
+
+        tmp_file = self.generate_report()
+
+        # Assert headers are set
+        self.assertSheetRow(
+            tmp_file.name, 'SMS delivery per MSISDN', 0,
+            [
+                'MSISDN',
+                'SMS 1',
+                'SMS 2',
+                'SMS 3',
+                'SMS 4'
+            ])
+
+        # Assert 1 row is written
+        self.assertSheetRow(
+            tmp_file.name, 'SMS delivery per MSISDN', 1,
+            ['addr', 'Yes', 'No', 'Yes', 'No'])
 
     @responses.activate
     def test_generate_report_optout_by_subscription(self):
@@ -514,6 +627,8 @@ class GenerateReportTest(TestCase):
 
         # Add messageset for subscription
         self.add_messageset_callback()
+
+        self.add_blank_outbound_callback(next_=None)
 
         tmp_file = self.generate_report()
 
