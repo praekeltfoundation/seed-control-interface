@@ -621,7 +621,7 @@ class GenerateReportTest(TestCase):
         self.add_subscriptions_callback(
             path=(
                 '?active=False&completed=False&'
-                'created_to=2017-01-27T10%3A00%3A06.354178Z&'
+                'created_before=2017-01-27T10%3A00%3A06.354178Z&'
                 'identity=8311c23d-f3c4-4cab-9e20-5208d77dcd1b')
         )
 
