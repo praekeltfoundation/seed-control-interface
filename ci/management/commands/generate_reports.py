@@ -633,8 +633,8 @@ class Command(BaseCommand):
 
             row['timestamp'] = optout['created_at']
             row['reason'] = optout['reason']
-            row['receivers'].append(
-                identity.get('details', {}).get('receiver_role'))
+            if identity['details'].get('receiver_role'):
+                row['receivers'].append(identity['details']['receiver_role'])
 
             # Try to get the registered receiver,this is a best guess effort.
             registered_receiver = self.guess_registered_receiver(
@@ -673,7 +673,8 @@ class Command(BaseCommand):
             row['loss_subscription'] = 'Yes'
             row['timestamp'] = change['created_at']
             row['reason'] = 'miscarriage'
-            row['receivers'].append(identity['details'].get('receiver_role'))
+            if identity['details'].get('receiver_role'):
+                row['receivers'].append(identity['details']['receiver_role'])
 
             # Get the message set. This is a best guess effort.
             message_set = self.guess_message_set(
@@ -708,3 +709,13 @@ class Command(BaseCommand):
                 "Receivers": ', '.join(row['receivers']),
                 "Number of Receivers": len(row['receivers']),
             })
+
+        # Add a warning to the sheet, because we cannot guarantee the best
+        # guess results
+        sheet.add_row({
+            "Timestamp": (
+                "NOTE: This data is not guaranteed to be correct, as "
+                "the current structure of the data does not allow us to link "
+                "the opt out to a subscription or registration, so this is a "
+                "best-effort guess."),
+        })
