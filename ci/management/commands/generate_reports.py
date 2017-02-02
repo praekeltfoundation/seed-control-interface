@@ -2,6 +2,7 @@ import pytz
 import calendar
 import collections
 from functools import partial
+import itertools
 
 # NOTE: Python 3 compatibility
 try:
@@ -9,6 +10,7 @@ try:
 except ImportError:
     from urllib.parse import urlparse, parse_qs
 from datetime import datetime, timedelta
+import dateutil.parser
 
 from django.conf import settings
 from django.core.mail import EmailMessage
@@ -219,6 +221,10 @@ class Command(BaseCommand):
         self.handle_optouts_by_subscription(
             sheet, sbm_client, ids_client, start_date, end_date)
 
+        sheet = workbook.add_sheet('Opt Outs by Date', 5)
+        self.handle_optouts_by_date(
+            sheet, hub_client, sbm_client, ids_client, start_date, end_date)
+
         workbook.save(output_file)
 
         if email_recipients:
@@ -297,6 +303,18 @@ class Command(BaseCommand):
             optouts = ids_client.get_optouts(params)
             cursor = optouts['next']
         for result in optouts['results']:
+            yield result
+
+    def get_changes(self, hub_client, **kwargs):
+        changes = hub_client.get_changes(kwargs)
+        cursor = changes['next']
+        while cursor:
+            for result in changes['results']:
+                yield result
+            params = parse_cursor_params(cursor)
+            changes = hub_client.get_changes(params)
+            cursor = changes['next']
+        for result in changes['results']:
             yield result
 
     def handle_registrations(self, sheet, hub_client, ids_client,
@@ -397,7 +415,7 @@ class Command(BaseCommand):
                     'personnel_code'),
                 'Facility': operator_details.get('facility_name'),
                 'State': operator_details.get('state'),
-                'Cadre': operator_details.get('role'),
+                'Cadre': operator_details.get('receiver_role'),
                 'Number of Registrations': count,
             })
 
@@ -508,8 +526,8 @@ class Command(BaseCommand):
                 receivers_role = "Unknown"
             else:
                 identity = self.get_identity(ids_client, optout['identity'])
-                receivers_role = identity.get('data', {}).get(
-                    'role', 'Unknown')
+                receivers_role = identity.get('details', {}).get(
+                    'receiver_role', 'Unknown')
                 # Get the last subscription before the optout that is inactive
                 subscriptions = list(self.get_subscriptions(
                     sbm_client, identity=optout['identity'],
@@ -540,3 +558,153 @@ class Command(BaseCommand):
                 "the opt out to a subscription, so this is a best-effort "
                 "guess."),
         })
+
+    def get_related_row(self, rows, identity_id, date):
+        def row_is_related(row):
+            """Used to filter related rows"""
+            return row.get('identity_id') == identity_id
+
+        def row_within_date(row):
+            """Used to filter rows within 1 hour"""
+            row_date = dateutil.parser(
+                datetime.fromtimestamp(row['timestamp']))
+            event_date = dateutil.parser(date)
+            diff = abs(row_date - event_date)
+            return diff < 60 * 60
+
+        valid_rows = itertools.ifilter(row_is_related, rows)
+        valid_rows = itertools.ifilter(row_within_date, valid_rows)
+        try:
+            return next(valid_rows)
+        except StopIteration:
+            return collections.defaultdict(list)
+
+    def guess_registered_receiver(self, hub_client, identity_id, date):
+        registrations = self.get_registrations(
+            hub_client, receiver_id=identity_id, created_before=date)
+        try:
+            registration = max(
+                registrations, key=lambda r: r['created_at'])
+            return registration['data'].get(
+                'msg_receiver')
+        except ValueError:
+            return None
+
+    def guess_message_set(self, sbm_client, identity_id, date):
+        subscriptions = self.get_subscriptions(
+            sbm_client, identity=identity_id, created_before=date,
+            active=False, completed=False)
+        try:
+            subscription = max(
+                subscriptions, key=lambda s: s['created_at'])
+            message_set = self.get_messageset(
+                sbm_client, subscription['messageset'])
+            return message_set['short_name']
+        except ValueError:
+            return None
+
+    def handle_optouts_by_date(
+            self, sheet, hub_client, sbm_client, ids_client, start_date,
+            end_date):
+
+        sheet.set_header([
+            "Timestamp",
+            "Registered Receiver",
+            "Opt Out Reason",
+            "Loss Subscription",
+            "Opt Out Receiver",
+            "Message Sets",
+            "Receivers",
+            "Number of Receivers",
+        ])
+
+        rows = []
+        optouts = self.get_optouts(
+            ids_client, created_at__gte=start_date.isoformat(),
+            created_at__lte=end_date.isoformat())
+        for optout in optouts:
+            identity = self.get_identity(ids_client, optout['identity'])
+            if identity.get('details', {}).get('linked_to'):
+                row = self.get_related_row(
+                    rows, identity['details']['linked_to'],
+                    optout['created_at'])
+            else:
+                row = collections.defaultdict(list)
+
+            row['timestamp'] = optout['created_at']
+            row['reason'] = optout['reason']
+            row['receivers'].append(
+                identity.get('details', {}).get('receiver_role'))
+
+            # Try to get the registered receiver,this is a best guess effort.
+            registered_receiver = self.guess_registered_receiver(
+                hub_client, optout['identity'], optout['created_at'])
+            if registered_receiver:
+                row['registered_receiver'] = registered_receiver
+
+            # If the opt out is due to miscarriage, and it's the mother opting
+            # out, then they did not subscribe to the loss message set.
+            if (
+                    optout['reason'] == 'miscarriage' and
+                    identity['details'].get('receiver_role') == 'mother'):
+                row['loss_subscription'] = 'No'
+
+            # Get the message set. This is a best guess effort.
+            message_set = self.guess_message_set(
+                sbm_client, optout['identity'], optout['created_at'])
+            if message_set:
+                row['message_sets'].append(message_set)
+
+            rows.append(row)
+
+        # If a mother selects loss subscription, she doesn't get opted out, but
+        # instead gets her subscription changed to loss.
+        changes = self.get_changes(
+            hub_client, created_after=start_date.isoformat(),
+            created_before=end_date.isoformat(), action='change_loss')
+        for change in changes:
+            identity = self.get_identity(ids_client, change['mother_id'])
+            if identity.get('details', {}).get('linked_to'):
+                row = self.get_related_row(
+                    rows, identity['details']['linked_to'],
+                    change['created_at'])
+            else:
+                row = collections.defaultdict(list)
+            row['loss_subscription'] = 'Yes'
+            row['timestamp'] = change['created_at']
+            row['reason'] = 'miscarriage'
+            row['receivers'].append(identity['details'].get('receiver_role'))
+
+            # Get the message set. This is a best guess effort.
+            message_set = self.guess_message_set(
+                sbm_client, change['mother_id'], change['created_at'])
+            if message_set:
+                row['message_sets'].append(message_set)
+
+            # Try to get the registered receiver, this is a best guess effort.
+            registered_receiver = self.guess_registered_receiver(
+                hub_client, change['mother_id'], optout['created_at'])
+            if registered_receiver:
+                row['registered_receiver'] = registered_receiver
+
+            rows.append(row)
+
+        rows.sort(key=lambda r: r['timestamp'])
+        for row in rows:
+            if all(r in row['registered_reciever'] for r in row['receivers']):
+                optout_receiver = "All messages"
+            else:
+                try:
+                    optout_receiver = "{} messages".format(row['receivers'][0])
+                except IndexError:
+                    optout_receiver = ''
+            sheet.add_row({
+                "Timestamp": row['timestamp'] or '',
+                "Registered Receiver": row['registered_receiver'] or '',
+                "Opt Out Reason": row['reason'] or '',
+                "Loss Subscription": row['loss_subscription'] or '',
+                "Opt Out Receiver": optout_receiver,
+                "Message Sets": ', '.join(row['message_sets']),
+                "Receivers": ', '.join(row['receivers']),
+                "Number of Receivers": len(row['receivers']),
+            })
