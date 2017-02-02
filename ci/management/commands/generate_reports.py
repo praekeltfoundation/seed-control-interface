@@ -714,7 +714,7 @@ class Command(BaseCommand):
         # guess results
         sheet.add_row({
             "Timestamp": (
-                "NOTE: This datais not guaranteed to be correct, as "
+                "NOTE: This data is not guaranteed to be correct, as "
                 "the current structure of the data does not allow us to link "
                 "the opt out to a subscription or registration, so this is a "
                 "best-effort guess."),
