@@ -127,12 +127,57 @@ class GenerateReportTest(TestCase):
 
         responses.add(
             responses.GET,
-            'http://hub.example.com/registrations/?foo=bar',
+            'http://hub.example.com/registrations/{}'.format(path),
             match_querystring=True,
             json={
                 'count': num,
                 'next': None,
                 'results': registrations,
+            },
+            status=200,
+            content_type='application/json')
+
+    def add_blank_changes_callback(self, next_='?foo=bar'):
+        if next_:
+            next_ = 'http://hub.example.com/changes/{}'.format(next_)
+
+        responses.add(
+            responses.GET,
+            ("http://hub.example.com/changes/?"
+             "action=change_loss"
+             "&created_before=2016-02-01T00%3A00%3A00%2B00%3A00"
+             "&created_after=2016-01-01T00%3A00%3A00%2B00%3A00"),
+            match_querystring=True,
+            json={
+                'count': 0,
+                'next': next_,
+                'results': [],
+            },
+            status=200,
+            content_type='application/json')
+
+    def add_changes_callback(self, path='?foo=bar', num=1):
+        changes = [{
+            "id": "b13e7b77-9ff6-4099-b87e-38d450f5b8cf",
+            "action": "change_loss",
+            "mother_id": "8311c23d-f3c4-4cab-9e20-5208d77dcd1b",
+            "data": {},
+            "validated": True,
+            "source": 1,
+            "created_at": "2017-01-27T10:00:06.354178Z",
+            "updated_at": "2017-01-27T10:00:06.354178Z",
+            "created_by": 1,
+            "updated_by": 1
+        }] * num
+
+        responses.add(
+            responses.GET,
+            "http://hub.example.com/changes/{}".format(path),
+            match_querystring=True,
+            json={
+                'count': num,
+                'next': None,
+                'results': changes,
             },
             status=200,
             content_type='application/json')
@@ -147,7 +192,7 @@ class GenerateReportTest(TestCase):
                     'personnel_code': 'personnel_code',
                     'facility_name': 'facility_name',
                     'default_addr_type': 'msisdn',
-                    'role': 'role',
+                    'receiver_role': 'role',
                     'state': 'state',
                     'addresses': {
                         'msisdn': {
@@ -338,6 +383,7 @@ class GenerateReportTest(TestCase):
         self.add_blank_subscription_callback(next_=None)
         self.add_blank_outbound_callback(next_=None)
         self.add_blank_optouts_callback(next_=None)
+        self.add_blank_changes_callback(next_=None)
         self.generate_report()
         [report_email] = mail.outbox
         self.assertEqual(report_email.subject, 'The Email Subject')
@@ -381,6 +427,7 @@ class GenerateReportTest(TestCase):
 
         # No opt outs, we're not testing optout by subscription
         self.add_blank_optouts_callback(next_=None)
+        self.add_blank_changes_callback(next_=None)
 
         tmp_file = self.generate_report()
 
@@ -422,7 +469,7 @@ class GenerateReportTest(TestCase):
                 'reg_type',
                 'personnel_code',
                 'facility_name',
-                'role',
+                None,
                 'state',
             ])
 
@@ -464,6 +511,7 @@ class GenerateReportTest(TestCase):
 
         # No opt outs, we're not testing optout by subscription
         self.add_blank_optouts_callback(next_=None)
+        self.add_blank_changes_callback(next_=None)
 
         tmp_file = self.generate_report()
 
@@ -527,6 +575,7 @@ class GenerateReportTest(TestCase):
 
         # No opt outs, we're not testing optout by subscription
         self.add_blank_optouts_callback(next_=None)
+        self.add_blank_changes_callback(next_=None)
 
         tmp_file = self.generate_report()
 
@@ -545,7 +594,7 @@ class GenerateReportTest(TestCase):
         # Assert 1 row is written
         self.assertSheetRow(
             tmp_file.name, 'Enrollments', 1,
-            ['prebirth', 'None', 2, 2, 0, 0])
+            ['prebirth', 'role', 2, 2, 0, 0])
 
     @responses.activate
     def test_generate_report_sms_per_msisdn(self):
@@ -585,6 +634,7 @@ class GenerateReportTest(TestCase):
 
         # No opt outs, we're not testing optout by subscription
         self.add_blank_optouts_callback(next_=None)
+        self.add_blank_changes_callback(next_=None)
 
         tmp_file = self.generate_report()
 
@@ -629,6 +679,10 @@ class GenerateReportTest(TestCase):
         self.add_messageset_callback()
 
         self.add_blank_outbound_callback(next_=None)
+        self.add_blank_changes_callback(next_=None)
+        self.add_registrations_callback(
+            path='?receiver_id=8311c23d-f3c4-4cab-9e20-5208d77dcd1b'
+            '&created_before=2017-01-27T10%3A00%3A06.354178Z', num=0)
 
         tmp_file = self.generate_report()
 
@@ -648,7 +702,7 @@ class GenerateReportTest(TestCase):
             [
                 "2017-01-27T10:00:06.354178Z",
                 "prebirth.mother.audio.10_42.tue_thu.9_11",
-                "Unknown",
+                "role",
                 "Test reason",
             ])
 
@@ -664,6 +718,80 @@ class GenerateReportTest(TestCase):
                 None,
                 None,
             ])
+
+    @responses.activate
+    def test_generate_report_optouts_by_date(self):
+        # Return no registrations or subscriptions for other reports
+        self.add_blank_registration_callback(next_=None)
+        self.add_blank_subscription_callback(next_=None)
+        self.add_blank_outbound_callback(next_=None)
+
+        # Optouts, first page no results to make sure that we're paging
+        self.add_blank_optouts_callback()
+        self.add_optouts_callback()
+
+        # Callbacks for identities
+        self.add_identity_callback('8311c23d-f3c4-4cab-9e20-5208d77dcd1b')
+
+        # Callbacks for stage based messaging
+        self.add_subscriptions_callback(
+            '?active=False&completed=False&'
+            'created_before=2017-01-27T10%3A00%3A06.354178Z&'
+            'identity=8311c23d-f3c4-4cab-9e20-5208d77dcd1b')
+        self.add_messageset_callback()
+
+        # Callbacks for registrations
+        self.add_registrations_callback(
+            '?receiver_id=8311c23d-f3c4-4cab-9e20-5208d77dcd1b&'
+            'created_before=2017-01-27T10%3A00%3A06.354178Z')
+
+        # Changes, first page no results to make sure that we're paging
+        self.add_blank_changes_callback()
+        self.add_changes_callback()
+
+        tmp_file = self.generate_report()
+        # Check headers
+        self.assertSheetRow(
+            tmp_file.name, 'Opt Outs by Date', 0,
+            [
+                "Timestamp",
+                "Registered Receiver",
+                "Opt Out Reason",
+                "Loss Subscription",
+                "Opt Out Receiver",
+                "Message Sets",
+                "Receivers",
+                "Number of Receivers",
+            ]
+        )
+        # Check optout from optout
+        self.assertSheetRow(
+            tmp_file.name, 'Opt Outs by Date', 1,
+            [
+                "2017-01-27T10:00:06.354178Z",
+                "msg_receiver",
+                "Test reason",
+                None,
+                "role messages",
+                "prebirth.mother.audio.10_42.tue_thu.9_11",
+                "role",
+                1,
+            ]
+        )
+        # Check optout from change
+        self.assertSheetRow(
+            tmp_file.name, 'Opt Outs by Date', 2,
+            [
+                "2017-01-27T10:00:06.354178Z",
+                "msg_receiver",
+                "miscarriage",
+                "Yes",
+                "role messages",
+                "prebirth.mother.audio.10_42.tue_thu.9_11",
+                "role",
+                1,
+            ]
+        )
 
 
 class UtilsTests(TestCase):
