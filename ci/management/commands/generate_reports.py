@@ -54,10 +54,10 @@ class ExportSheet(object):
         self._sheet = sheet
         self.set_header(headers or [])
 
-    def set_header(self, headers):
+    def set_header(self, headers, row=1):
         self._headers = headers
         for index, header in enumerate(headers):
-            self._sheet.cell(row=1, column=index + 1, value=header)
+            self._sheet.cell(row=row, column=index + 1, value=header)
 
     def get_header(self):
         return self._headers
@@ -217,11 +217,15 @@ class Command(BaseCommand):
         sheet = workbook.add_sheet('SMS delivery per MSISDN', 3)
         self.handle_sms_delivery_msisdn(sheet, ms_client, start_date, end_date)
 
-        sheet = workbook.add_sheet('Opt Outs by Subscription', 4)
+        sheet = workbook.add_sheet('OBD Delivery Failure', 4)
+        self.handle_obd_delivery_failure(sheet, ms_client, start_date,
+                                         end_date)
+
+        sheet = workbook.add_sheet('Opt Outs by Subscription', 5)
         self.handle_optouts_by_subscription(
             sheet, sbm_client, ids_client, start_date, end_date)
 
-        sheet = workbook.add_sheet('Opt Outs by Date', 5)
+        sheet = workbook.add_sheet('Opt Outs by Date', 6)
         self.handle_optouts_by_date(
             sheet, hub_client, sbm_client, ids_client, start_date, end_date)
 
@@ -505,6 +509,44 @@ class Command(BaseCommand):
                     row[index+2] = 'Yes' if state else 'No'
 
                 sheet.add_row(row)
+
+    def handle_obd_delivery_failure(
+            self, sheet, ms_client, start_date, end_date):
+
+        outbounds = self.get_outbounds(
+            ms_client,
+            created_after=start_date.isoformat(),
+            created_before=end_date.isoformat()
+        )
+
+        data = collections.defaultdict(int)
+        for outbound in outbounds:
+            if 'voice_speech_url' in outbound.get('metadata', {}):
+
+                data['total'] += 1.0
+                if not outbound['delivered']:
+                    data['failed'] += 1.0
+
+        if data['failed']:
+            data['rate'] = data['failed'] / data['total'] * 100
+
+        sheet.add_row({
+            1: "In the last period:",
+            2: "{} - {}".format(start_date.strftime('%Y-%m-%d'),
+                                end_date.strftime('%Y-%m-%d')),
+        })
+
+        sheet.set_header([
+            "OBDs Sent",
+            "OBDs failed",
+            "Failure rate",
+        ], row=3)
+
+        sheet.add_row({
+            1: data['total'],
+            2: data['failed'],
+            3: '{0:.2f}%'.format(data.get('rate', 0)),
+        })
 
     def handle_optouts_by_subscription(
             self, sheet, sbm_client, ids_client, start_date, end_date):
