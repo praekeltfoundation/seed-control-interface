@@ -273,7 +273,7 @@ class GenerateReportTest(TestCase):
             status=200,
             content_type='application/json')
 
-    def add_outbound_callback(self, path='?foo=bar', num=1):
+    def add_outbound_callback(self, path='?foo=bar', num=1, metadata={}):
         outbounds = []
 
         for i in range(0, num):
@@ -281,7 +281,8 @@ class GenerateReportTest(TestCase):
                 'to_addr': 'addr',
                 'content': 'content',
                 'delivered': True if i % 2 == 0 else False,
-                'created_at': '2016-01-01T10:30:21.{}Z'.format(i)
+                'created_at': '2016-01-01T10:30:21.{}Z'.format(i),
+                'metadata': metadata
             })
 
         responses.add(
@@ -653,6 +654,70 @@ class GenerateReportTest(TestCase):
         self.assertSheetRow(
             tmp_file.name, 'SMS delivery per MSISDN', 1,
             ['addr', 'Yes', 'No', 'Yes', 'No'])
+
+    @responses.activate
+    def test_generate_report_obd_delivery_failure(self):
+        # Registrations, first page, just returns empty results to make sure
+        # we're actually paging through the results sets using the `next`
+        # parameter
+        self.add_blank_registration_callback()
+
+        # Registrations, second page, this one has the results
+        # 2 registrations for 1 operator
+        self.add_registrations_callback(num=2)
+
+        # Identity for hcw
+        self.add_identity_callback('operator_id')
+
+        # identity for receiver, for first report
+        self.add_identity_callback('receiver_id')
+
+        # Subscriptions, first page, just returns empty results to make sure
+        # we're actually paging through the results sets using the `next`
+        # parameter
+        self.add_blank_subscription_callback()
+
+        self.add_subscriptions_callback()
+
+        self.add_messageset_callback()
+
+        self.add_identity_callback('17cf37cf-edd6-4634-88e3-f793575f7e3a')
+
+        self.add_blank_outbound_callback()
+
+        self.add_outbound_callback(
+            num=40,
+            metadata={'voice_speech_url': 'dummy_voice_url'})
+
+        # No opt outs, we're not testing optout by subscription
+        self.add_blank_optouts_callback(next_=None)
+        self.add_blank_changes_callback(next_=None)
+
+        tmp_file = self.generate_report()
+
+        # Assert period row
+        self.assertSheetRow(
+            tmp_file.name, 'OBD Delivery Failure', 1,
+            [
+                "In the last period:",
+                "2016-01-01 - 2016-02-01",
+                None
+            ])
+
+        # Check headers
+        self.assertSheetRow(
+            tmp_file.name, 'OBD Delivery Failure', 2,
+            [
+                "OBDs Sent",
+                "OBDs failed",
+                "Failure rate",
+            ]
+        )
+
+        # Assert 1 row is written
+        self.assertSheetRow(
+            tmp_file.name, 'OBD Delivery Failure', 3,
+            [40, 20, '50.00%'])
 
     @responses.activate
     def test_generate_report_optout_by_subscription(self):
