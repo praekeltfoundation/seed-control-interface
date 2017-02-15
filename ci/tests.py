@@ -262,8 +262,8 @@ class GenerateReportTest(TestCase):
         responses.add(
             responses.GET,
             ("http://ms.example.com/outbound/?"
-             "created_before=2016-02-01T00%3A00%3A00%2B00%3A00"
-             "&created_after=2016-01-01T00%3A00%3A00%2B00%3A00"),
+             "before=2016-02-01T00%3A00%3A00%2B00%3A00"
+             "&after=2016-01-01T00%3A00%3A00%2B00%3A00"),
             match_querystring=True,
             json={
                 'count': 0,
