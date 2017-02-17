@@ -1,0 +1,62 @@
+{% extends "ci/base.html" %}
+{% load staticfiles %}
+{% load bootstrap %}
+{% block pagetitle %}Schedule Failures{% endblock %}
+{% block content %}
+<div class="dashhead">
+  <div class="dashhead-titles">
+    <h6 class="dashhead-subtitle">Seed Control Interface</h6>
+    <h2 class="dashhead-title">Schedule Send Failures</h2>
+  </div>
+
+  <div class="btn-toolbar dashhead-toolbar">
+    <div class="btn-toolbar-item input-with-icon">
+    </div>
+  </div>
+</div>
+
+<hr class="m-t">
+
+{% if messages %}
+<div class="alert alert-success" role="alert">
+    {% for message in messages %}
+    <p{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</p>
+    {% endfor %}
+</div>
+{% endif %}
+
+
+<div class="flextable">
+  <form class="form-inline" method="post" action=".">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Requeue all failed schedule tasks</button>
+  </form>
+</div>
+<hr class="m-t">
+<div class="table-full">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Task ID</th>
+          <th>Schedule</th>
+          <th>Created</th>
+          <th>Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for failure in failures %}
+        <tr>
+          <td>{{ failure.id }}</td>
+          <td title="{{ failure.task_id }}">{{ failure.task_id|truncatechars:12 }}</td>
+          <td title="{{ failure.schedule_id }}">{{ failure.schedule_id|truncatechars:12 }}</td>
+          <td>{{ failure.initiated_at|get_date|date:"D d M Y H:i" }}</td>
+          <td>{{ failure.reason }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
