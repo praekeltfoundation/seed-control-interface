@@ -10,6 +10,7 @@ admin.site.site_header = os.environ.get('SEED_CONTROL_INTERFACE_TITLE',
 urlpatterns = patterns(
     '',
     url(r'^admin/', include(admin.site.urls)),
+    url(r'^metrics/', include('metrics.urls')),
     url(r'^', include('ci.urls')),
 )
 urlpatterns += staticfiles_urlpatterns()

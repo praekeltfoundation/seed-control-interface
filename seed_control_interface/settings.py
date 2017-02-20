@@ -42,7 +42,7 @@ INSTALLED_APPS = (
     'bootstrapform',
     # us
     'ci',
-
+    'metrics',
 )
 
 MIDDLEWARE_CLASSES = (
