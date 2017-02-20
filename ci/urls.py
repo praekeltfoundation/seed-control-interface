@@ -29,7 +29,7 @@ urlpatterns = [
         name='subscription_failures'
     ),
     url(
-        '^failures/scheduels/$',
+        '^failures/schedules/$',
         views.schedule_failures,
         name='schedule_failures'
     ),
