@@ -724,8 +724,8 @@ def subscription_failures(request):
     results = sbmApi.get_failed_tasks()
     if request.method == "POST":
         requeue = sbmApi.requeue_failed_tasks()
-        if ('requeued_failed_tasks' in requeue
-                and requeue['requeued_failed_tasks']):
+        if ('requeued_failed_tasks' in requeue and
+                requeue['requeued_failed_tasks']):
             messages.add_message(
                 request,
                 messages.INFO,
@@ -758,8 +758,8 @@ def schedule_failures(request):
     results = schdApi.get_failed_tasks()
     if request.method == "POST":
         requeue = schdApi.requeue_failed_tasks()
-        if ('requeued_failed_tasks' in requeue
-                and requeue['requeued_failed_tasks']):
+        if ('requeued_failed_tasks' in requeue and
+                requeue['requeued_failed_tasks']):
             messages.add_message(
                 request,
                 messages.INFO,
@@ -792,8 +792,8 @@ def outbound_failures(request):
     results = msApi.get_failed_tasks()
     if request.method == "POST":
         requeue = msApi.requeue_failed_tasks()
-        if ('requeued_failed_tasks' in requeue
-                and requeue['requeued_failed_tasks']):
+        if ('requeued_failed_tasks' in requeue and
+                requeue['requeued_failed_tasks']):
             messages.add_message(
                 request,
                 messages.INFO,
