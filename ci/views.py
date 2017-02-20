@@ -7,6 +7,7 @@ from django.utils.decorators import available_attrs
 from django.utils.six.moves.urllib.parse import urlparse
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.contrib.sites.shortcuts import get_current_site
+from django.contrib import messages
 from django.core.urlresolvers import reverse
 from django.utils.http import is_safe_url
 from django.utils.timezone import now
@@ -22,6 +23,8 @@ from seed_services_client.identity_store import IdentityStoreApiClient
 from seed_services_client.hub import HubApiClient
 from seed_services_client.stage_based_messaging \
     import StageBasedMessagingApiClient
+from seed_services_client.scheduler import SchedulerApiClient
+from seed_services_client.message_sender import MessageSenderApiClient
 from go_http.metrics import MetricsApiClient
 from .forms import (AuthenticationForm, IdentitySearchForm,
                     RegistrationFilterForm, SubscriptionFilterForm,
@@ -705,3 +708,105 @@ def service(request, service):
         "service_status": service_status
     })
     return render(request, 'ci/services_detail.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+def subscription_failures(request):
+    context = default_context(request.session)
+    if "SEED_STAGE_BASED_MESSAGING" not in request.session["user_tokens"]:
+        return redirect('denied')
+
+    sbmApi = StageBasedMessagingApiClient(
+        api_url=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["url"],  # noqa
+        auth_token=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["token"]  # noqa
+    )
+    results = sbmApi.get_failed_tasks()
+    if request.method == "POST":
+        requeue = sbmApi.requeue_failed_tasks()
+        if ('requeued_failed_tasks' in requeue and
+                requeue['requeued_failed_tasks']):
+            messages.add_message(
+                request,
+                messages.INFO,
+                'Successfully re-queued all subscription tasks'
+            )
+        else:
+            messages.add_message(
+                request,
+                messages.ERROR,
+                'Could not re-queued all subscription tasks'
+            )
+    context.update({
+        'failures': results['results'],
+    })
+    context.update(csrf(request))
+    return render(request, 'ci/failures_subscriptions.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+def schedule_failures(request):
+    context = default_context(request.session)
+    if "SEED_SCHEDULER" not in request.session["user_tokens"]:
+        return redirect('denied')
+
+    schdApi = SchedulerApiClient(
+        request.session["user_tokens"]["SEED_SCHEDULER"]["token"],  # noqa
+        api_url=request.session["user_tokens"]["SEED_SCHEDULER"]["url"]  # noqa
+    )
+    results = schdApi.get_failed_tasks()
+    if request.method == "POST":
+        requeue = schdApi.requeue_failed_tasks()
+        if ('requeued_failed_tasks' in requeue and
+                requeue['requeued_failed_tasks']):
+            messages.add_message(
+                request,
+                messages.INFO,
+                'Successfully re-queued all scheduler tasks'
+            )
+        else:
+            messages.add_message(
+                request,
+                messages.ERROR,
+                'Could not re-queued all scheduler tasks'
+            )
+    context.update({
+        'failures': results,
+    })
+    context.update(csrf(request))
+    return render(request, 'ci/failures_schedules.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+def outbound_failures(request):
+    context = default_context(request.session)
+    if "SEED_MESSAGE_SENDER" not in request.session["user_tokens"]:
+        return redirect('denied')
+
+    msApi = MessageSenderApiClient(
+        request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["token"],  # noqa
+        api_url=request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["url"]  # noqa
+    )
+    results = msApi.get_failed_tasks()
+    if request.method == "POST":
+        requeue = msApi.requeue_failed_tasks()
+        if ('requeued_failed_tasks' in requeue and
+                requeue['requeued_failed_tasks']):
+            messages.add_message(
+                request,
+                messages.INFO,
+                'Successfully re-queued all outbound tasks'
+            )
+        else:
+            messages.add_message(
+                request,
+                messages.ERROR,
+                'Could not re-queued all outbound tasks'
+            )
+    context.update({
+        'failures': results['results'],
+    })
+    context.update(csrf(request))
+    return render(request, 'ci/failures_outbounds.html', context)
