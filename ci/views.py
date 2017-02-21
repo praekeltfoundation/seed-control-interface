@@ -1,19 +1,20 @@
 import logging
 from datetime import timedelta
 
-from django.shortcuts import render, redirect, resolve_url
+import attr
+import dateutil.parser
+from django.contrib import messages
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.contrib.sites.shortcuts import get_current_site
-from django.contrib import messages
+from django.conf import settings
+from django.core.context_processors import csrf
 from django.core.urlresolvers import reverse
-from django.utils.http import is_safe_url
-from django.utils.timezone import now
 from django.http import HttpResponseRedirect, JsonResponse
+from django.shortcuts import render, redirect, resolve_url
 from django.template.defaulttags import register
 from django.template.response import TemplateResponse
-from django.core.context_processors import csrf
-from django.conf import settings
-import dateutil.parser
+from django.utils.http import is_safe_url
+from django.utils.timezone import now
 
 from seed_services_client.control_interface import ControlInterfaceApiClient
 from seed_services_client.identity_store import IdentityStoreApiClient
@@ -28,6 +29,7 @@ from .forms import (AuthenticationForm, IdentitySearchForm,
                     ChangeFilterForm)
 from . import utils
 from .utils import login_required, permission_required
+from metrics import models as metric_models
 
 logger = logging.getLogger(__name__)
 
@@ -222,79 +224,121 @@ def health_messages(request):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def health_subscriptions(request):
-    if request.is_ajax():
-        METRIC_SUBSCRIPTIONS_SUM = 'subscriptions.created.sum'
-        client = MetricsApiClient(settings.METRIC_API_TOKEN,
-                                  settings.METRIC_API_URL)
-        chart_type = request.GET.get('chart_type', None)
-        today = now()
-        if chart_type == 'subscriptions-today':
-            get_hours = today.hour + 24  # Include yesterday in the set.
-            subscriptions = client.get_metric(
-                METRIC_SUBSCRIPTIONS_SUM, '-%sh' % get_hours, '1h', 'zeroize')
-            today_data = utils.get_ranged_data_from_timeseries(
-                subscriptions, today, range_type='day')
-            yesterday_data = utils.get_ranged_data_from_timeseries(
-                subscriptions, today - timedelta(days=1), range_type='day')
-            return JsonResponse({
-                'Yesterday': yesterday_data,
-                'Today': today_data
-            })
-
-        elif chart_type == 'subscriptions-this-week':
-            get_days = today.weekday() + 7  # Include last week in the set.
-            subscriptions = client.get_metric(
-                METRIC_SUBSCRIPTIONS_SUM, '-%sd' % get_days, '1d', 'zeroize')
-            this_week_data = utils.get_ranged_data_from_timeseries(
-                subscriptions, today, range_type='week')
-            last_week_data = utils.get_ranged_data_from_timeseries(
-                subscriptions, today-timedelta(weeks=1), range_type='week')
-            return JsonResponse({
-                'Last week': last_week_data,
-                'This week': this_week_data
-            })
-
+    metric_client = MetricsApiClient(
+        settings.METRIC_API_TOKEN,
+        settings.METRIC_API_URL
+    )
+    SUBSCRIPTIONS_METRIC = 'subscriptions.created.sum'
+    metric_url = reverse('fetch_metric')
+    today_series = metric_models.Series(
+        key=SUBSCRIPTIONS_METRIC,
+        date_range=metric_models.DateRange.today(),
+        metric=SUBSCRIPTIONS_METRIC,
+        metric_client=metric_client,
+        kind='bar',
+    )
+    this_week_series = attr.assoc(
+        today_series,
+        date_range=metric_models.DateRange.this_week()
+    )
+    this_month_series = attr.assoc(
+        today_series,
+        date_range=metric_models.DateRange.this_month()
+    )
+    charts = [
+        metric_models.Chart(
+            title='Subscriptions: Today vs Yesterday',
+            key='subscriptions-today',
+            data=[
+                today_series,
+                today_series - 1
+            ],
+            y_axis='Subscriptions'
+        ),
+        metric_models.Chart(
+            title='Subscriptions: This Week vs Last Week',
+            key='subscriptions-this-week',
+            data=[
+                this_week_series,
+                this_week_series - 1
+            ],
+            y_axis='Subscriptions'
+        ),
+        metric_models.Chart(
+            title='Subscriptions: This Month vs Last Month',
+            key='subscriptions-this-month',
+            data=[
+                this_month_series,
+                this_month_series - 1
+            ],
+            y_axis='Subscriptions'
+        )
+    ]
     context = default_context(request.session)
-    return render(request, 'ci/health_subscriptions.html', context)
+    context['subtitle'] = 'Subscriptions'
+    context['charts'] = charts
+    context['metric_url'] = metric_url
+    return render(request, 'ci/health_metrics.html', context)
 
 
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def health_registrations(request):
-    if request.is_ajax():
-        METRIC_REGISTRATIONS_SUM = 'registrations.created.sum'
-        client = MetricsApiClient(settings.METRIC_API_TOKEN,
-                                  settings.METRIC_API_URL)
-        chart_type = request.GET.get('chart_type', None)
-        today = now()
-        if chart_type == 'registrations-today':
-            get_hours = today.hour + 24  # Include yesterday in the set.
-            registrations = client.get_metric(
-                METRIC_REGISTRATIONS_SUM, '-%sh' % get_hours, '1h', 'zeroize')
-            today_data = utils.get_ranged_data_from_timeseries(
-                registrations, today, range_type='day')
-            yesterday_data = utils.get_ranged_data_from_timeseries(
-                registrations, today - timedelta(days=1), range_type='day')
-            return JsonResponse({
-                'Yesterday': yesterday_data,
-                'Today': today_data
-            })
-
-        elif chart_type == 'registrations-this-week':
-            get_days = today.weekday() + 7  # Include last week in the set.
-            registrations = client.get_metric(
-                METRIC_REGISTRATIONS_SUM, '-%sd' % get_days, '1d', 'zeroize')
-            this_week_data = utils.get_ranged_data_from_timeseries(
-                registrations, today, range_type='week')
-            last_week_data = utils.get_ranged_data_from_timeseries(
-                registrations, today-timedelta(weeks=1), range_type='week')
-            return JsonResponse({
-                'Last week': last_week_data,
-                'This week': this_week_data
-            })
-
+    METRIC_REGISTRATIONS_SUM = 'registrations.created.sum'
+    metric_client = MetricsApiClient(
+        settings.METRIC_API_TOKEN,
+        settings.METRIC_API_URL
+    )
+    metric_url = reverse('fetch_metric')
+    today_series = metric_models.Series(
+        key=METRIC_REGISTRATIONS_SUM,
+        date_range=metric_models.DateRange.today(),
+        metric=METRIC_REGISTRATIONS_SUM,
+        metric_client=metric_client,
+        kind='bar',
+    )
+    this_week_series = attr.assoc(
+        today_series,
+        date_range=metric_models.DateRange.this_week()
+    )
+    this_month_series = attr.assoc(
+        today_series,
+        date_range=metric_models.DateRange.this_month()
+    )
+    charts = [
+        metric_models.Chart(
+            title='Registrations: Today vs Yesterday',
+            key='registrations-today',
+            data=[
+                today_series,
+                today_series - 1
+            ],
+            y_axis='Registrations'
+        ),
+        metric_models.Chart(
+            title='Registrations: This Week vs Last Week',
+            key='registrations-this-week',
+            data=[
+                this_week_series,
+                this_week_series - 1
+            ],
+            y_axis='Registrations'
+        ),
+        metric_models.Chart(
+            title='Registrations: This Month vs Last Month',
+            key='registrations-this-month',
+            data=[
+                this_month_series,
+                this_month_series - 1
+            ],
+            y_axis='Registrations'
+        )
+    ]
     context = default_context(request.session)
-    return render(request, 'ci/health_registrations.html', context)
+    context['subtitle'] = 'Registrations'
+    context['charts'] = charts
+    context['metric_url'] = metric_url
+    return render(request, 'ci/health_metrics.html', context)
 
 
 @login_required(login_url='/login/')

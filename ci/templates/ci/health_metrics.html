@@ -1,0 +1,38 @@
+{% extends "ci/base.html" %}
+{% load staticfiles %}
+{% load charts %}
+{% block pagetitle %}System Health - Overview{% endblock %}
+{% block content %}
+<div class="dashhead">
+  <div class="dashhead-titles">
+    <h6 class="dashhead-subtitle">Seed Control Interface</h6>
+    <h2 class="dashhead-title">System Health &mdash; {{ subtitle }}</h2>
+  </div>
+
+  <div class="btn-toolbar dashhead-toolbar">
+    <div class="btn-toolbar-item input-with-icon">&nbsp;
+      <!-- <input type="text" value="01/01/15 - 01/08/15" class="form-control" data-provide="datepicker">
+      <span class="icon icon-calendar"></span> -->
+    </div>
+  </div>
+</div>
+
+<hr class="m-t">
+
+<div class="charts">
+  {% for chart in charts %}
+    {% chart_html chart=chart %}
+  {% endfor %}
+</div>
+<script src="{% static "metrics/js/highcharts.js" %}"></script>
+<script src="{% static "metrics/js/metrics.js" %}"></script>
+<script type="text/javascript">
+  var charts = [];
+  {% for chart in charts %}
+    charts.push({% chart_js chart=chart %});
+  {% endfor %}
+  $(function () {
+    updateAllCharts('{{ metric_url }}', charts);
+  });
+</script>
+{% endblock %}
