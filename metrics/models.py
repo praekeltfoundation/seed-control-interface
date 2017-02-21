@@ -17,6 +17,7 @@ def right_pad_list(lst, length, value):
 @attr.s
 class DateRange(object):
     kind = attr.ib()
+    date = attr.ib()
     start = attr.ib()
     end = attr.ib()
     interval = attr.ib()
@@ -94,7 +95,7 @@ class DateRange(object):
             else:
                 title = self.start.strftime('%b %Y')
         elif self.kind == self.WEEK:
-            title = 'Week of {0}'.format(self.start.date.strftime('%d %b %Y'))
+            title = 'Week of {0}'.format(self.start.strftime('%d %b %Y'))
         elif self.kind == self.DAY:
             if self.start.date() == now.date():
                 title = 'Today'
@@ -110,6 +111,7 @@ class DateRange(object):
         end = start + relativedelta(months=1)
         return cls(
             kind=cls.MONTH,
+            date=dt,
             start=start,
             end=end,
             interval=cls.INTERVAL_DAY
@@ -122,6 +124,7 @@ class DateRange(object):
         end = start + relativedelta(weeks=1)
         return cls(
             kind=cls.WEEK,
+            date=dt,
             start=start,
             end=end,
             interval=cls.INTERVAL_DAY
@@ -133,6 +136,7 @@ class DateRange(object):
         end = start + relativedelta(days=1)
         return cls(
             kind=cls.DAY,
+            date=dt,
             start=start,
             end=end,
             interval=cls.INTERVAL_HOUR
@@ -168,6 +172,7 @@ class Series(object):
     metric = attr.ib()
     metric_client = attr.ib()
     kind = attr.ib()
+    interval = attr.ib(default=0)
     nulls = attr.ib(default='zeroize')
 
     BAR = 'bar'
@@ -181,7 +186,11 @@ class Series(object):
             )
             raise TypeError(msg)
 
-        return attr.assoc(self, date_range=self.date_range + other)
+        return attr.assoc(
+            self,
+            date_range=self.date_range + other,
+            interval=other
+        )
 
     def __sub__(self, other):
         if not isinstance(other, int):
@@ -191,7 +200,11 @@ class Series(object):
             )
             raise TypeError(msg)
 
-        return attr.assoc(self, date_range=self.date_range - other)
+        return attr.assoc(
+            self,
+            date_range=self.date_range - other,
+            interval=-other
+        )
 
     def fetch(self):
         self._metric_data = self.metric_client.get_metric(
@@ -211,6 +224,10 @@ class Series(object):
         return self._metric_data
 
     def _prepare_values(self):
+        if self.metric not in self._data:
+            self._values = right_pad_list([], self.date_range.count, 0)
+            return
+
         data = [point['y'] for point in self._data[self.metric]]
         self._values = right_pad_list(data, self.date_range.count, 0)
 
@@ -219,6 +236,10 @@ class Series(object):
         if not hasattr(self, '_values') or self._values is None:
             self._prepare_values()
         return self._values
+
+    @property
+    def empty_values(self):
+        return [0] * self.date_range.count
 
     def _prepare_keys(self):
         self._keys = self.date_range.keys

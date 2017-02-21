@@ -1,6 +1,6 @@
 Highcharts.chart('{{ chart.key }}', {
   chart: {
-    type: 'column'
+    type: 'column',
   },
 
   title: {
@@ -8,7 +8,7 @@ Highcharts.chart('{{ chart.key }}', {
   },
 
   xAxis: {
-    categories: {{ chart.data.0.keys }}
+    categories: {{ chart.data.0.keys|safe }}
   },
 
   yAxis: {
@@ -43,7 +43,11 @@ Highcharts.chart('{{ chart.key }}', {
   {% for series in chart.data %}
     {
       name: '{{ series.title }}',
-      data: {{ series.values|safe }}
+      data: {{ series.empty_values|safe }},
+      ciMetric: '{{ series.metric }}',
+      ciKind: '{{ series.date_range.kind }}',
+      ciDate: '{{ series.date_range.date|date:"Ymd" }}',
+      ciInteval: '{{ series.interval }}'
     {% if forloop.last %}
     }
     {% else %}
