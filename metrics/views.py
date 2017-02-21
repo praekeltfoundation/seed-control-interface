@@ -11,8 +11,8 @@ from . import models
 logger = logging.getLogger(__name__)
 
 
-# @login_required(login_url='/login/')
-# @permission_required(permission='ci:view', login_url='/login/')
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
 def fetch_metric(request):
     metric_client = MetricsApiClient(
         settings.METRIC_API_TOKEN,
