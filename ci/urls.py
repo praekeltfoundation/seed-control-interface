@@ -23,6 +23,21 @@ urlpatterns = [
     url(r'^changes/(?P<change>[^/]+)/$', views.change,
         name='changes-detail'),
     url('^subscriptions/$', views.subscriptions, name='subscriptions'),
+    url(
+        '^failures/subscriptions/$',
+        views.subscription_failures,
+        name='subscription_failures'
+    ),
+    url(
+        '^failures/schedules/$',
+        views.schedule_failures,
+        name='schedule_failures'
+    ),
+    url(
+        '^failures/outbound/$',
+        views.outbound_failures,
+        name='outbound_failures'
+    ),
     url(r'^subscriptions/(?P<subscription>[^/]+)/$', views.subscription,
         name='subscriptions-detail'),
     url('^services/$', views.services, name='services'),

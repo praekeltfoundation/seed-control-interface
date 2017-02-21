@@ -74,6 +74,13 @@
               <li class="nav-header">Subscriptions</li>
               {% url 'subscriptions' as url %}
               <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">View</a></li>
+              <li class="nav-header">Send Task Failures</li>
+              {% url 'schedule_failures' as url %}
+              <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">Schedules</a></li>
+              {% url 'subscription_failures' as url %}
+              <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">Subscriptions</a></li>
+              {% url 'outbound_failures' as url %}
+              <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">Outbounds</a></li>
               <li class="nav-header">More</li>
               {% url 'services' as url %}
               <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">Service Status</a></li>
