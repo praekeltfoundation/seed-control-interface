@@ -214,6 +214,10 @@ class Series(object):
             self.nulls,
             self.date_range.end.strftime('%Y%m%d')
         )
+        # Remove the last datapoint as it will be a zero holder for the next
+        # day of the week, day of the month or hour of the next day.
+        if self.metric in self._metric_data:
+            self._metric_data[self.metric].pop()
         self._values = None
         self._keys = None
 
