@@ -4,5 +4,5 @@ from . import views
 
 
 urlpatterns = [
-    url(r'^(?P<key>[\w-]+)/$', views.fetch_metric, name='fetch_metric'),
+    url(r'^$', views.fetch_metric, name='fetch_metric'),
 ]

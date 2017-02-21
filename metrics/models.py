@@ -1,6 +1,8 @@
 import attr
 
 from calendar import monthrange
+from datetime import timedelta
+from dateutil.parser import parse
 from dateutil.relativedelta import relativedelta, MO
 from django.utils import timezone
 
@@ -81,6 +83,27 @@ class DateRange(object):
             keys = range(0, self.count)
         return keys
 
+    @property
+    def title(self):
+        now = timezone.now()
+        if self.kind == self.MONTH:
+            if self.start.month == now.month:
+                title = 'This Month'
+            elif self.start.month == (now.month - 1):
+                title = 'Last Month'
+            else:
+                title = self.start.strftime('%b %Y')
+        elif self.kind == self.WEEK:
+            title = 'Week of {0}'.format(self.start.date.strftime('%d %b %Y'))
+        elif self.kind == self.DAY:
+            if self.start.date() == now.date():
+                title = 'Today'
+            elif self.start.date() == (now.date() - timedelta(days=1)):
+                title = 'Yesterday'
+            else:
+                title = self.start.strftime('%d %b %Y')
+        return title
+
     @classmethod
     def month(cls, dt):
         start = dt.replace(day=1)
@@ -126,6 +149,16 @@ class DateRange(object):
     @classmethod
     def today(cls):
         return cls.day(timezone.now())
+
+    @classmethod
+    def from_string(cls, date, kind):
+        parsed = parse(date)
+        if kind == cls.DAY:
+            return cls.day(parsed)
+        elif kind == cls.WEEK:
+            return cls.week(parsed)
+        elif kind == cls.MONTH:
+            return cls.month(parsed)
 
 
 @attr.s
@@ -179,7 +212,7 @@ class Series(object):
 
     def _prepare_values(self):
         data = [point['y'] for point in self._data[self.metric]]
-        self._values = right_pad_list(data, self.date_range.count, '0')
+        self._values = right_pad_list(data, self.date_range.count, 0)
 
     @property
     def values(self):
@@ -196,10 +229,14 @@ class Series(object):
             self._prepare_keys()
         return self._keys
 
+    @property
+    def title(self):
+        return self.date_range.title
+
 
 @attr.s
 class Chart(object):
-    data = attr.ib()
     title = attr.ib()
-    x_axis = attr.ib()
+    key = attr.ib()
+    data = attr.ib()
     y_axis = attr.ib()
