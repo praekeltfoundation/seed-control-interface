@@ -1,0 +1,37 @@
+{% extends "ci/base.html" %}
+{% load staticfiles %}
+{% load bootstrap %}
+{% block pagetitle %}Report Generation{% endblock %}
+{% block content %}
+<div class="dashhead">
+  <div class="dashhead-titles">
+    <h6 class="dashhead-subtitle">Seed Control Interface</h6>
+    <h2 class="dashhead-title">Report Generation</h2>
+  </div>
+
+  <div class="btn-toolbar dashhead-toolbar">
+    <div class="btn-toolbar-item input-with-icon">
+    </div>
+  </div>
+</div>
+
+<hr class="m-t">
+
+<div class="row text-center m-t-lg">
+  <p>
+    Request generation of the reports for the given date range.</br>
+    The reports will be emailed to recipients if they are specified.
+  </p>
+</div>
+
+<div class="flextable">
+  <form class="form-inline" method="post" action=".">
+    {% csrf_token %}
+    {{ form|bootstrap_inline }}
+    <button type="submit" class="btn btn-default">Generate Reports</button>
+  </form>
+</div>
+<hr class="m-t">
+
+
+{% endblock %}

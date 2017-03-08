@@ -28,7 +28,7 @@ from seed_services_client.message_sender import MessageSenderApiClient
 from go_http.metrics import MetricsApiClient
 from .forms import (AuthenticationForm, IdentitySearchForm,
                     RegistrationFilterForm, SubscriptionFilterForm,
-                    ChangeFilterForm)
+                    ChangeFilterForm, ReportGenerationForm)
 from . import utils
 
 logger = logging.getLogger(__name__)
@@ -810,3 +810,54 @@ def outbound_failures(request):
     })
     context.update(csrf(request))
     return render(request, 'ci/failures_outbounds.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+def report_generation(request):
+    context = default_context(request.session)
+    if "HUB" not in request.session["user_tokens"]:
+        return redirect('denied')
+
+    if request.method == "POST":
+        form = ReportGenerationForm(request.POST)
+        if form.is_valid():
+            # expected data format:
+            # string 'YYYY-MM-DD' for date_string
+            # string for output_file
+            # list of email addresses for email_to
+            # email address for email_from
+            # string for email_subject
+            data = {
+                "start_date": form.cleaned_data['start_date'],
+                "end_date": form.cleaned_data['end_date'],
+                "output_file": form.cleaned_data['output_file'],
+                "email_to": form.cleaned_data['email_to'],
+                "email_from": form.cleaned_data['email_from'],
+                "email_subject": form.cleaned_data['email_subject']
+            }
+            hubApi = HubApiClient(
+                request.session["user_tokens"]["HUB"]["token"],
+                api_url=request.session["user_tokens"]["HUB"]["url"])
+            results = hubApi.trigger_report_generation(data)
+            if 'report_generation_requested' in results:
+                messages.add_message(
+                    request,
+                    messages.INFO,
+                    'Successfully re-queued all outbound tasks'
+                )
+            else:
+                messages.add_message(
+                    request,
+                    messages.ERROR,
+                    'Could not start report generation'
+                )
+        else:
+            results = {"count": form.errors}
+    else:
+        form = ReportGenerationForm()
+    context.update({
+        "form": form
+    })
+    context.update(csrf(request))
+    return render(request, 'ci/reports.html', context)

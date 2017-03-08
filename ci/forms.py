@@ -136,3 +136,24 @@ class SubscriptionFilterForm(forms.Form):
     completed = forms.ChoiceField(
         choices=COMPLETED_CHOICES, required=False
     )
+
+
+class ReportGenerationForm(forms.Form):
+    output_file = forms.CharField(
+        widget=forms.TextInput(attrs={'placeholder': 'Name of output file'}),
+        required=True)
+    start_date = forms.CharField(
+        widget=forms.TextInput(attrs={'placeholder': 'YYYY-MM-DD'}),
+        required=False)
+    end_date = forms.CharField(
+        widget=forms.TextInput(attrs={'placeholder': 'YYYY-MM-DD'}),
+        required=False)
+    email_to = forms.EmailField(
+        widget=forms.EmailInput(attrs={'placeholder': 'Recipient emails'}),
+        required=False)
+    email_from = forms.EmailField(
+        widget=forms.EmailInput(attrs={'placeholder': 'Address the email is from'}),
+        required=False)
+    email_subject = forms.CharField(
+        widget=forms.TextInput(attrs={'placeholder': 'Subject for email'}),
+        required=False)
