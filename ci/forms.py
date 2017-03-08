@@ -152,7 +152,8 @@ class ReportGenerationForm(forms.Form):
         widget=forms.EmailInput(attrs={'placeholder': 'Recipient emails'}),
         required=False)
     email_from = forms.EmailField(
-        widget=forms.EmailInput(attrs={'placeholder': 'Address the email is from'}),
+        widget=forms.EmailInput(attrs={
+            'placeholder': 'Address the email is from'}),
         required=False)
     email_subject = forms.CharField(
         widget=forms.TextInput(attrs={'placeholder': 'Subject for email'}),
