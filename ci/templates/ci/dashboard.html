@@ -87,7 +87,10 @@
       // Multiple 'last' metrics per widget doesn't make sense, use the first
       return widget.metrics[0].values;
     });
-  var lines = sapphire.widgets.lines();
+  var lines = sapphire.widgets.lines()
+    .key(function(d) {
+      return d.key;
+    });
   var pie = sapphire.widgets.pie()
     // Format percentages nicely even if they have no data
     .percentFormat(function(value) {
@@ -96,6 +99,9 @@
       }
       var f = d3.format('.0%');
       return f(value);
+    })
+    .key(function(d) {
+      return d.key;
     });
   var bars = sapphire.widgets.bars()
     .values(function(widget) {
