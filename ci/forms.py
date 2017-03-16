@@ -3,7 +3,8 @@ from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
 from seed_services_client.auth import AuthApiClient
 from demands import HTTPServiceError
-
+from bootstrap_datepicker.widgets import DatePicker
+from django.contrib.postgres.forms import SimpleArrayField
 
 class AuthenticationForm(forms.Form):
     """
@@ -142,14 +143,13 @@ class ReportGenerationForm(forms.Form):
     output_file = forms.CharField(
         widget=forms.TextInput(attrs={'placeholder': 'Name of output file'}),
         required=True)
-    start_date = forms.CharField(
-        widget=forms.TextInput(attrs={'placeholder': 'YYYY-MM-DD'}),
+    start_date = forms.DateField(
+        widget=DatePicker(options={'placeholder': 'YYYY/MM/DD','format': 'yyyy/mm/dd','autoclose': True}),
         required=False)
-    end_date = forms.CharField(
-        widget=forms.TextInput(attrs={'placeholder': 'YYYY-MM-DD'}),
+    end_date = forms.DateField(
+        widget=DatePicker(options={'placeholder': 'YYYY/MM/DD','format': 'yyyy/mm/dd','autoclose': True}),
         required=False)
-    email_to = forms.EmailField(
-        widget=forms.EmailInput(attrs={'placeholder': 'Recipient emails'}),
+    email_to = SimpleArrayField(forms.EmailField(),
         required=False)
     email_from = forms.EmailField(
         widget=forms.EmailInput(attrs={

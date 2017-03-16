@@ -17,21 +17,90 @@
 
 <hr class="m-t">
 
-<div class="row text-center m-t-lg">
-  <p>
-    Request generation of the reports for the given date range.</br>
-    The reports will be emailed to recipients if they are specified.
-  </p>
-</div>
+<form class="form-horizontal" method="post" action=".">
+  <div class="row col-md-8 col-md-offset-2">
+    <div class="panel panel-default ">
+      
+        <ul class="list-group">
+          <li class="list-group-item">
+            Request generation of the reports for the given date range. The reports will be emailed to recipients if they are specified.
+          </li>
+          <li class="list-group-item">
+            <div class="top-buffer-10">
+              {% csrf_token %}
+              {{ form|bootstrap_horizontal:'col-md-3' }}
 
-<div class="flextable">
-  <form class="form-inline" method="post" action=".">
-    {% csrf_token %}
-    {{ form|bootstrap_inline }}
-    <button type="submit" class="btn btn-default">Generate Reports</button>
-  </form>
-</div>
+              <div class="email-to hide">
+                <div class="input-group control-group email-to-group">
+                  <input type="text" class="form-control email-fields" placeholder="Recipient email">
+                  <div class="input-group-btn"> 
+                    <button class="btn btn-success add-more" type="button"><i class="fa fa-plus" aria-hidden="true"></i></button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="copy-fields hide">
+                <div class="control-group top-buffer-10 input-group">
+                  <input type="text" class="form-control email-fields" placeholder="Recipient email">
+                  <div class="input-group-btn"> 
+                    <button class="btn btn-danger remove" type="button"><i class="fa fa-times" aria-hidden="true"></i></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+          </li>
+        </ul>
+        <div class="panel-footer">
+          <button type="submit" class="btn btn-primary generate"><i class="fa fa-cogs" aria-hidden="true"></i> Generate Reports</button>
+        </div>
+      
+    </div>
+  </div>
+</form>
 <hr class="m-t">
+<script type="text/javascript">
+ 
+    $(document).ready(function() {
+      
+      if ($('#id_email_to').val() != '') {
+        
+        var emails = $("#id_email_to").val().split(",");
+        $.each(emails,function(i){
+          var html = $(".copy-fields").html();
+          $(".email-to-group").after(html);
+          $(".email-fields").each(function(i){
+            $(this).attr('value', emails[i]);
+          });
+        });
+        $('.input-group:last-child').remove();
+      };
 
+      var html = $(".email-to").html();
+      $("#id_email_to").after(html);
+      $("#id_email_to").addClass("hide");
+      
+      $(".add-more").click(function(){ 
+          var html = $(".copy-fields").html();
+          $(".email-to-group").after(html);
+      });
+      
+      $("body").on("click",".remove",function(){ 
+          $(this).parents(".control-group").remove();
+      });
+      
+      $("body").on("click",".generate",function(){
+        $(".form-horizontal *").filter(".email-fields").each(function(){
+          if ($(this).val() == '')
+            $(this).parents(".control-group").remove();
+            $("#id_email_to").val($('.email-fields').map( function() {
+                return this.value;
+              }).get().join(","));
+        });
+      });
+ 
+    });
+ 
+</script>
 
 {% endblock %}
