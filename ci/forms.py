@@ -6,6 +6,7 @@ from demands import HTTPServiceError
 from bootstrap_datepicker.widgets import DatePicker
 from django.contrib.postgres.forms import SimpleArrayField
 
+
 class AuthenticationForm(forms.Form):
     """
     Base class for authenticating users. Extend this to get a form that accepts
@@ -144,13 +145,16 @@ class ReportGenerationForm(forms.Form):
         widget=forms.TextInput(attrs={'placeholder': 'Name of output file'}),
         required=True)
     start_date = forms.DateField(
-        widget=DatePicker(options={'placeholder': 'YYYY/MM/DD','format': 'yyyy/mm/dd','autoclose': True}),
+        widget=DatePicker(options={
+            'placeholder': 'YYYY/MM/DD', 'format': 'yyyy/mm/dd',
+            'autoclose': True}),
         required=False)
     end_date = forms.DateField(
-        widget=DatePicker(options={'placeholder': 'YYYY/MM/DD','format': 'yyyy/mm/dd','autoclose': True}),
+        widget=DatePicker(options={
+            'placeholder': 'YYYY/MM/DD', 'format': 'yyyy/mm/dd',
+            'autoclose': True}),
         required=False)
-    email_to = SimpleArrayField(forms.EmailField(),
-        required=False)
+    email_to = SimpleArrayField(forms.EmailField(), required=False)
     email_from = forms.EmailField(
         widget=forms.EmailInput(attrs={
             'placeholder': 'Address the email is from'}),
