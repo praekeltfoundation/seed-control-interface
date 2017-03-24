@@ -498,21 +498,34 @@ def identity(request, identity):
             subscriptions = sbmApi.get_subscriptions(params=sbm_filter)
             if results is None:
                 return redirect('not_found')
-            page_no = int(request.GET.get("page", 0))
-            ms_filter = {
-                "to_addr": get_identity_addresses(results).keys(),
-                "ordering": "-created_at",
-                "offset": page_no*100,
-                "limit": 100,
-            }
-            messages = msApi.get_outbounds(params=ms_filter)
+            # Get filters for pagination from session if needed
+            if request.GET.get("next", None) is not None and \
+                    request.session['next_outbound_params'] is not None:
+                ms_filter = request.session['next_outbound_params']
+            elif request.GET.get("prev", None) is not None and \
+                    request.session['prev_outbound_params'] is not None:
+                ms_filter = request.session['prev_outbound_params']
+            else:
+                ms_filter = {
+                    "to_addr": get_identity_addresses(results).keys(),
+                    "ordering": "-created_at",
+                    "limit": 100,
+                }
+
+            outbounds = msApi.get_outbounds(params=ms_filter)
+
+            # Store next and previous filters in session for pagination
+            request.session['prev_outbound_params'] = \
+                utils.get_params_from_url(outbounds.get('next', ""))
+            request.session['prev_outbound_params'] = \
+                utils.get_params_from_url(outbounds.get('previous', ""))
         context.update({
             "identity": results,
             "registrations": registrations,
             "changes": changes,
             "messagesets": messagesets,
             "subscriptions": subscriptions,
-            "outbounds": messages,
+            "outbounds": outbounds,
         })
         context.update(csrf(request))
         return render(request, 'ci/identities_detail.html', context)
