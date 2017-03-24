@@ -498,9 +498,12 @@ def identity(request, identity):
             subscriptions = sbmApi.get_subscriptions(params=sbm_filter)
             if results is None:
                 return redirect('not_found')
+            page_no = int(request.GET.get("page", 0))
             ms_filter = {
                 "to_addr": get_identity_addresses(results).keys(),
-                "ordering": "-created_at"
+                "ordering": "-created_at",
+                "offset": page_no*100,
+                "limit": 100,
             }
             messages = msApi.get_outbounds(params=ms_filter)
         context.update({
