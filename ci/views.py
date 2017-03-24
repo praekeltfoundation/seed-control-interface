@@ -475,6 +475,10 @@ def identity(request, identity):
             api_url=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["url"],  # noqa
             auth_token=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["token"]  # noqa
         )
+        msApi = MessageSenderApiClient(
+            api_url=request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["url"],
+            auth_token=request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["token"]
+        )
         messagesets_results = sbmApi.get_messagesets()
         messagesets = {}
         for messageset in messagesets_results["results"]:
@@ -494,12 +498,18 @@ def identity(request, identity):
             subscriptions = sbmApi.get_subscriptions(params=sbm_filter)
             if results is None:
                 return redirect('not_found')
+            ms_filter = {
+                "to_addr": get_identity_addresses(results).keys(),
+                "ordering": "-created_at"
+            }
+            messages = msApi.get_outbounds(params=ms_filter)
         context.update({
             "identity": results,
             "registrations": registrations,
             "changes": changes,
             "messagesets": messagesets,
-            "subscriptions": subscriptions
+            "subscriptions": subscriptions,
+            "outbounds": messages,
         })
         context.update(csrf(request))
         return render(request, 'ci/identities_detail.html', context)
