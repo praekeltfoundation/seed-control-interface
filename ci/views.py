@@ -476,8 +476,8 @@ def identity(request, identity):
             auth_token=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["token"]  # noqa
         )
         msApi = MessageSenderApiClient(
-            api_url=request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["url"],
-            auth_token=request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["token"]
+            api_url=request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["url"],  # noqa
+            auth_token=request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["token"]  # noqa
         )
         messagesets_results = sbmApi.get_messagesets()
         messagesets = {}
