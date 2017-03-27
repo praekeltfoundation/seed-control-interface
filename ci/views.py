@@ -515,7 +515,7 @@ def identity(request, identity):
             outbounds = msApi.get_outbounds(params=ms_filter)
 
             # Store next and previous filters in session for pagination
-            request.session['prev_outbound_params'] = \
+            request.session['next_outbound_params'] = \
                 utils.get_params_from_url(outbounds.get('next', ""))
             request.session['prev_outbound_params'] = \
                 utils.get_params_from_url(outbounds.get('previous', ""))
