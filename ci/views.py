@@ -509,7 +509,7 @@ def identity(request, identity):
                 ms_filter = {
                     "to_addr": get_identity_addresses(results).keys(),
                     "ordering": "-created_at",
-                    "limit": 100,
+                    "limit": settings.MESSAGES_PER_IDENTITY,
                 }
 
             outbounds = msApi.get_outbounds(params=ms_filter)
