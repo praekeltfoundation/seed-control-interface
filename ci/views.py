@@ -454,6 +454,28 @@ def identities(request):
         return render(request, 'ci/identities.html', context)
 
 
+def create_outbound_messages_filter(request, identity):
+    """
+    Has a look at the request to see if the next/previous page of outbound
+    messages was requested, else get the first page of outbound messages for
+    the given identity.
+    """
+    if request.GET.get("outbound_next", None) is not None and \
+            request.session['next_outbound_params'] is not None:
+        return request.session['next_outbound_params']
+    if request.GET.get("outbound_prev", None) is not None and \
+            request.session['prev_outbound_params'] is not None:
+        return request.session['prev_outbound_params']
+
+    addresses = get_identity_addresses(identity).keys()
+    if addresses:
+        return {
+            "to_addr": addresses,
+            "ordering": "-created_at",
+            "limit": settings.MESSAGES_PER_IDENTITY,
+        }
+
+
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def identity(request, identity):
@@ -498,34 +520,26 @@ def identity(request, identity):
             subscriptions = sbmApi.get_subscriptions(params=sbm_filter)
             if results is None:
                 return redirect('not_found')
-            # Get filters for pagination from session if needed
-            if request.GET.get("next", None) is not None and \
-                    request.session['next_outbound_params'] is not None:
-                ms_filter = request.session['next_outbound_params']
-            elif request.GET.get("prev", None) is not None and \
-                    request.session['prev_outbound_params'] is not None:
-                ms_filter = request.session['prev_outbound_params']
-            else:
-                ms_filter = {
-                    "to_addr": get_identity_addresses(results).keys(),
-                    "ordering": "-created_at",
-                    "limit": settings.MESSAGES_PER_IDENTITY,
-                }
 
-            outbounds = msApi.get_outbounds(params=ms_filter)
+            outbound_filter = create_outbound_messages_filter(request, results)
+            if outbound_filter is not None:
+                outbound_messages = msApi.get_outbounds(params=outbound_filter)
+            else:
+                outbound_messages = {}
 
             # Store next and previous filters in session for pagination
             request.session['next_outbound_params'] = \
-                utils.get_params_from_url(outbounds.get('next', ""))
+                utils.extract_query_params(outbound_messages.get('next', ""))
             request.session['prev_outbound_params'] = \
-                utils.get_params_from_url(outbounds.get('previous', ""))
+                utils.extract_query_params(outbound_messages.get(
+                    'previous', ""))
         context.update({
             "identity": results,
             "registrations": registrations,
             "changes": changes,
             "messagesets": messagesets,
             "subscriptions": subscriptions,
-            "outbounds": outbounds,
+            "outbound_messages": outbound_messages,
         })
         context.update(csrf(request))
         return render(request, 'ci/identities_detail.html', context)

@@ -185,7 +185,7 @@
         </tr>
       </thead>
       <tbody>
-        {% for outbound in outbounds.results %}
+        {% for outbound in outbound_messages.results %}
         <tr>
           <td>{{ outbound.to_addr }}</td>
           <td>{{ outbound.delivered }}</td>

@@ -104,7 +104,7 @@ def get_ranged_data_from_timeseries(timeseries, dt, range_type='week'):
     return right_pad_list(sent_data, length=padding, value=0)
 
 
-def get_params_from_url(url_str):
+def extract_query_params(url_str):
     if url_str is None:
         return {}
     return parse_qs(urlparse(url_str).query)

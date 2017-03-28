@@ -227,7 +227,7 @@ class ViewTests(TestCase):
         self.add_outbounds_callback(num=1, path='&offset=100', next_msgs=200)
 
         # Navigate to the next page
-        response = self.client.get("/identities/operator_id/?next",
+        response = self.client.get("/identities/operator_id/?outbound_next",
                                    follow=True)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Sun 01 Jan 2017 10:30")
@@ -256,7 +256,7 @@ class ViewTests(TestCase):
         self.add_outbounds_callback(num=1, path='&offset=100', prev_msgs=0)
 
         # Navigate to the previous page
-        response = self.client.get("/identities/operator_id/?prev",
+        response = self.client.get("/identities/operator_id/?outbound_prev",
                                    follow=True)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Sun 01 Jan 2017 10:30")
