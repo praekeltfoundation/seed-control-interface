@@ -454,6 +454,29 @@ def identities(request):
         return render(request, 'ci/identities.html', context)
 
 
+def create_inbound_messages_filter(request, identity):
+    """
+    Has a look at the request to see if the next/previous page of inbound
+    messages was requested, else get the first page of inbound messages for
+    the given identity.
+    """
+    if (
+            request.GET.get('inbound_next') is not None and
+            request.session.get('inbound_next_params') is not None):
+        return request.session['inbound_next_params']
+    if (
+            request.GET.get('inbound_prev') is not None and
+            request.session.get('inbound_prev_params') is not None):
+        return request.session['inbound_prev_params']
+
+    addresses = get_identity_addresses(identity).keys()
+    if addresses:
+        return {
+            'from_addr': addresses,
+            'ordering': '-created_at',
+        }
+
+
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def identity(request, identity):
@@ -475,6 +498,10 @@ def identity(request, identity):
             api_url=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["url"],  # noqa
             auth_token=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["token"]  # noqa
         )
+        msApi = MessageSenderApiClient(
+            api_url=request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["url"],  # noqa
+            auth_token=request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["token"]  # noqa
+        )
         messagesets_results = sbmApi.get_messagesets()
         messagesets = {}
         for messageset in messagesets_results["results"]:
@@ -494,12 +521,27 @@ def identity(request, identity):
             subscriptions = sbmApi.get_subscriptions(params=sbm_filter)
             if results is None:
                 return redirect('not_found')
+
+            # Inbound messages
+            inbound_filter = create_inbound_messages_filter(request, results)
+            if inbound_filter is not None:
+                inbound_messages = msApi.get_inbounds(inbound_filter)
+            else:
+                inbound_messages = {}
+            request.session['inbound_next_params'] = (
+                utils.extract_query_params(inbound_messages.get('next')))
+            request.session['inbound_prev_params'] = (
+                utils.extract_query_params(inbound_messages.get('previous')))
+
         context.update({
             "identity": results,
             "registrations": registrations,
             "changes": changes,
             "messagesets": messagesets,
-            "subscriptions": subscriptions
+            "subscriptions": subscriptions,
+            "inbounds": inbound_messages.get('results', []),
+            "inbounds_next": bool(request.session['inbound_next_params']),
+            "inbounds_prev": bool(request.session['inbound_prev_params']),
         })
         context.update(csrf(request))
         return render(request, 'ci/identities_detail.html', context)
