@@ -1,5 +1,6 @@
 {% extends "ci/base.html" %}
 {% load staticfiles %}
+{% load seed %}
 {% block pagetitle %}Identity Management{% endblock %}
 {% block content %}
 <div class="dashhead">
@@ -43,9 +44,18 @@
         </tr>
         <tr>
           <th>Default Address:</th>
-        {% with addresses=identity|get_identity_addresses %}
-        <td>{% for address, info in addresses.items %}{{ address }}{% endfor %}</td>
-        {% endwith %}
+          {% with addresses=identity|get_identity_addresses %}
+          <td>{% for address, info in addresses.items %}{{ address }}{% endfor %}</td>
+          {% endwith %}
+        </tr>
+        {% for key, value in identity.details.items %}
+          {% if not value|check_object %}
+            <tr>
+              <th>{{ key|cleanup|title }}:</th>
+              <td>{{ value }}</td>
+            </tr>
+          {% endif %}
+        {% endfor %}
       </tbody>
     </table>
   </div>
