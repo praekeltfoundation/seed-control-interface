@@ -170,6 +170,36 @@
   </div>
 </div>
 
+<h3>Messages sent to user</h3>
+<div class="table-full">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>MSISDN</th>
+          <th>Delivered</th>
+          <th>Attempts</th>
+          <th>Content</th>
+          <th>Created</th>
+          <th>Last Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for outbound in outbound_messages.results %}
+        <tr>
+          <td>{{ outbound.to_addr }}</td>
+          <td>{{ outbound.delivered }}</td>
+          <td>{{ outbound.attempts }}</td>
+          <td>{{ outbound.content }}</td>
+          <td>{{ outbound.created_at|get_date|date:"D d M Y H:i" }}</td>
+          <td>{{ outbound.updated_at|get_date|date:"D d M Y H:i" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
 <!-- <div class="text-center">
   <ul class="pagination">
     <li>
