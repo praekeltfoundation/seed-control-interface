@@ -49,9 +49,9 @@
           {% endwith %}
         </tr>
         {% for key, value in identity.details.items %}
-          {% if not value|check_object %}
+          {% if not value|is_dict %}
             <tr>
-              <th>{{ key|cleanup|title }}:</th>
+              <th>{{ key|unslug|title }}:</th>
               <td>{{ value }}</td>
             </tr>
           {% endif %}

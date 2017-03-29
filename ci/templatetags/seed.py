@@ -2,6 +2,8 @@ from django import template
 
 import seed_control_interface
 
+import re
+
 register = template.Library()
 
 
@@ -11,12 +13,10 @@ def current_version():
 
 
 @register.filter
-def cleanup(value):
-    return value.replace('_', ' ')
+def unslug(value):
+    return re.sub('[^0-9a-zA-Z]+', ' ', value).strip()
 
 
 @register.filter
-def check_object(value):
-    if type(value) == dict:
-        return True
-    return False
+def is_dict(value):
+    return isinstance(value, dict)
