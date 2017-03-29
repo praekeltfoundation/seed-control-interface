@@ -2,7 +2,8 @@ import time
 from datetime import timedelta
 
 from django.utils import timezone
-from django.utils.six.moves.urllib.parse import urlparse, parse_qs
+from six.moves.urllib.parse import urlparse, parse_qs
+from six import string_types
 
 import attr
 
@@ -104,7 +105,12 @@ def get_ranged_data_from_timeseries(timeseries, dt, range_type='week'):
     return right_pad_list(sent_data, length=padding, value=0)
 
 
-def extract_query_params(url_str):
-    if url_str is None:
+def extract_query_params(url):
+    """
+    Takes a URL as a string, and returns a dictionary representing the query
+    parameters present in the URL.
+    """
+    if isinstance(url, string_types):
+        return parse_qs(urlparse(url).query)
+    else:
         return {}
-    return parse_qs(urlparse(url_str).query)
