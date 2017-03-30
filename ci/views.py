@@ -575,10 +575,7 @@ def identity(request, identity):
             "messagesets": messagesets,
             "subscriptions": subscriptions,
             "outbound_messages": outbound_messages,
-            "subscriptions": subscriptions,
-            "inbounds": inbound_messages.get('results', []),
-            "inbounds_next": bool(request.session['inbound_next_params']),
-            "inbounds_prev": bool(request.session['inbound_prev_params']),
+            "inbounds": inbound_messages,
         })
         context.update(csrf(request))
         return render(request, 'ci/identities_detail.html', context)
