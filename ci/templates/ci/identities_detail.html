@@ -1,5 +1,6 @@
 {% extends "ci/base.html" %}
 {% load staticfiles %}
+{% load seed %}
 {% block pagetitle %}Identity Management{% endblock %}
 {% block content %}
 <div class="dashhead">
@@ -43,9 +44,18 @@
         </tr>
         <tr>
           <th>Default Address:</th>
-        {% with addresses=identity|get_identity_addresses %}
-        <td>{% for address, info in addresses.items %}{{ address }}{% endfor %}</td>
-        {% endwith %}
+          {% with addresses=identity|get_identity_addresses %}
+          <td>{% for address, info in addresses.items %}{{ address }}{% endfor %}</td>
+          {% endwith %}
+        </tr>
+        {% for key, value in identity.details.items %}
+          {% if not value|is_dict %}
+            <tr>
+              <th>{{ key|unslug|title }}:</th>
+              <td>{{ value }}</td>
+            </tr>
+          {% endif %}
+        {% endfor %}
       </tbody>
     </table>
   </div>
@@ -163,6 +173,36 @@
           <td>{{ subscription.completed }}</td>
           <td>{{ subscription.created_at|get_date|date:"D d M Y H:i" }}</td>
           <td>{{ subscription.updated_at|get_date|date:"D d M Y H:i" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<h3>Messages sent to user</h3>
+<div class="table-full">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>MSISDN</th>
+          <th>Delivered</th>
+          <th>Attempts</th>
+          <th>Content</th>
+          <th>Created</th>
+          <th>Last Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for outbound in outbound_messages.results %}
+        <tr>
+          <td>{{ outbound.to_addr }}</td>
+          <td>{{ outbound.delivered }}</td>
+          <td>{{ outbound.attempts }}</td>
+          <td>{{ outbound.content }}</td>
+          <td>{{ outbound.created_at|get_date|date:"D d M Y H:i" }}</td>
+          <td>{{ outbound.updated_at|get_date|date:"D d M Y H:i" }}</td>
         </tr>
         {% endfor %}
       </tbody>
