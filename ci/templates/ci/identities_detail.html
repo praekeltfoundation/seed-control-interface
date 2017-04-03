@@ -150,13 +150,13 @@
 <h3>Subscriptions</h3>
 <!-- Add section to add new subscription for identity, drop down list #--->
 <div class="call-to-action call-to-action__new-section">
-  <h4>Identity subscription - dropdown</h4>
-  <select class="call-to-action__item-dropdown-select">
-    <option value="0">Add subscription identity</option>
-    {% for message in messagesets %}
-      <option value="{{message}}">{{message}}</option>
-    {% endfor %}
-  </select>
+  <form class="form-inline" method="post" action=".">
+  {% csrf_token %}
+    <fieldset>
+    {{ add_subscription_form|bootstrap_inline }}
+    </fieldset>
+    <button type="submit" class="call-to-action__item call-to-action__item--submit-entry">Add</button>
+  </form>
 </div>
 
 
@@ -189,11 +189,14 @@
           <td>{{ subscription.created_at|get_date|date:"D d M Y H:i" }}</td>
           <td>{{ subscription.updated_at|get_date|date:"D d M Y H:i" }}</td>
           <td>
-            <form class="form-inline" method="post" action=".">
-              {% csrf_token %}
-              {{ add_subscription_form|bootstrap_inline }}
-              <button type="submit" class="call-to-action__item call-to-action__item--subscription">Add</button>
-            </form>
+            <button type="submit" class="call-to-action__item call-to-action__item--subscription">
+            {% if subscription.active == True and  subscription.completed == False %}
+              Deactivate
+            {% endif %}
+            {% if subscription.active == False and  subscription.completed == True %}
+              Activate
+            {% endif %}
+            </button>
           </td>
         </tr>
         {% endfor %}
