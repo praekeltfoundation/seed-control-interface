@@ -1,5 +1,6 @@
 {% extends "ci/base.html" %}
 {% load staticfiles %}
+{% load bootstrap %}
 {% load seed %}
 {% block pagetitle %}Identity Management{% endblock %}
 {% block content %}
@@ -15,6 +16,7 @@
       <span class="icon icon-calendar"></span> -->
     </div>
   </div>
+
 </div>
 
 <hr class="m-t">
@@ -187,7 +189,11 @@
           <td>{{ subscription.created_at|get_date|date:"D d M Y H:i" }}</td>
           <td>{{ subscription.updated_at|get_date|date:"D d M Y H:i" }}</td>
           <td>
-            <a url="<!--API endpoint URL for this action-->" class="call-to-action__item call-to-action__item--subscription">Remove subscription</a>
+            <form class="form-inline" method="post" action=".">
+              {% csrf_token %}
+              {{ add_subscription_form|bootstrap_inline }}
+              <button type="submit" class="call-to-action__item call-to-action__item--subscription">Add</button>
+            </form>
           </td>
         </tr>
         {% endfor %}
