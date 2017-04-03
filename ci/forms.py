@@ -64,6 +64,13 @@ class IdentitySearchForm(forms.Form):
     )
 
 
+class AddSubscriptionForm(forms.Form):
+
+    def __init__(self, choices, *args, **kwargs):
+        super(AddSubscriptionForm, self).__init__(*args, **kwargs)
+        self.fields['messageset'] = forms.ChoiceField(choices=choices)
+
+
 STAGE_CHOICES = (
     ('', "Stage - all"),
     ('prebirth', "Mother is pregnant"),
