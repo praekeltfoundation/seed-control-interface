@@ -28,7 +28,7 @@ from seed_services_client.message_sender import MessageSenderApiClient
 from go_http.metrics import MetricsApiClient
 from .forms import (AuthenticationForm, IdentitySearchForm,
                     RegistrationFilterForm, SubscriptionFilterForm,
-                    ChangeFilterForm)
+                    ChangeFilterForm, AddSubscriptionForm)
 from . import utils
 
 logger = logging.getLogger(__name__)
@@ -503,36 +503,59 @@ def identity(request, identity):
         )
         messagesets_results = sbmApi.get_messagesets()
         messagesets = {}
+        schedules = {}
+        choices = []
         for messageset in messagesets_results["results"]:
             messagesets[messageset["id"]] = messageset["short_name"]
+            schedules[messageset["id"]] = messageset["default_schedule"]
+            choices.append((messageset["id"], messageset["short_name"]))
+
+        results = idApi.get_identity(identity)
+
         if request.method == "POST":
-            pass
+            form = AddSubscriptionForm(request.POST)
+
+            print form.is_valid()
+            if form.is_valid():
+                subscription = {
+                    "active": True,
+                    "identity": identity,
+                    "completed": False,
+                    "lang": results['details'].get('preferred_language'),
+                    "messageset": form.cleaned_data['id_messageset'],
+                    "next_sequence_number": 1,
+                    "schedule": schedules[form.cleaned_data['id_messageset']],
+                    "process_status": 0,
+                }
+                sbmApi.create_subscription(subscription)
+
+        hub_filter = {
+            "mother_id": identity
+        }
+        registrations = hubApi.get_registrations(params=hub_filter)
+        changes = hubApi.get_changes(params=hub_filter)
+        sbm_filter = {
+            "identity": identity
+        }
+        subscriptions = sbmApi.get_subscriptions(params=sbm_filter)
+        if results is None:
+            return redirect('not_found')
+
+        outbound_filter = create_outbound_messages_filter(request, results)
+        if outbound_filter is not None:
+            outbound_messages = msApi.get_outbounds(params=outbound_filter)
         else:
-            results = idApi.get_identity(identity)
-            hub_filter = {
-                "mother_id": identity
-            }
-            registrations = hubApi.get_registrations(params=hub_filter)
-            changes = hubApi.get_changes(params=hub_filter)
-            sbm_filter = {
-                "identity": identity
-            }
-            subscriptions = sbmApi.get_subscriptions(params=sbm_filter)
-            if results is None:
-                return redirect('not_found')
+            outbound_messages = {}
 
-            outbound_filter = create_outbound_messages_filter(request, results)
-            if outbound_filter is not None:
-                outbound_messages = msApi.get_outbounds(params=outbound_filter)
-            else:
-                outbound_messages = {}
+        # Store next and previous filters in session for pagination
+        request.session['next_outbound_params'] = \
+            utils.extract_query_params(outbound_messages.get('next', ""))
+        request.session['prev_outbound_params'] = \
+            utils.extract_query_params(outbound_messages.get(
+                'previous', ""))
 
-            # Store next and previous filters in session for pagination
-            request.session['next_outbound_params'] = \
-                utils.extract_query_params(outbound_messages.get('next', ""))
-            request.session['prev_outbound_params'] = \
-                utils.extract_query_params(outbound_messages.get(
-                    'previous', ""))
+        add_subscription_form = AddSubscriptionForm(choices)
+
         context.update({
             "identity": results,
             "registrations": registrations,
@@ -540,6 +563,7 @@ def identity(request, identity):
             "messagesets": messagesets,
             "subscriptions": subscriptions,
             "outbound_messages": outbound_messages,
+            "add_subscription_form": add_subscription_form
         })
         context.update(csrf(request))
         return render(request, 'ci/identities_detail.html', context)
