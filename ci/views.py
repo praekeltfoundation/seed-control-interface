@@ -496,6 +496,7 @@ def create_inbound_messages_filter(request, identity):
         return {
             'from_addr': addresses,
             'ordering': '-created_at',
+            'limit': settings.MESSAGES_PER_IDENTITY,
         }
 
 
