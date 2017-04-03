@@ -1,0 +1,32 @@
+.nav-pills__heading-topic {
+  font-size: 16px;
+}
+.call-to-action {
+  padding: 20px 0 10px;
+  width: 100%;
+}
+.call-to-action__item {
+  padding: 5px 12px;
+  margin-bottom: 5px;
+  cursor: pointer;
+  display: block;
+  font-size: 14px;
+  font-weight: normal;
+  border-radius: 4px;
+  outline: none;
+  vertical-align: middle;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.call-to-action__item-dropdown-select {
+  display: block;
+  height: 35px;
+  width: 25%;
+}
+.call-to-action__item--subscription {
+  background: #1686b0;
+  border: 1px solid #126e90;
+  color: #ffffff;
+  width: 100%;
+}

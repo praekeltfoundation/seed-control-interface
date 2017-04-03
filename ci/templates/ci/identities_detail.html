@@ -19,7 +19,7 @@
 
 <hr class="m-t">
 
-<h3>Details</h3>
+<h3>User Details</h3>
 <div class="table-full">
   <div class="table-responsive">
     <table class="table" data-sort="table">
@@ -146,6 +146,18 @@
 </div>
 
 <h3>Subscriptions</h3>
+<!-- Add section to add new subscription for identity, drop down list #--->
+<div class="call-to-action call-to-action__new-section">
+  <h4>Identity subscription - dropdown</h4>
+  <select class="call-to-action__item-dropdown-select">
+    <option value="0">Add subscription identity</option>
+    {% for message in messagesets %}
+      <option value="{{message}}">{{message}}</option>
+    {% endfor %}
+  </select>
+</div>
+
+
 <div class="table-full">
   <div class="table-responsive">
     <table class="table">
@@ -159,6 +171,7 @@
           <th>Completed</th>
           <th>Created</th>
           <th>Last Updated</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
@@ -173,6 +186,9 @@
           <td>{{ subscription.completed }}</td>
           <td>{{ subscription.created_at|get_date|date:"D d M Y H:i" }}</td>
           <td>{{ subscription.updated_at|get_date|date:"D d M Y H:i" }}</td>
+          <td>
+            <a url="<!--API endpoint URL for this action-->" class="call-to-action__item call-to-action__item--subscription">Remove subscription</a>
+          </td>
         </tr>
         {% endfor %}
       </tbody>
