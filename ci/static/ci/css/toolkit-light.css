@@ -995,8 +995,12 @@ table th[class*="col-"] {
     border-bottom: 0;
   }
 }
-.top-buffer-10 {
-  margin-top: 10px;
+.bottom-buffer-10 {
+  margin-bottom: 10px;
+}
+
+.bottom-buffer-10:last-child {
+  margin-bottom: 0;
 }
 
 fieldset {

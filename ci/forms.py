@@ -146,12 +146,12 @@ class ReportGenerationForm(forms.Form):
         required=True)
     start_date = forms.DateField(
         widget=DatePicker(options={
-            'placeholder': 'YYYY/MM/DD', 'format': 'yyyy/mm/dd',
+            'placeholder': 'YYYY-MM-DD', 'format': 'yyyy-mm-dd',
             'autoclose': True}),
         required=False)
     end_date = forms.DateField(
         widget=DatePicker(options={
-            'placeholder': 'YYYY/MM/DD', 'format': 'yyyy/mm/dd',
+            'placeholder': 'YYYY-MM-DD', 'format': 'yyyy-mm-dd',
             'autoclose': True}),
         required=False)
     email_to = SimpleArrayField(forms.EmailField(), required=False)
