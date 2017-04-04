@@ -16,6 +16,7 @@ from django.template.defaulttags import register
 from django.template.response import TemplateResponse
 from django.core.context_processors import csrf
 from django.conf import settings
+from django import forms
 import dateutil.parser
 
 from seed_services_client.control_interface import ControlInterfaceApiClient
@@ -540,16 +541,15 @@ def identity(request, identity):
         if request.method == "POST":
             form = AddSubscriptionForm(request.POST)
 
-            print form.is_valid()
             if form.is_valid():
                 subscription = {
                     "active": True,
                     "identity": identity,
                     "completed": False,
                     "lang": results['details'].get('preferred_language'),
-                    "messageset": form.cleaned_data['id_messageset'],
+                    "messageset": form.cleaned_data['messageset'],
                     "next_sequence_number": 1,
-                    "schedule": schedules[form.cleaned_data['id_messageset']],
+                    "schedule": schedules[form.cleaned_data['messageset']],
                     "process_status": 0,
                 }
                 sbmApi.create_subscription(subscription)
@@ -590,7 +590,9 @@ def identity(request, identity):
         request.session['inbound_prev_params'] = (
             utils.extract_query_params(inbound_messages.get('previous')))
 
-        add_subscription_form = AddSubscriptionForm(choices)
+        add_subscription_form = AddSubscriptionForm()
+        add_subscription_form.fields['messageset'] = forms.ChoiceField(
+                                                        choices=choices)
 
         context.update({
             "identity": results,

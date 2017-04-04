@@ -67,11 +67,7 @@ class IdentitySearchForm(forms.Form):
 
 
 class AddSubscriptionForm(forms.Form):
-
-    def __init__(self, choices, *args, **kwargs):
-        super(AddSubscriptionForm, self).__init__(*args, **kwargs)
-        self.fields['messageset'] = forms.ChoiceField(choices=choices)
-
+    messageset = forms.IntegerField()
 
 STAGE_CHOICES = (
     ('', "Stage - all"),
