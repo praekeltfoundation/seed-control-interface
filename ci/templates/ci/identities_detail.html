@@ -190,10 +190,10 @@
           <td>{{ subscription.updated_at|get_date|date:"D d M Y H:i" }}</td>
           <td>
             <button type="submit" class="call-to-action__item call-to-action__item--subscription">
-            {% if subscription.active == True and  subscription.completed == False %}
+            {% if subscription.active == True %}
               Deactivate
             {% endif %}
-            {% if subscription.active == False and  subscription.completed == True %}
+            {% if subscription.active == False %}
               Activate
             {% endif %}
             </button>
