@@ -907,7 +907,7 @@ def report_generation(request):
                 messages.add_message(
                     request,
                     messages.INFO,
-                    'Successfully re-queued all outbound tasks'
+                    'Successfully started report generation'
                 )
             else:
                 messages.add_message(
