@@ -19,6 +19,7 @@
     <link href="http://fonts.googleapis.com/css?family=Roboto:300,400,500,700,400italic" rel="stylesheet">
     <link href="{% static "ci/css/toolkit-light.css" %}" rel="stylesheet">
     <link href="{% static "ci/css/application.css" %}" rel="stylesheet">
+    <link href="{% static "ci/css/font-awesome.min.css" %}" rel="stylesheet">
 
     <style>
       /* note: this is a hack for ios iframe for bootstrap themes shopify page */
@@ -84,6 +85,8 @@
               <li class="nav-header">More</li>
               {% url 'services' as url %}
               <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">Service Status</a></li>
+              {% url 'reports' as url %}
+              <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">Reports</a></li>
               {% url 'logout' as url %}
               <li><a href="{{ url }}">Logout</a></li>
             </ul>
