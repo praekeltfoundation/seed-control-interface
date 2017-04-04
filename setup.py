@@ -48,6 +48,7 @@ setup(
         'go-http==0.3.0',
         'openpyxl==2.4.0',
         'attrs==16.3.0',
+        'django-bootstrap-datepicker==1.2.2',
     ],
     classifiers=[
         'Development Status :: 4 - Beta',
