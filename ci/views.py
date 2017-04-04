@@ -915,8 +915,6 @@ def report_generation(request):
                     messages.ERROR,
                     'Could not start report generation'
                 )
-        else:
-            results = {"count": form.errors}
     else:
         form = ReportGenerationForm()
     context.update({
