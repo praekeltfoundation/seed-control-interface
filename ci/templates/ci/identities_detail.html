@@ -21,6 +21,10 @@
 
 <hr class="m-t">
 
+{% for message in messages %}
+<div class="alert alert-{{ message.tags }}">{{ message }}</div>
+{% endfor %}
+
 <h3>User Details</h3>
 <div class="table-full">
   <div class="table-responsive">

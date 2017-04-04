@@ -542,18 +542,37 @@ def identity(request, identity):
             if 'add_subscription' in request.POST:
                 form = AddSubscriptionForm(request.POST)
 
-                if form.is_valid():
-                    subscription = {
-                        "active": True,
-                        "identity": identity,
-                        "completed": False,
-                        "lang": results['details'].get('preferred_language'),
-                        "messageset": form.cleaned_data['messageset'],
-                        "next_sequence_number": 1,
-                        "schedule": schedules[form.cleaned_data['messageset']],
-                        "process_status": 0,
-                    }
-                    sbmApi.create_subscription(subscription)
+                if results['details'].get('preferred_language'):
+
+                    if form.is_valid():
+                        subscription = {
+                            "active": True,
+                            "identity": identity,
+                            "completed": False,
+                            "lang":
+                                results['details'].get('preferred_language'),
+                            "messageset": form.cleaned_data['messageset'],
+                            "next_sequence_number": 1,
+                            "schedule":
+                                schedules[form.cleaned_data['messageset']],
+                            "process_status": 0,
+                        }
+                        sbmApi.create_subscription(subscription)
+
+                        messages.add_message(
+                            request,
+                            messages.INFO,
+                            'Successfully created a subscription.',
+                            extra_tags='success'
+                        )
+                else:
+                    messages.add_message(
+                        request,
+                        messages.ERROR,
+                        'No preferred language on the identity.',
+                        extra_tags='danger'
+                    )
+
             elif 'deactivate_subscription' in request.POST:
                 form = DeactivateSubscriptionForm(request.POST)
 
@@ -563,6 +582,13 @@ def identity(request, identity):
                     }
                     sbmApi.update_subscription(
                         form.cleaned_data['subscription_id'], data)
+
+                    messages.add_message(
+                        request,
+                        messages.INFO,
+                        'Successfully deactivated the subscription.',
+                        extra_tags='success'
+                    )
 
         hub_filter = {
             "mother_id": identity
