@@ -153,9 +153,11 @@
   <form class="form-inline" method="post" action=".">
   {% csrf_token %}
     <fieldset>
+      <!-- Where does this post the result to? Should add a new (subscriptions) entry result making it active = true and previous active = false -->
     {{ add_subscription_form|bootstrap_inline }}
     </fieldset>
     <button type="submit" class="call-to-action__item call-to-action__item--submit-entry">Add</button>
+    <br/>
   </form>
 </div>
 
@@ -189,14 +191,11 @@
           <td>{{ subscription.created_at|get_date|date:"D d M Y H:i" }}</td>
           <td>{{ subscription.updated_at|get_date|date:"D d M Y H:i" }}</td>
           <td>
-            <button type="submit" class="call-to-action__item call-to-action__item--subscription">
             {% if subscription.active == True %}
+            <button type="submit" class="call-to-action__item call-to-action__item--subscription">
               Deactivate
-            {% endif %}
-            {% if subscription.active == False %}
-              Activate
-            {% endif %}
             </button>
+            {% endif %}
           </td>
         </tr>
         {% endfor %}
