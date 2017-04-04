@@ -476,6 +476,30 @@ def create_outbound_messages_filter(request, identity):
         }
 
 
+def create_inbound_messages_filter(request, identity):
+    """
+    Has a look at the request to see if the next/previous page of inbound
+    messages was requested, else get the first page of inbound messages for
+    the given identity.
+    """
+    if (
+            request.GET.get('inbound_next') is not None and
+            request.session.get('inbound_next_params') is not None):
+        return request.session['inbound_next_params']
+    if (
+            request.GET.get('inbound_prev') is not None and
+            request.session.get('inbound_prev_params') is not None):
+        return request.session['inbound_prev_params']
+
+    addresses = get_identity_addresses(identity).keys()
+    if addresses:
+        return {
+            'from_addr': addresses,
+            'ordering': '-created_at',
+            'limit': settings.MESSAGES_PER_IDENTITY,
+        }
+
+
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def identity(request, identity):
@@ -533,6 +557,18 @@ def identity(request, identity):
             request.session['prev_outbound_params'] = \
                 utils.extract_query_params(outbound_messages.get(
                     'previous', ""))
+
+            # Inbound messages
+            inbound_filter = create_inbound_messages_filter(request, results)
+            if inbound_filter is not None:
+                inbound_messages = msApi.get_inbounds(inbound_filter)
+            else:
+                inbound_messages = {}
+            request.session['inbound_next_params'] = (
+                utils.extract_query_params(inbound_messages.get('next')))
+            request.session['inbound_prev_params'] = (
+                utils.extract_query_params(inbound_messages.get('previous')))
+
         context.update({
             "identity": results,
             "registrations": registrations,
@@ -540,6 +576,7 @@ def identity(request, identity):
             "messagesets": messagesets,
             "subscriptions": subscriptions,
             "outbound_messages": outbound_messages,
+            "inbounds": inbound_messages,
         })
         context.update(csrf(request))
         return render(request, 'ci/identities_detail.html', context)
