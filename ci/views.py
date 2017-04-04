@@ -28,7 +28,8 @@ from seed_services_client.message_sender import MessageSenderApiClient
 from go_http.metrics import MetricsApiClient
 from .forms import (AuthenticationForm, IdentitySearchForm,
                     RegistrationFilterForm, SubscriptionFilterForm,
-                    ChangeFilterForm, AddSubscriptionForm)
+                    ChangeFilterForm, ReportGenerationForm,
+                    AddSubscriptionForm)
 from . import utils
 
 logger = logging.getLogger(__name__)
@@ -476,6 +477,30 @@ def create_outbound_messages_filter(request, identity):
         }
 
 
+def create_inbound_messages_filter(request, identity):
+    """
+    Has a look at the request to see if the next/previous page of inbound
+    messages was requested, else get the first page of inbound messages for
+    the given identity.
+    """
+    if (
+            request.GET.get('inbound_next') is not None and
+            request.session.get('inbound_next_params') is not None):
+        return request.session['inbound_next_params']
+    if (
+            request.GET.get('inbound_prev') is not None and
+            request.session.get('inbound_prev_params') is not None):
+        return request.session['inbound_prev_params']
+
+    addresses = get_identity_addresses(identity).keys()
+    if addresses:
+        return {
+            'from_addr': addresses,
+            'ordering': '-created_at',
+            'limit': settings.MESSAGES_PER_IDENTITY,
+        }
+
+
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def identity(request, identity):
@@ -554,6 +579,17 @@ def identity(request, identity):
             utils.extract_query_params(outbound_messages.get(
                 'previous', ""))
 
+        # Inbound messages
+        inbound_filter = create_inbound_messages_filter(request, results)
+        if inbound_filter is not None:
+            inbound_messages = msApi.get_inbounds(inbound_filter)
+        else:
+            inbound_messages = {}
+        request.session['inbound_next_params'] = (
+            utils.extract_query_params(inbound_messages.get('next')))
+        request.session['inbound_prev_params'] = (
+            utils.extract_query_params(inbound_messages.get('previous')))
+
         add_subscription_form = AddSubscriptionForm(choices)
 
         context.update({
@@ -563,7 +599,8 @@ def identity(request, identity):
             "messagesets": messagesets,
             "subscriptions": subscriptions,
             "outbound_messages": outbound_messages,
-            "add_subscription_form": add_subscription_form
+            "add_subscription_form": add_subscription_form,
+            "inbounds": inbound_messages,
         })
         context.update(csrf(request))
         return render(request, 'ci/identities_detail.html', context)
@@ -874,3 +911,54 @@ def outbound_failures(request):
     })
     context.update(csrf(request))
     return render(request, 'ci/failures_outbounds.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+def report_generation(request):
+    context = default_context(request.session)
+    if "HUB" not in request.session["user_tokens"]:
+        return redirect('denied')
+
+    if request.method == "POST":
+        form = ReportGenerationForm(request.POST)
+        if form.is_valid():
+            # expected data format:
+            # string 'YYYY-MM-DD' for date_string
+            # string for output_file
+            # list of email addresses for email_to
+            # email address for email_from
+            # string for email_subject
+            data = {
+                "start_date": form.cleaned_data['start_date'],
+                "end_date": form.cleaned_data['end_date'],
+                "output_file": form.cleaned_data['output_file'],
+                "email_to": form.cleaned_data['email_to'],
+                "email_from": form.cleaned_data['email_from'],
+                "email_subject": form.cleaned_data['email_subject']
+            }
+            hubApi = HubApiClient(
+                request.session["user_tokens"]["HUB"]["token"],
+                api_url=request.session["user_tokens"]["HUB"]["url"])
+            results = hubApi.trigger_report_generation(data)
+            if 'report_generation_requested' in results:
+                messages.add_message(
+                    request,
+                    messages.INFO,
+                    'Successfully re-queued all outbound tasks'
+                )
+            else:
+                messages.add_message(
+                    request,
+                    messages.ERROR,
+                    'Could not start report generation'
+                )
+        else:
+            results = {"count": form.errors}
+    else:
+        form = ReportGenerationForm()
+    context.update({
+        "form": form
+    })
+    context.update(csrf(request))
+    return render(request, 'ci/reports.html', context)

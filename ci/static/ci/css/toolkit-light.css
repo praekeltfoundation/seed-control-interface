@@ -995,6 +995,14 @@ table th[class*="col-"] {
     border-bottom: 0;
   }
 }
+.bottom-buffer-10 {
+  margin-bottom: 10px;
+}
+
+.bottom-buffer-10:last-child {
+  margin-bottom: 0;
+}
+
 fieldset {
   padding: 0;
   margin: 0;
