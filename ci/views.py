@@ -899,24 +899,10 @@ def report_generation(request):
     if request.method == "POST":
         form = ReportGenerationForm(request.POST)
         if form.is_valid():
-            # expected data format:
-            # string 'YYYY-MM-DD' for date_string
-            # string for output_file
-            # list of email addresses for email_to
-            # email address for email_from
-            # string for email_subject
-            data = {
-                "start_date": form.cleaned_data['start_date'],
-                "end_date": form.cleaned_data['end_date'],
-                "output_file": form.cleaned_data['output_file'],
-                "email_to": form.cleaned_data['email_to'],
-                "email_from": form.cleaned_data['email_from'],
-                "email_subject": form.cleaned_data['email_subject']
-            }
             hubApi = HubApiClient(
                 request.session["user_tokens"]["HUB"]["token"],
                 api_url=request.session["user_tokens"]["HUB"]["url"])
-            results = hubApi.trigger_report_generation(data)
+            results = hubApi.trigger_report_generation(form.cleaned_data)
             if 'report_generation_requested' in results:
                 messages.add_message(
                     request,
