@@ -30,7 +30,7 @@ from go_http.metrics import MetricsApiClient
 from .forms import (AuthenticationForm, IdentitySearchForm,
                     RegistrationFilterForm, SubscriptionFilterForm,
                     ChangeFilterForm, ReportGenerationForm,
-                    AddSubscriptionForm)
+                    AddSubscriptionForm, DeactivateSubscriptionForm)
 from . import utils
 
 logger = logging.getLogger(__name__)
@@ -539,20 +539,30 @@ def identity(request, identity):
         results = idApi.get_identity(identity)
 
         if request.method == "POST":
-            form = AddSubscriptionForm(request.POST)
+            if 'add_subscription' in request.POST:
+                form = AddSubscriptionForm(request.POST)
 
-            if form.is_valid():
-                subscription = {
-                    "active": True,
-                    "identity": identity,
-                    "completed": False,
-                    "lang": results['details'].get('preferred_language'),
-                    "messageset": form.cleaned_data['messageset'],
-                    "next_sequence_number": 1,
-                    "schedule": schedules[form.cleaned_data['messageset']],
-                    "process_status": 0,
-                }
-                sbmApi.create_subscription(subscription)
+                if form.is_valid():
+                    subscription = {
+                        "active": True,
+                        "identity": identity,
+                        "completed": False,
+                        "lang": results['details'].get('preferred_language'),
+                        "messageset": form.cleaned_data['messageset'],
+                        "next_sequence_number": 1,
+                        "schedule": schedules[form.cleaned_data['messageset']],
+                        "process_status": 0,
+                    }
+                    sbmApi.create_subscription(subscription)
+            elif 'deactivate_subscription' in request.POST:
+                form = DeactivateSubscriptionForm(request.POST)
+
+                if form.is_valid():
+                    data = {
+                        "active": False
+                    }
+                    sbmApi.update_subscription(
+                        form.cleaned_data['subscription_id'], data)
 
         hub_filter = {
             "mother_id": identity
@@ -590,6 +600,7 @@ def identity(request, identity):
         request.session['inbound_prev_params'] = (
             utils.extract_query_params(inbound_messages.get('previous')))
 
+        deactivate_subscription_form = DeactivateSubscriptionForm()
         add_subscription_form = AddSubscriptionForm()
         add_subscription_form.fields['messageset'] = forms.ChoiceField(
                                                         choices=choices)
@@ -602,6 +613,7 @@ def identity(request, identity):
             "subscriptions": subscriptions,
             "outbound_messages": outbound_messages,
             "add_subscription_form": add_subscription_form,
+            "deactivate_subscription_form": deactivate_subscription_form,
             "inbounds": inbound_messages,
         })
         context.update(csrf(request))
