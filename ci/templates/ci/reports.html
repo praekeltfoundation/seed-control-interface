@@ -17,6 +17,14 @@
 
 <hr class="m-t">
 
+{% if messages %}
+<div class="alert alert-success" role="alert">
+    {% for message in messages %}
+    <p{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</p>
+    {% endfor %}
+</div>
+{% endif %}
+
 <form class="form-horizontal" method="post" action=".">
   <div class="row col-md-8 col-md-offset-2">
     <div class="panel panel-default ">
