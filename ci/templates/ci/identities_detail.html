@@ -157,7 +157,7 @@
   <form class="form-inline" method="post" action=".">
   {% csrf_token %}
     <fieldset>
-      <!-- Where does this post the result to? Should add a new (subscriptions) entry result making it active = true and previous active = false -->
+    <!-- Order by Latest created -->
     {{ add_subscription_form|bootstrap_inline }}
     </fieldset>
     <button type="submit" name="add_subscription" class="call-to-action__item call-to-action__item--submit-entry">Add</button>
@@ -183,7 +183,7 @@
         </tr>
       </thead>
       <tbody>
-        {% for subscription in subscriptions.results %}
+        {% for subscription in subscriptions.results|dictsortreversed:'active' %}
         <tr>
           {% url 'subscriptions-detail' subscription.id as url %}
           <td><a href="{{ url }}">{{ subscription.id|truncatechars:12 }}</a></td>
@@ -195,19 +195,15 @@
           <td>{{ subscription.created_at|get_date|date:"D d M Y H:i" }}</td>
           <td>{{ subscription.updated_at|get_date|date:"D d M Y H:i" }}</td>
           <td>
-            {% if subscription.active == True %}
-            <form class="form-inline" method="post" action=".">
-            {% csrf_token %}
-              <fieldset>
-                  <input id="id_subscription_id" name="subscription_id" type="hidden" value={{ subscription.id }} />
-              </fieldset>
-              <button type="submit" name="deactivate_subscription" class="call-to-action__item call-to-action__item--subscription">
-                Deactivate
-              </button>
-              <br/>
-            </form>
-
-            {% endif %}
+          {% if subscription.active == True %}
+          <form class="form-inline" method="post" action=".">
+          {% csrf_token %}
+          <fieldset>
+          <input id="id_subscription_id" name="subscription_id" type="hidden" value={{ subscription.id }} />
+          </fieldset>
+          <button type="submit" name="deactivate_subscription" class="call-to-action__item call-to-action__item--subscription">Deactivate</button>
+          </form>
+          {% endif %}
           </td>
         </tr>
         {% endfor %}
