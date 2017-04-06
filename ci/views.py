@@ -899,6 +899,18 @@ def report_generation(request):
     if request.method == "POST":
         form = ReportGenerationForm(request.POST)
         if form.is_valid():
+            # Remove fields that weren't supplied
+            if form.cleaned_data.get('start_date') is None:
+                del form.cleaned_data['start_date']
+            if form.cleaned_data.get('end_date') is None:
+                del form.cleaned_data['end_date']
+            if form.cleaned_data.get('email_to') == []:
+                del form.cleaned_data['email_to']
+            if form.cleaned_data.get('email_from') == "":
+                del form.cleaned_data['email_from']
+            if form.cleaned_data.get('email_subject') == "":
+                del form.cleaned_data['email_subject']
+
             hubApi = HubApiClient(
                 request.session["user_tokens"]["HUB"]["token"],
                 api_url=request.session["user_tokens"]["HUB"]["url"])
