@@ -198,10 +198,10 @@
           {% if subscription.active == True %}
           <form class="form-inline" method="post" action=".">
           {% csrf_token %}
-          <fieldset>
-          <input id="id_subscription_id" name="subscription_id" type="hidden" value={{ subscription.id }} />
-          </fieldset>
-          <button type="submit" name="deactivate_subscription" class="call-to-action__item call-to-action__item--subscription">Deactivate</button>
+            <fieldset>
+              <input id="id_subscription_id" name="subscription_id" type="hidden" value={{ subscription.id }} />
+            </fieldset>
+            <button type="submit" name="deactivate_subscription" class="call-to-action__item call-to-action__item--subscription">Deactivate</button>
           </form>
           {% endif %}
           </td>
