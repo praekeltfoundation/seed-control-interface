@@ -16,6 +16,7 @@ from django.template.defaulttags import register
 from django.template.response import TemplateResponse
 from django.core.context_processors import csrf
 from django.conf import settings
+from django import forms
 import dateutil.parser
 
 from seed_services_client.control_interface import ControlInterfaceApiClient
@@ -28,7 +29,8 @@ from seed_services_client.message_sender import MessageSenderApiClient
 from go_http.metrics import MetricsApiClient
 from .forms import (AuthenticationForm, IdentitySearchForm,
                     RegistrationFilterForm, SubscriptionFilterForm,
-                    ChangeFilterForm, ReportGenerationForm)
+                    ChangeFilterForm, ReportGenerationForm,
+                    AddSubscriptionForm, DeactivateSubscriptionForm)
 from . import utils
 
 logger = logging.getLogger(__name__)
@@ -527,47 +529,107 @@ def identity(request, identity):
         )
         messagesets_results = sbmApi.get_messagesets()
         messagesets = {}
+        schedules = {}
+        choices = []
         for messageset in messagesets_results["results"]:
             messagesets[messageset["id"]] = messageset["short_name"]
+            schedules[messageset["id"]] = messageset["default_schedule"]
+            choices.append((messageset["id"], messageset["short_name"]))
+
+        results = idApi.get_identity(identity)
+
         if request.method == "POST":
-            pass
+            if 'add_subscription' in request.POST:
+                form = AddSubscriptionForm(request.POST)
+
+                if results['details'].get('preferred_language'):
+
+                    if form.is_valid():
+                        subscription = {
+                            "active": True,
+                            "identity": identity,
+                            "completed": False,
+                            "lang":
+                                results['details'].get('preferred_language'),
+                            "messageset": form.cleaned_data['messageset'],
+                            "next_sequence_number": 1,
+                            "schedule":
+                                schedules[form.cleaned_data['messageset']],
+                            "process_status": 0,
+                        }
+                        sbmApi.create_subscription(subscription)
+
+                        messages.add_message(
+                            request,
+                            messages.INFO,
+                            'Successfully created a subscription.',
+                            extra_tags='success'
+                        )
+                else:
+                    messages.add_message(
+                        request,
+                        messages.ERROR,
+                        'No preferred language on the identity.',
+                        extra_tags='danger'
+                    )
+
+            elif 'deactivate_subscription' in request.POST:
+                form = DeactivateSubscriptionForm(request.POST)
+
+                if form.is_valid():
+                    data = {
+                        "active": False
+                    }
+                    sbmApi.update_subscription(
+                        form.cleaned_data['subscription_id'], data)
+
+                    messages.add_message(
+                        request,
+                        messages.INFO,
+                        'Successfully deactivated the subscription.',
+                        extra_tags='success'
+                    )
+
+        hub_filter = {
+            "mother_id": identity
+        }
+        registrations = hubApi.get_registrations(params=hub_filter)
+        changes = hubApi.get_changes(params=hub_filter)
+        sbm_filter = {
+            "identity": identity
+        }
+        subscriptions = sbmApi.get_subscriptions(params=sbm_filter)
+        if results is None:
+            return redirect('not_found')
+
+        outbound_filter = create_outbound_messages_filter(request, results)
+        if outbound_filter is not None:
+            outbound_messages = msApi.get_outbounds(params=outbound_filter)
         else:
-            results = idApi.get_identity(identity)
-            hub_filter = {
-                "mother_id": identity
-            }
-            registrations = hubApi.get_registrations(params=hub_filter)
-            changes = hubApi.get_changes(params=hub_filter)
-            sbm_filter = {
-                "identity": identity
-            }
-            subscriptions = sbmApi.get_subscriptions(params=sbm_filter)
-            if results is None:
-                return redirect('not_found')
+            outbound_messages = {}
 
-            outbound_filter = create_outbound_messages_filter(request, results)
-            if outbound_filter is not None:
-                outbound_messages = msApi.get_outbounds(params=outbound_filter)
-            else:
-                outbound_messages = {}
+        # Store next and previous filters in session for pagination
+        request.session['next_outbound_params'] = \
+            utils.extract_query_params(outbound_messages.get('next', ""))
+        request.session['prev_outbound_params'] = \
+            utils.extract_query_params(outbound_messages.get(
+                'previous', ""))
 
-            # Store next and previous filters in session for pagination
-            request.session['next_outbound_params'] = \
-                utils.extract_query_params(outbound_messages.get('next', ""))
-            request.session['prev_outbound_params'] = \
-                utils.extract_query_params(outbound_messages.get(
-                    'previous', ""))
+        # Inbound messages
+        inbound_filter = create_inbound_messages_filter(request, results)
+        if inbound_filter is not None:
+            inbound_messages = msApi.get_inbounds(inbound_filter)
+        else:
+            inbound_messages = {}
+        request.session['inbound_next_params'] = (
+            utils.extract_query_params(inbound_messages.get('next')))
+        request.session['inbound_prev_params'] = (
+            utils.extract_query_params(inbound_messages.get('previous')))
 
-            # Inbound messages
-            inbound_filter = create_inbound_messages_filter(request, results)
-            if inbound_filter is not None:
-                inbound_messages = msApi.get_inbounds(inbound_filter)
-            else:
-                inbound_messages = {}
-            request.session['inbound_next_params'] = (
-                utils.extract_query_params(inbound_messages.get('next')))
-            request.session['inbound_prev_params'] = (
-                utils.extract_query_params(inbound_messages.get('previous')))
+        deactivate_subscription_form = DeactivateSubscriptionForm()
+        add_subscription_form = AddSubscriptionForm()
+        add_subscription_form.fields['messageset'] = forms.ChoiceField(
+                                                        choices=choices)
 
         context.update({
             "identity": results,
@@ -576,6 +638,8 @@ def identity(request, identity):
             "messagesets": messagesets,
             "subscriptions": subscriptions,
             "outbound_messages": outbound_messages,
+            "add_subscription_form": add_subscription_form,
+            "deactivate_subscription_form": deactivate_subscription_form,
             "inbounds": inbound_messages,
         })
         context.update(csrf(request))

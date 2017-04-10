@@ -9,16 +9,11 @@
     <meta name="description" content="Control Interface for Seed">
     <meta name="keywords" content="control interface seed">
     <meta name="author" content="Praekelt Foundation">
-
-    <title>
-
-        Seed Control Interface &middot; {% block pagetitle %}{% endblock %}
-
-    </title>
-
+    <title>Seed Control Interface &middot; {% block pagetitle %}{% endblock %}</title>
     <link href="http://fonts.googleapis.com/css?family=Roboto:300,400,500,700,400italic" rel="stylesheet">
     <link href="{% static "ci/css/toolkit-light.css" %}" rel="stylesheet">
     <link href="{% static "ci/css/application.css" %}" rel="stylesheet">
+    <link href="{% static "ci/css/styles.css" %}" rel="stylesheet">
     <link href="{% static "ci/css/font-awesome.min.css" %}" rel="stylesheet">
 
     <style>
@@ -32,8 +27,6 @@
     </style>
     <script src="{% static "ci/js/jquery.min.js" %}"></script>
   </head>
-
-
 <body>
   <div class="container">
     <div class="row">
@@ -51,38 +44,64 @@
 
           <div class="collapse nav-toggleable-sm" id="nav-toggleable-sm">
             <ul class="nav nav-pills nav-stacked">
-              <li class="nav-header">Health</li>
+              <li class="nav-header"><h3 class="nav-pills__heading-topic">Health</h3></li>
               {% url 'health_messages' as url %}
-               <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">Messages</a></li>
+                <li{% if request.path == url %} class="active"{% endif %}>
+                  <a href="{{ url }}">Messages</a>
+                </li>
+
               {% url 'health_subscriptions' as url %}
-               <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">Subscriptions</a></li>
+                <li{% if request.path == url %} class="active"{% endif %}>
+                  <a href="{{ url }}">Subscriptions</a>
+                </li>
+
               {% url 'health_registrations' as url %}
-               <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">Registrations</a></li>
-              <li class="nav-header">Dashboards</li>
+                <li{% if request.path == url %} class="active"{% endif %}>
+                  <a href="{{ url }}">Registrations</a>
+                </li>
+
+              <li class="nav-header"><h3 class="nav-pills__heading-topic">Dashboards</h3></li>
               {% for dashboard in dashboards %}
                {% url 'dashboard' dashboard.id as url %}
-               <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">{{ dashboard.name }}</a></li>
+                <li{% if request.path == url %} class="active"{% endif %}>
+                  <a href="{{ url }}">{{ dashboard.name }}</a>
+                </li>
               {% endfor %}
-              <li class="nav-header">Identities</li>
+
+              <li class="nav-header"><h3 class="nav-pills__heading-topic">Identities</h3></li>
               {% url 'identities' as url %}
-              <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">Search</a></li>
-              <li class="nav-header">Registrations</li>
+                <li{% if request.path == url %} class="active"{% endif %}>
+                  <a href="{{ url }}">Search</a>
+                </li>
+              <li class="nav-header"><h3 class="nav-pills__heading-topic">Registrations</h3></li>
               {% url 'registrations' as url %}
-              <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">View</a></li>
-              <li class="nav-header">Changes</li>
+                <li{% if request.path == url %} class="active"{% endif %}>
+                  <a href="{{ url }}">View</a>
+                </li>
+              <li class="nav-header"><h3 class="nav-pills__heading-topic">Changes</h3></li>
               {% url 'changes' as url %}
-              <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">View</a></li>
-              <li class="nav-header">Subscriptions</li>
+                <li{% if request.path == url %} class="active"{% endif %}>
+                  <a href="{{ url }}">View</a>
+                </li>
+              <li class="nav-header"><h3 class="nav-pills__heading-topic">Subscriptions</h3></li>
               {% url 'subscriptions' as url %}
-              <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">View</a></li>
-              <li class="nav-header">Send Task Failures</li>
+                <li{% if request.path == url %} class="active"{% endif %}>
+                  <a href="{{ url }}">View</a>
+                </li>
+              <li class="nav-header"><h3 class="nav-pills__heading-topic">Send Task Failures</h3></li>
               {% url 'schedule_failures' as url %}
-              <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">Schedules</a></li>
+                <li{% if request.path == url %} class="active"{% endif %}>
+                  <a href="{{ url }}">Schedules</a>
+                </li>
               {% url 'subscription_failures' as url %}
-              <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">Subscriptions</a></li>
+                <li{% if request.path == url %} class="active"{% endif %}>
+                  <a href="{{ url }}">Subscriptions</a>
+                </li>
               {% url 'outbound_failures' as url %}
-              <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">Outbounds</a></li>
-              <li class="nav-header">More</li>
+                <li{% if request.path == url %} class="active"{% endif %}>
+                  <a href="{{ url }}">Outbounds</a>
+                </li>
+              <li class="nav-header"><h3 class="nav-pills__heading-topic">More</h3></li>
               {% url 'services' as url %}
               <li{% if request.path == url %} class="active"{% endif %}><a href="{{ url }}">Service Status</a></li>
               {% url 'reports' as url %}
@@ -99,20 +118,18 @@
       </div>
     </div>
   </div>
-
   <div id="footer">
     <div class="container text-center">
       <p class="text-muted credit">v{% current_version %}</p>
     </div>
   </div>
-
-    <script src="{% static "ci/js/chart.js" %}"></script>
-    <script src="{% static "ci/js/tablesorter.min.js" %}"></script>
-    <script src="{% static "ci/js/toolkit.js" %}"></script>
-    <script src="{% static "ci/js/application.js" %}"></script>
-    <script>
-      // execute/clear BS loaders for docs
-      $(function(){while(window.BS&&window.BS.loader&&window.BS.loader.length){(window.BS.loader.pop())()}})
+  <script src="{% static "ci/js/chart.js" %}"></script>
+  <script src="{% static "ci/js/tablesorter.min.js" %}"></script>
+  <script src="{% static "ci/js/toolkit.js" %}"></script>
+  <script src="{% static "ci/js/application.js" %}"></script>
+  <script>
+    // execute/clear BS loaders for docs
+    $(function(){while(window.BS&&window.BS.loader&&window.BS.loader.length){(window.BS.loader.pop())()}})
     </script>
   </body>
 </html>

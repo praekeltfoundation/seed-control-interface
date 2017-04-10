@@ -1,0 +1,41 @@
+.nav-pills__heading-topic {
+  font-size: 16px;
+}
+.call-to-action {
+  padding: 20px 0 10px;
+  width: 100%;
+}
+.call-to-action__new-section fieldset {
+  display: inline-block;
+}
+.call-to-action__new-section label {
+  display: block;
+}
+.call-to-action__new-section .form-control {
+  display: inline-block;
+  height: 35px;
+}
+.call-to-action__item {
+  padding: 5px 12px;
+  margin-bottom: 5px;
+  cursor: pointer;
+  display: block;
+  font-size: 14px;
+  font-weight: normal;
+  border-radius: 4px;
+  outline: none;
+  vertical-align: middle;
+  text-align: center;
+  white-space: nowrap;
+  background: #1686b0;
+  border: 1px solid #126e90;
+  color: #ffffff;
+}
+.call-to-action__item--submit-entry {
+  width: 15%;
+  display: inline-block;
+  margin: 1px 0 0;
+}
+.call-to-action__item--subscription {
+  width: 100%;
+}

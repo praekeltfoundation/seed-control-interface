@@ -1,5 +1,6 @@
 {% extends "ci/base.html" %}
 {% load staticfiles %}
+{% load bootstrap %}
 {% load seed %}
 {% block pagetitle %}Identity Management{% endblock %}
 {% block content %}
@@ -15,11 +16,16 @@
       <span class="icon icon-calendar"></span> -->
     </div>
   </div>
+
 </div>
 
 <hr class="m-t">
 
-<h3>Details</h3>
+{% for message in messages %}
+<div class="alert alert-{{ message.tags }}">{{ message }}</div>
+{% endfor %}
+
+<h3>User Details</h3>
 <div class="table-full">
   <div class="table-responsive">
     <table class="table" data-sort="table">
@@ -146,6 +152,20 @@
 </div>
 
 <h3>Subscriptions</h3>
+<!-- Add section to add new subscription for identity, drop down list #--->
+<div class="call-to-action call-to-action__new-section">
+  <form class="form-inline" method="post" action=".">
+  {% csrf_token %}
+    <fieldset>
+    <!-- Order by Latest created -->
+    {{ add_subscription_form|bootstrap_inline }}
+    </fieldset>
+    <button type="submit" name="add_subscription" class="call-to-action__item call-to-action__item--submit-entry">Add</button>
+    <br/>
+  </form>
+</div>
+
+
 <div class="table-full">
   <div class="table-responsive">
     <table class="table">
@@ -159,10 +179,11 @@
           <th>Completed</th>
           <th>Created</th>
           <th>Last Updated</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
-        {% for subscription in subscriptions.results %}
+        {% for subscription in subscriptions.results|dictsortreversed:'active' %}
         <tr>
           {% url 'subscriptions-detail' subscription.id as url %}
           <td><a href="{{ url }}">{{ subscription.id|truncatechars:12 }}</a></td>
@@ -173,6 +194,17 @@
           <td>{{ subscription.completed }}</td>
           <td>{{ subscription.created_at|get_date|date:"D d M Y H:i" }}</td>
           <td>{{ subscription.updated_at|get_date|date:"D d M Y H:i" }}</td>
+          <td>
+          {% if subscription.active == True %}
+          <form class="form-inline" method="post" action=".">
+          {% csrf_token %}
+            <fieldset>
+              <input id="id_subscription_id" name="subscription_id" type="hidden" value={{ subscription.id }} />
+            </fieldset>
+            <button type="submit" name="deactivate_subscription" class="call-to-action__item call-to-action__item--subscription">Deactivate</button>
+          </form>
+          {% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>

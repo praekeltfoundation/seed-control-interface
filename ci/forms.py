@@ -66,6 +66,13 @@ class IdentitySearchForm(forms.Form):
     )
 
 
+class AddSubscriptionForm(forms.Form):
+    messageset = forms.IntegerField()
+
+
+class DeactivateSubscriptionForm(forms.Form):
+    subscription_id = forms.CharField()
+
 STAGE_CHOICES = (
     ('', "Stage - all"),
     ('prebirth', "Mother is pregnant"),
