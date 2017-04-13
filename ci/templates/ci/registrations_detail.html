@@ -1,5 +1,6 @@
 {% extends "ci/base.html" %}
 {% load staticfiles %}
+{% load seed %}
 {% block pagetitle %}Registration Management{% endblock %}
 {% block content %}
 <div class="dashhead">
@@ -27,9 +28,9 @@
           <th>Unique ID:</th><td>{{ registration.id }}</td>
         </tr>
         <tr>
-          {% url 'identities-detail' registration.mother_id as url %}
+          {% url 'identities-detail' registration|get_identity as url %}
           <th>Mother ID:</th>
-          <td><a href="{{ url }}">{{ registration.mother_id|truncatechars:12 }}</a></td>
+          <td><a href="{{ url }}">{{ registration|get_identity|truncatechars:12 }}</a></td>
         </tr>
         <tr>
           <th>Created:</th><td>{{ registration.created_at|get_date|date:"D d M Y H:i" }}</td>

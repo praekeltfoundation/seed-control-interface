@@ -6,6 +6,7 @@ from datetime import datetime
 import pytz
 from openpyxl import load_workbook
 
+from django.conf import settings
 from django.test import TestCase, Client, override_settings
 from django.core import mail
 from django.core.management import call_command
@@ -69,7 +70,8 @@ class ViewTests(TestCase):
     def add_registrations_callback(self):
         responses.add(
             responses.GET,
-            "http://hub.example.com/registrations/?mother_id=operator_id",
+            "http://hub.example.com/registrations/?{}=operator_id".format(
+                settings.IDENTITY_FIELD),
             match_querystring=True,
             json={
                 'count': 0,
@@ -81,7 +83,8 @@ class ViewTests(TestCase):
     def add_changes_callback(self):
         responses.add(
             responses.GET,
-            "http://hub.example.com/changes/?mother_id=operator_id",
+            "http://hub.example.com/changes/?{}=operator_id".format(
+                settings.IDENTITY_FIELD),
             match_querystring=True,
             json={
                 'count': 0,

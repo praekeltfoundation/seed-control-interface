@@ -1,4 +1,5 @@
 from django import template
+from django.conf import settings
 
 import seed_control_interface
 
@@ -20,3 +21,8 @@ def unslug(value):
 @register.filter
 def is_dict(value):
     return isinstance(value, dict)
+
+
+@register.filter
+def get_identity(obj):
+    return obj.get(settings.IDENTITY_FIELD)

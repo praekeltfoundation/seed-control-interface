@@ -591,7 +591,7 @@ def identity(request, identity):
                     )
 
         hub_filter = {
-            "mother_id": identity
+            settings.IDENTITY_FIELD: identity
         }
         registrations = hubApi.get_registrations(params=hub_filter)
         changes = hubApi.get_changes(params=hub_filter)
@@ -663,7 +663,8 @@ def registrations(request):
                 reg_filter = {
                     "stage": form.cleaned_data['stage'],
                     "validated": form.cleaned_data['validated'],
-                    "mother_id": form.cleaned_data['mother_id']
+                    settings.IDENTITY_FIELD:
+                        form.cleaned_data['mother_id']
                 }
                 results = hubApi.get_registrations(params=reg_filter)
             else:
@@ -720,7 +721,8 @@ def changes(request):
                 change_filter = {
                     "action": form.cleaned_data['action'],
                     "validated": form.cleaned_data['validated'],
-                    "mother_id": form.cleaned_data['mother_id']
+                    settings.IDENTITY_FIELD:
+                        form.cleaned_data['mother_id']
                 }
                 results = hubApi.get_changes(params=change_filter)
             else:
