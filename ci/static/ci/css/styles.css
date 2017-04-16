@@ -1,3 +1,7 @@
+.identity__heading {
+  padding: 10px 0 10px;
+  margin: 0;
+}
 .nav-pills__heading-topic {
   font-size: 16px;
 }
@@ -38,4 +42,41 @@
 }
 .call-to-action__item--subscription {
   width: 100%;
+}
+/*MESSAGES PAGINATION*/
+.pagination {
+  width: 100%;
+  position: relative;
+}
+.pagination__link {
+  background: #1ca8dd;
+  border-radius: 5px;
+  color: #ffffff;
+  cursor: pointer;
+  display: inline-block;
+  font-size: 14px;
+  font-weight: 400;
+  padding: 10px 20px;
+}
+.pagination__link:focus,
+.pagination__link:hover {
+  background: #1686b0;
+  color: #ffffff;
+}
+.pagination__link--count {
+  text-align: center;
+  margin: 0 auto;
+  left: 0;
+  right: 0;
+  position: absolute;
+  overflow: hidden;
+  width: 75%;
+}
+.pagination__link--previous {
+  float: left;
+  cursor: pointer;
+}
+.pagination__link--next {
+  float: right;
+  cursor: pointer;
 }

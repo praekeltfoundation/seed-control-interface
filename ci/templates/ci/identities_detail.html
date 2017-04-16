@@ -67,7 +67,7 @@
   </div>
 </div>
 
-<h3>Addresses</h3>
+<h3 class="identity__heading">Addresses</h3>
 <div class="table-full">
   <div class="table-responsive">
     <table class="table">
@@ -93,7 +93,7 @@
   </div>
 </div>
 
-<h3>Registrations</h3>
+<h3 class="identity__heading">Registrations</h3>
 <div class="table-full">
   <div class="table-responsive">
     <table class="table">
@@ -122,7 +122,7 @@
   </div>
 </div>
 
-<h3>Changes</h3>
+<h3 class="identity__heading">Changes</h3>
 <div class="table-full">
   <div class="table-responsive">
     <table class="table">
@@ -151,7 +151,7 @@
   </div>
 </div>
 
-<h3>Subscriptions</h3>
+<h3 class="identity__heading">Subscriptions</h3>
 <!-- Add section to add new subscription for identity, drop down list #--->
 <div class="call-to-action call-to-action__new-section">
   <form class="form-inline" method="post" action=".">
@@ -164,8 +164,6 @@
     <br/>
   </form>
 </div>
-
-
 <div class="table-full">
   <div class="table-responsive">
     <table class="table">
@@ -212,7 +210,7 @@
   </div>
 </div>
 
-<h3>Messages sent to user</h3>
+<h3 class="identity__heading">Messages sent to user</h3>
 <div class="table-full">
   <div class="table-responsive">
     <table class="table">
@@ -227,6 +225,7 @@
         </tr>
       </thead>
       <tbody>
+      <!--  How does the pagination below update the message list entries table? -->
         {% for outbound in outbound_messages.results %}
         <tr>
           <td>{{ outbound.to_addr }}</td>
@@ -241,24 +240,56 @@
     </table>
   </div>
 </div>
+<div class="pagination pagination-list">
+  {% if outbound_messages.previous %}
+    <a href="{{request.site.root_page.url}}?outbound_prev={{ outbound_prev }}" class="pagination__link pagination__link--previous">
+      <span class="pagination__link--arrow">&larr;</span> Prev
+    </a>
+  {% endif %}
+  {% if outbound_messages.next %}
+    <a href="{{request.site.root_page.url}}?outbound_next={{ outbound_next }}" class="pagination__link pagination__link--next">Next
+      <span class="pagination__link--arrow">&rarr;</span>
+    </a>
+  {% endif %}
+</div>
 
-<!-- <div class="text-center">
-  <ul class="pagination">
-    <li>
-      <a href="#" aria-label="Previous">
-        <span aria-hidden="true">&laquo;</span>
-      </a>
-    </li>
-    <li class="active"><a href="#">1</a></li>
-    <li><a href="#">2</a></li>
-    <li><a href="#">3</a></li>
-    <li><a href="#">4</a></li>
-    <li><a href="#">5</a></li>
-    <li>
-      <a href="#" aria-label="Next">
-        <span aria-hidden="true">&raquo;</span>
-      </a>
-    </li>
-  </ul>
-</div> -->
+<h3 class="identity__heading">Inbound Messages</h3>
+<div class="table-full">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>To Address</th>
+          <th>From Address (MSISDN)</th>
+          <th>Content</th>
+          <th>Created Date</th>
+          <th>Last Updated Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inbound in inbounds.results %}
+        <tr>
+          <td>{{ inbound.to_addr }}</td>
+          <td>{{ inbound.from_addr }}</td>
+          <td>{{ inbound.content }}</td>
+          <td>{{ inbound.created_at|get_date|date:"D d M Y H:i" }}</td>
+          <td>{{ inbound.updated_at|get_date|date:"D d M Y H:i" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="pagination pagination-list">
+  {% if inbound_messages.previous %}
+    <a href="{{request.site.root_page.url}}?inbound_prev={{ inbound_prev }}" class="pagination__link pagination__link--previous">
+      <span class="pagination__link--arrow">&larr;</span> Prev
+    </a>
+  {% endif %}
+  {% if inbound_messages.next %}
+    <a href="{{request.site.root_page.url}}?inbound_next={{ inbound_next }}" class="pagination__link pagination__link--next">Next
+      <span class="pagination__link--arrow">&rarr;</span>
+    </a>
+  {% endif %}
+</div>
 {% endblock %}
