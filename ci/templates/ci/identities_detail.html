@@ -239,12 +239,12 @@
 </div>
 <div class="pagination pagination-list">
   {% if outbound_messages.previous %}
-    <a href="{{request.site.root_page.url}}?outbound_prev={{ outbound_prev }}" class="pagination__link pagination__link--previous">
+    <a href="{{request.site.root_page.url}}?outbound_prev" class="pagination__link pagination__link--previous">
       <span class="pagination__link--arrow">&larr;</span> Prev
     </a>
   {% endif %}
   {% if outbound_messages.next %}
-    <a href="{{request.site.root_page.url}}?outbound_next={{ outbound_next }}" class="pagination__link pagination__link--next">Next
+    <a href="{{request.site.root_page.url}}?outbound_next" class="pagination__link pagination__link--next">Next
       <span class="pagination__link--arrow">&rarr;</span>
     </a>
   {% endif %}
@@ -279,12 +279,12 @@
 </div>
 <div class="pagination pagination-list">
   {% if inbound_messages.previous %}
-    <a href="{{request.site.root_page.url}}?inbound_prev={{ inbound_prev }}" class="pagination__link pagination__link--previous">
+    <a href="{{request.site.root_page.url}}?inbound_prev" class="pagination__link pagination__link--previous">
       <span class="pagination__link--arrow">&larr;</span> Prev
     </a>
   {% endif %}
   {% if inbound_messages.next %}
-    <a href="{{request.site.root_page.url}}?inbound_next={{ inbound_next }}" class="pagination__link pagination__link--next">Next
+    <a href="{{request.site.root_page.url}}?inbound_next" class="pagination__link pagination__link--next">Next
       <span class="pagination__link--arrow">&rarr;</span>
     </a>
   {% endif %}
