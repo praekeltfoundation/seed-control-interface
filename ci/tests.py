@@ -15,6 +15,7 @@ from .views import get_identity_addresses
 from . import utils
 
 
+@override_settings(MESSAGES_PER_IDENTITY=100)
 class ViewTests(TestCase):
 
     def setUp(self):
