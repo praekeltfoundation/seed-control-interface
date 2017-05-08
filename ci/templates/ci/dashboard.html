@@ -61,10 +61,6 @@
         {% for widget in dashboard.widgets %}
         w{{ widget.id }}: {
           title: '{{ widget.title }}',
-          {% if widget.data|length == 1 %}
-          key: '{{ widget.data.0.key }}',
-          values: [],
-          {% else %}
           metrics: [
             {% for metric in widget.data %}
             {
@@ -75,7 +71,6 @@
 
             {% endfor %}
           ],
-          {% endif %}
           start: '-30d',
           interval: '1d',
           nulls: '{{ widget.nulls }}',
@@ -87,8 +82,15 @@
 
 
   // Create the widget components. Widget configuration would be done here.
-  var last = sapphire.widgets.last();
-  var lines = sapphire.widgets.lines();
+  var last = sapphire.widgets.last()
+    .values(function(widget) {
+      // Multiple 'last' metrics per widget doesn't make sense, use the first
+      return widget.metrics[0].values;
+    });
+  var lines = sapphire.widgets.lines()
+    .key(function(d) {
+      return d.key;
+    });
   var pie = sapphire.widgets.pie()
     // Format percentages nicely even if they have no data
     .percentFormat(function(value) {
@@ -97,8 +99,15 @@
       }
       var f = d3.format('.0%');
       return f(value);
+    })
+    .key(function(d) {
+      return d.key;
     });
-  var bars = sapphire.widgets.bars();
+  var bars = sapphire.widgets.bars()
+    .values(function(widget) {
+      // Multiple bar metrics per widget doesn't work, use the first
+      return widget.metrics[0].values;
+    });
 
 
   // Update the dashboard on page load, then every `data.step` milliseconds.

@@ -6,6 +6,7 @@ from datetime import datetime
 import pytz
 from openpyxl import load_workbook
 
+from django.conf import settings
 from django.test import TestCase, Client, override_settings
 from django.core import mail
 from django.core.management import call_command
@@ -14,6 +15,7 @@ from .views import get_identity_addresses
 from . import utils
 
 
+@override_settings(MESSAGES_PER_IDENTITY=100)
 class ViewTests(TestCase):
 
     def setUp(self):
@@ -21,6 +23,174 @@ class ViewTests(TestCase):
 
     def login(self):
         self.client.login(username='testuser', password='testpass')
+        session = self.client.session
+        session['user_token'] = 'temptoken'
+        session['user_permissions'] = [{"object_id": 1, "type": "ci:view"}]
+        session['user_dashboards'] = []
+        session.save()
+
+    def set_session_user_tokens(self):
+        session = self.client.session
+        session['user_tokens'] = {
+            "SEED_IDENTITY_SERVICE": {
+                "url": 'http://idstore.example.com/', "token": 'idstoretoken'},
+            "HUB": {
+                "url": 'http://hub.example.com/', "token": 'hubtoken'},
+            "SEED_STAGE_BASED_MESSAGING": {
+                "url": 'http://sbm.example.com/', "token": 'sbmtoken'},
+            "SEED_MESSAGE_SENDER": {
+                "url": 'http://ms.example.com/', 'token': 'mstoken'
+            }
+        }
+        session.save()
+
+    def add_identity_callback(self, identity='operator_id'):
+        responses.add(
+            responses.GET,
+            'http://idstore.example.com/identities/{}/'.format(identity),
+            json={
+                'identity': identity,
+                'details': {
+                    'personnel_code': 'personnel_code',
+                    'facility_name': 'facility_name',
+                    'default_addr_type': 'msisdn',
+                    'receiver_role': 'role',
+                    'state': 'state',
+                    'addresses': {
+                        'msisdn': {
+                            '+2340000000000': {}
+                        }
+                    }
+                },
+                'created_at': '2016-01-01T10:30:21.0Z',
+                'updated_at': '2016-01-01T10:30:21.0Z',
+            },
+            status=200,
+            content_type='application/json')
+
+    def add_registrations_callback(self):
+        responses.add(
+            responses.GET,
+            "http://hub.example.com/registrations/?{}=operator_id".format(
+                settings.IDENTITY_FIELD),
+            match_querystring=True,
+            json={
+                'count': 0,
+                'results': [],
+            },
+            status=200,
+            content_type='application/json')
+
+    def add_changes_callback(self):
+        responses.add(
+            responses.GET,
+            "http://hub.example.com/changes/?{}=operator_id".format(
+                settings.IDENTITY_FIELD),
+            match_querystring=True,
+            json={
+                'count': 0,
+                'results': [],
+            },
+            status=200,
+            content_type='application/json')
+
+    def add_subscriptions_callback(self):
+        responses.add(
+            responses.GET,
+            "http://sbm.example.com/subscriptions/?identity=operator_id",
+            match_querystring=True,
+            json={
+                'count': 0,
+                'results': [],
+            },
+            status=200,
+            content_type='application/json')
+
+    def add_outbounds_callback(self, path='', num=1, metadata={},
+                               next_msgs=None, prev_msgs=None):
+        if next_msgs is not None:
+            next_msgs = ('http://ms.example.com/outbound/?ordering='
+                         '-created_at&limit=100&to_addr=%2B2340000000000&'
+                         'offset={}'.format(next_msgs))
+        if prev_msgs is not None:
+            prev_msgs = ('http://ms.example.com/outbound/?ordering='
+                         '-created_at&limit=100&to_addr=%2B2340000000000&'
+                         'offset={}'.format(prev_msgs))
+        outbounds = []
+
+        for i in range(1, num+1):
+            outbounds.append({
+                'to_addr': 'addr',
+                'content': 'content',
+                'delivered': True if i % 2 == 0 else False,
+                'created_at': '2017-01-0{}T10:30:21.0Z'.format(i),
+                'updated_at': '2017-01-0{}T10:30:21.0Z'.format(i),
+                'metadata': metadata
+            })
+
+        responses.add(
+            responses.GET,
+            ('http://ms.example.com/outbound/?ordering=-created_at&limit=100'
+             '&to_addr=%2B2340000000000{}'.format(path)),
+            match_querystring=True,
+            json={
+                'count': num,
+                'next': next_msgs,
+                'previous': prev_msgs,
+                'results': outbounds,
+            },
+            status=200,
+            content_type='application/json')
+
+    def add_inbounds_callback(
+            self, path='', num=1, metadata={}, next_msgs=None, prev_msgs=None):
+        if next_msgs is not None:
+            next_msgs = ('http://ms.example.com/inbound/?ordering='
+                         '-created_at&limit=100&from_addr=%2B2340000000000&'
+                         'offset={}'.format(next_msgs))
+        if prev_msgs is not None:
+            prev_msgs = ('http://ms.example.com/indbound/?ordering='
+                         '-created_at&limit=100&from_addr=%2B2340000000000&'
+                         'offset={}'.format(prev_msgs))
+        inbounds = []
+
+        for i in range(1, num+1):
+            inbounds.append({
+                'from_addr': 'addr',
+                'content': 'content',
+                'delivered': True if i % 2 == 0 else False,
+                'created_at': '2017-01-0{}T10:30:21.0Z'.format(i),
+                'updated_at': '2017-01-0{}T10:30:21.0Z'.format(i),
+                'metadata': metadata
+            })
+
+        data = {
+            'count': num,
+            'next': next_msgs,
+            'previous': prev_msgs,
+            'results': inbounds,
+        }
+
+        responses.add(
+            responses.GET,
+            ('http://ms.example.com/inbound/?ordering=-created_at&limit=100'
+             '&from_addr=%2B2340000000000{}'.format(path)),
+            match_querystring=True,
+            json=data,
+            status=200,
+            content_type='application/json')
+        return data
+
+    def add_messagesets_callback(self):
+        responses.add(
+            responses.GET,
+            'http://sbm.example.com/messageset/',
+            json={
+                'count': 0,
+                'results': [],
+            },
+            status=200,
+            content_type='application/json')
 
     def test_redirect_to_login(self):
         response = self.client.get("/", follow=True)
@@ -56,6 +226,191 @@ class ViewTests(TestCase):
                 }
             }
         }), {})
+
+    @responses.activate
+    def test_get_identity_outbound_display(self):
+        self.login()
+        self.set_session_user_tokens()
+
+        self.add_messagesets_callback()
+        self.add_identity_callback()
+        self.add_registrations_callback()
+        self.add_changes_callback()
+        self.add_subscriptions_callback()
+        self.add_outbounds_callback(num=1, next_msgs=100, prev_msgs=0)
+        self.add_inbounds_callback()
+
+        response = self.client.get("/identities/operator_id/", follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Sun 01 Jan 2017 10:30")
+
+        # Check that the 'prev' and 'next' values returned are in the session
+        session = self.client.session
+        self.assertEqual(session['next_outbound_params'], {
+            "limit": ["100"], "offset": ["100"], "ordering": ["-created_at"],
+            "to_addr": ["+2340000000000"]})
+        self.assertEqual(session['prev_outbound_params'], {
+            "limit": ["100"], "offset": ["0"], "ordering": ["-created_at"],
+            "to_addr": ["+2340000000000"]})
+
+    @responses.activate
+    def test_get_identity_next_outbounds_display(self):
+        self.login()
+        self.set_session_user_tokens()
+        session = self.client.session
+        session['next_outbound_params'] = {
+            "limit": ["100"], "offset": ["100"], "ordering": ["-created_at"],
+            "to_addr": ["+2340000000000"]}
+        session.save()
+
+        self.add_messagesets_callback()
+        self.add_identity_callback()
+        self.add_registrations_callback()
+        self.add_changes_callback()
+        self.add_subscriptions_callback()
+        self.add_outbounds_callback(num=1, path='&offset=100', next_msgs=200)
+        self.add_inbounds_callback()
+
+        # Navigate to the next page
+        response = self.client.get("/identities/operator_id/?outbound_next",
+                                   follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Sun 01 Jan 2017 10:30")
+
+        # Check that session 'next' value was overwritten
+        session = self.client.session
+        self.assertEqual(session['next_outbound_params'], {
+            "limit": ["100"], "offset": ["200"], "ordering": ["-created_at"],
+            "to_addr": ["+2340000000000"]})
+
+    @responses.activate
+    def test_get_identity_prev_outbounds_display(self):
+        self.login()
+        self.set_session_user_tokens()
+        session = self.client.session
+        session['prev_outbound_params'] = {
+            "limit": ["100"], "offset": ["100"], "ordering": ["-created_at"],
+            "to_addr": ["+2340000000000"]}
+        session.save()
+
+        self.add_messagesets_callback()
+        self.add_identity_callback()
+        self.add_registrations_callback()
+        self.add_changes_callback()
+        self.add_subscriptions_callback()
+        self.add_outbounds_callback(num=1, path='&offset=100', prev_msgs=0)
+        self.add_inbounds_callback()
+
+        # Navigate to the previous page
+        response = self.client.get("/identities/operator_id/?outbound_prev",
+                                   follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Sun 01 Jan 2017 10:30")
+
+        # Check that session 'prev' value was overwritten
+        session = self.client.session
+        self.assertEqual(session['prev_outbound_params'], {
+            "limit": ["100"], "offset": ["0"], "ordering": ["-created_at"],
+            "to_addr": ["+2340000000000"]})
+
+    @responses.activate
+    def test_get_identity_inbounds_context(self):
+        """
+        When getting the details of an identity, that identity's inbound
+        messages should be sent along in the context, so that the template can
+        render them.
+        """
+        self.login()
+        self.set_session_user_tokens()
+
+        self.add_messagesets_callback()
+        self.add_identity_callback()
+        self.add_registrations_callback()
+        self.add_changes_callback()
+        self.add_subscriptions_callback()
+        self.add_outbounds_callback()
+        inbounds = self.add_inbounds_callback(next_msgs=100)
+
+        response = self.client.get("/identities/operator_id/", follow=True)
+        self.assertEqual(response.status_code, 200)
+
+        self.assertEqual(response.context['inbounds'], inbounds)
+        self.assertEqual(self.client.session['inbound_next_params'], {
+            "limit": ["100"], "offset": ["100"], "ordering": ["-created_at"],
+            "from_addr": ["+2340000000000"]})
+        self.assertEqual(self.client.session['inbound_prev_params'], {})
+
+    @responses.activate
+    def test_get_identity_next_inbounds_context(self):
+        """
+        When getting the details of an identity, if the next page for the
+        inbound messages is requested, the next page should be sent along in
+        the context.
+        """
+        self.login()
+        self.set_session_user_tokens()
+        session = self.client.session
+        session['inbound_next_params'] = {
+            "limit": ["100"], "offset": ["100"], "ordering": ["-created_at"],
+            "from_addr": ["+2340000000000"]}
+        session.save()
+
+        self.add_messagesets_callback()
+        self.add_identity_callback()
+        self.add_registrations_callback()
+        self.add_changes_callback()
+        self.add_subscriptions_callback()
+        self.add_outbounds_callback()
+        inbounds = self.add_inbounds_callback(
+            next_msgs=200, prev_msgs=0, path='&offset=100')
+
+        response = self.client.get(
+            "/identities/operator_id/?inbound_next=true", follow=True)
+        self.assertEqual(response.status_code, 200)
+
+        self.assertEqual(response.context['inbounds'], inbounds)
+        self.assertEqual(self.client.session['inbound_next_params'], {
+            "limit": ["100"], "offset": ["200"], "ordering": ["-created_at"],
+            "from_addr": ["+2340000000000"]})
+        self.assertEqual(self.client.session['inbound_prev_params'], {
+            "limit": ["100"], "offset": ["0"], "ordering": ["-created_at"],
+            "from_addr": ["+2340000000000"]})
+
+    @responses.activate
+    def test_get_identity_previous_inbounds_context(self):
+        """
+        When getting the details of an identity, if the previous page for the
+        inbound messages is requested, the previous page should be sent along
+        in the context.
+        """
+        self.login()
+        self.set_session_user_tokens()
+        session = self.client.session
+        session['inbound_prev_params'] = {
+            "limit": ["100"], "offset": ["200"], "ordering": ["-created_at"],
+            "from_addr": ["+2340000000000"]}
+        session.save()
+
+        self.add_messagesets_callback()
+        self.add_identity_callback()
+        self.add_registrations_callback()
+        self.add_changes_callback()
+        self.add_subscriptions_callback()
+        self.add_outbounds_callback()
+        inbounds = self.add_inbounds_callback(
+            next_msgs=300, prev_msgs=100, path='&offset=200')
+
+        response = self.client.get(
+            "/identities/operator_id/?inbound_prev=true", follow=True)
+        self.assertEqual(response.status_code, 200)
+
+        self.assertEqual(response.context['inbounds'], inbounds)
+        self.assertEqual(self.client.session['inbound_next_params'], {
+            "limit": ["100"], "offset": ["300"], "ordering": ["-created_at"],
+            "from_addr": ["+2340000000000"]})
+        self.assertEqual(self.client.session['inbound_prev_params'], {
+            "limit": ["100"], "offset": ["100"], "ordering": ["-created_at"],
+            "from_addr": ["+2340000000000"]})
 
 
 @override_settings(

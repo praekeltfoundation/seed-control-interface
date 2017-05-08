@@ -1,5 +1,7 @@
 {% extends "ci/base.html" %}
 {% load staticfiles %}
+{% load bootstrap %}
+{% load seed %}
 {% block pagetitle %}Identity Management{% endblock %}
 {% block content %}
 <div class="dashhead">
@@ -14,11 +16,16 @@
       <span class="icon icon-calendar"></span> -->
     </div>
   </div>
+
 </div>
 
 <hr class="m-t">
 
-<h3>Details</h3>
+{% for message in messages %}
+<div class="alert alert-{{ message.tags }}">{{ message }}</div>
+{% endfor %}
+
+<h3>User Details</h3>
 <div class="table-full">
   <div class="table-responsive">
     <table class="table" data-sort="table">
@@ -43,15 +50,24 @@
         </tr>
         <tr>
           <th>Default Address:</th>
-        {% with addresses=identity|get_identity_addresses %}
-        <td>{% for address, info in addresses.items %}{{ address }}{% endfor %}</td>
-        {% endwith %}
+          {% with addresses=identity|get_identity_addresses %}
+          <td>{% for address, info in addresses.items %}{{ address }}{% endfor %}</td>
+          {% endwith %}
+        </tr>
+        {% for key, value in identity.details.items %}
+          {% if not value|is_dict %}
+            <tr>
+              <th>{{ key|unslug|title }}:</th>
+              <td>{{ value }}</td>
+            </tr>
+          {% endif %}
+        {% endfor %}
       </tbody>
     </table>
   </div>
 </div>
 
-<h3>Addresses</h3>
+<h3 class="identity__heading">Addresses</h3>
 <div class="table-full">
   <div class="table-responsive">
     <table class="table">
@@ -68,7 +84,7 @@
         <tr>
           <td>{{ address_type }}</td>
           <td>{{ address }}</td>
-          <td>{% for k, v in info %}{{ k }}: {{ v }}{% endfor %}</td>
+          <td>{% for k, v in info.items %}{{ k|title }}: {{ v }}{% endfor %}</td>
         </tr>
           {% endfor %}
         {% endfor %}
@@ -77,7 +93,7 @@
   </div>
 </div>
 
-<h3>Registrations</h3>
+<h3 class="identity__heading">Registrations</h3>
 <div class="table-full">
   <div class="table-responsive">
     <table class="table">
@@ -106,7 +122,7 @@
   </div>
 </div>
 
-<h3>Changes</h3>
+<h3 class="identity__heading">Changes</h3>
 <div class="table-full">
   <div class="table-responsive">
     <table class="table">
@@ -135,7 +151,17 @@
   </div>
 </div>
 
-<h3>Subscriptions</h3>
+<h3 class="identity__heading">Subscriptions</h3>
+<div class="call-to-action call-to-action__new-section">
+  <form class="form-inline" method="post" action=".">
+  {% csrf_token %}
+    <fieldset>
+    {{ add_subscription_form|bootstrap_inline }}
+    </fieldset>
+    <button type="submit" name="add_subscription" class="call-to-action__item call-to-action__item--submit-entry">Add</button>
+    <br/>
+  </form>
+</div>
 <div class="table-full">
   <div class="table-responsive">
     <table class="table">
@@ -149,10 +175,11 @@
           <th>Completed</th>
           <th>Created</th>
           <th>Last Updated</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
-        {% for subscription in subscriptions.results %}
+        {% for subscription in subscriptions.results|dictsortreversed:'active' %}
         <tr>
           {% url 'subscriptions-detail' subscription.id as url %}
           <td><a href="{{ url }}">{{ subscription.id|truncatechars:12 }}</a></td>
@@ -163,6 +190,17 @@
           <td>{{ subscription.completed }}</td>
           <td>{{ subscription.created_at|get_date|date:"D d M Y H:i" }}</td>
           <td>{{ subscription.updated_at|get_date|date:"D d M Y H:i" }}</td>
+          <td>
+          {% if subscription.active == True %}
+          <form class="form-inline" method="post" action=".">
+          {% csrf_token %}
+            <fieldset>
+              <input id="id_subscription_id" name="subscription_id" type="hidden" value={{ subscription.id }} />
+            </fieldset>
+            <button type="submit" name="deactivate_subscription" class="call-to-action__item call-to-action__item--subscription">Deactivate</button>
+          </form>
+          {% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>
@@ -170,23 +208,85 @@
   </div>
 </div>
 
-<!-- <div class="text-center">
-  <ul class="pagination">
-    <li>
-      <a href="#" aria-label="Previous">
-        <span aria-hidden="true">&laquo;</span>
-      </a>
-    </li>
-    <li class="active"><a href="#">1</a></li>
-    <li><a href="#">2</a></li>
-    <li><a href="#">3</a></li>
-    <li><a href="#">4</a></li>
-    <li><a href="#">5</a></li>
-    <li>
-      <a href="#" aria-label="Next">
-        <span aria-hidden="true">&raquo;</span>
-      </a>
-    </li>
-  </ul>
-</div> -->
+<h3 class="identity__heading">Messages sent to user</h3>
+<div class="table-full">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>MSISDN</th>
+          <th>Delivered</th>
+          <th>Attempts</th>
+          <th>Content</th>
+          <th>Created</th>
+          <th>Last Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for outbound in outbound_messages.results %}
+        <tr>
+          <td>{{ outbound.to_addr }}</td>
+          <td>{{ outbound.delivered }}</td>
+          <td>{{ outbound.attempts }}</td>
+          <td>{{ outbound.content }}</td>
+          <td>{{ outbound.created_at|get_date|date:"D d M Y H:i" }}</td>
+          <td>{{ outbound.updated_at|get_date|date:"D d M Y H:i" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="pagination pagination-list">
+  {% if outbound_messages.previous %}
+    <a href="{{request.site.root_page.url}}?outbound_prev" class="pagination__link pagination__link--previous">
+      <span class="pagination__link--arrow">&larr;</span> Prev
+    </a>
+  {% endif %}
+  {% if outbound_messages.next %}
+    <a href="{{request.site.root_page.url}}?outbound_next" class="pagination__link pagination__link--next">Next
+      <span class="pagination__link--arrow">&rarr;</span>
+    </a>
+  {% endif %}
+</div>
+
+<h3 class="identity__heading">Inbound Messages</h3>
+<div class="table-full">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>To Address</th>
+          <th>From Address (MSISDN)</th>
+          <th>Content</th>
+          <th>Created Date</th>
+          <th>Last Updated Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inbound in inbounds.results %}
+        <tr>
+          <td>{{ inbound.to_addr }}</td>
+          <td>{{ inbound.from_addr }}</td>
+          <td>{{ inbound.content }}</td>
+          <td>{{ inbound.created_at|get_date|date:"D d M Y H:i" }}</td>
+          <td>{{ inbound.updated_at|get_date|date:"D d M Y H:i" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="pagination pagination-list">
+  {% if inbound_messages.previous %}
+    <a href="{{request.site.root_page.url}}?inbound_prev" class="pagination__link pagination__link--previous">
+      <span class="pagination__link--arrow">&larr;</span> Prev
+    </a>
+  {% endif %}
+  {% if inbound_messages.next %}
+    <a href="{{request.site.root_page.url}}?inbound_next" class="pagination__link pagination__link--next">Next
+      <span class="pagination__link--arrow">&rarr;</span>
+    </a>
+  {% endif %}
+</div>
 {% endblock %}

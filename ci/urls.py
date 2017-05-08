@@ -41,6 +41,7 @@ urlpatterns = [
     url(r'^subscriptions/(?P<subscription>[^/]+)/$', views.subscription,
         name='subscriptions-detail'),
     url('^services/$', views.services, name='services'),
+    url('^reports/$', views.report_generation, name='reports'),
     url(r'^services/(?P<service>[^/]+)/$', views.service,
         name='services-detail'),
     url('^denied/$', views.denied, name='denied'),

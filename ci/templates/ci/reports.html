@@ -1,0 +1,107 @@
+{% extends "ci/base.html" %}
+{% load staticfiles %}
+{% load bootstrap %}
+{% block pagetitle %}Report Generation{% endblock %}
+{% block content %}
+<div class="dashhead">
+  <div class="dashhead-titles">
+    <h6 class="dashhead-subtitle">Seed Control Interface</h6>
+    <h2 class="dashhead-title">Report Generation</h2>
+  </div>
+
+  <div class="btn-toolbar dashhead-toolbar">
+    <div class="btn-toolbar-item input-with-icon">
+    </div>
+  </div>
+</div>
+
+<hr class="m-t">
+
+{% if messages %}
+<div class="alert alert-success" role="alert">
+    {% for message in messages %}
+    <p{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</p>
+    {% endfor %}
+</div>
+{% endif %}
+
+<form class="form-horizontal" method="post" action=".">
+  <div class="row col-md-8 col-md-offset-2">
+    <div class="panel panel-default ">
+      
+        <ul class="list-group">
+          <li class="list-group-item">
+            Request generation of the reports for the given date range. The reports will be emailed to recipients if they are specified.
+          </li>
+          <li class="list-group-item">
+            <div class="top-buffer-10">
+              {% csrf_token %}
+              {{ form|bootstrap_horizontal:'col-md-3' }}
+            </div>
+          </li>
+        </ul>
+        <div class="panel-footer">
+          <button class="btn btn-primary generate"><i class="fa fa-cogs" aria-hidden="true"></i> Generate Reports</button>
+        </div>
+    </div>
+  </div>
+</form>
+
+<div class="email-to hide">
+  <div class="input-group control-group bottom-buffer-10 email-to-group">
+    <input type="text" class="form-control email-fields" placeholder="Recipient email">
+    <div class="input-group-btn"> 
+      <button class="btn btn-danger remove" type="button"><i class="fa fa-times" aria-hidden="true"></i></button>
+    </div>
+  </div>
+  <button class="btn btn-success add-more" type="button"><i class="fa fa-plus" aria-hidden="true"></i></button>
+</div>
+
+</div>
+
+<hr class="m-t">
+<script type="text/javascript">
+ 
+    $(document).ready(function() {
+      
+      if ($("#id_email_to").val() != '') {
+        var emails = $("#id_email_to").val().split(",");
+        $("#id_email_to").val('');
+        $.each(emails,function(i){
+          $("#id_email_to").after($(".email-to .email-to-group").clone().addClass("field-clone"));
+          $(".field-clone .email-fields").each(function(i){
+            $(this).attr('value', emails[i]);
+          });
+        });
+        }
+      else {
+        $("#id_email_to").after($(".email-to .email-to-group").clone().addClass("field-clone"));
+      };
+
+      $("#id_email_to").addClass("hide")
+      $(".field-clone:first .remove").replaceWith($(".email-to .add-more").show());
+
+      $(".add-more").click(function(){ 
+          $(".field-clone:last").after($(".email-to .email-to-group").clone());
+      });
+      
+      $("body").on("click",".remove",function(){ 
+          $(this).parents(".control-group").remove();
+      });
+      
+      $("body").on("click",".generate",function(){
+        $(".form-horizontal .email-fields").each(function(){
+          if ($(this).val() == '')
+            $(this).parents(".form-horizontal .control-group").remove();
+            $("#id_email_to").val($(".form-horizontal .email-fields").map( function() {
+                return this.value;
+              }).get().join(","));
+        });
+      });
+ 
+    });
+ 
+</script>
+
+{% endblock %}
+
