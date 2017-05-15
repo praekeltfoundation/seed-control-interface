@@ -38,7 +38,7 @@ setup(
     install_requires=[
         'Django==1.9.12',
         'dj-database-url==0.3.0',
-        'psycopg2==2.6.2',
+        'psycopg2==2.7.1',
         'raven==5.32.0',
         'whitenoise==2.0.6',
         'pytz==2015.7',
