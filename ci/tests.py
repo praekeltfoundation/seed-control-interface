@@ -110,17 +110,16 @@ class ViewTests(TestCase):
                                next_msgs=None, prev_msgs=None):
         if next_msgs is not None:
             next_msgs = ('http://ms.example.com/outbound/?ordering='
-                         '-created_at&limit=100&to_addr=%2B2340000000000&'
+                         '-created_at&limit=100&to_identity=operator_id&'
                          'offset={}'.format(next_msgs))
         if prev_msgs is not None:
             prev_msgs = ('http://ms.example.com/outbound/?ordering='
-                         '-created_at&limit=100&to_addr=%2B2340000000000&'
+                         '-created_at&limit=100&to_identity=operator_id&'
                          'offset={}'.format(prev_msgs))
         outbounds = []
 
         for i in range(1, num+1):
             outbounds.append({
-                'to_addr': 'addr',
                 'content': 'content',
                 'delivered': True if i % 2 == 0 else False,
                 'created_at': '2017-01-0{}T10:30:21.0Z'.format(i),
@@ -131,7 +130,7 @@ class ViewTests(TestCase):
         responses.add(
             responses.GET,
             ('http://ms.example.com/outbound/?ordering=-created_at&limit=100'
-             '&to_addr=%2B2340000000000{}'.format(path)),
+             '&to_identity=operator_id{}'.format(path)),
             match_querystring=True,
             json={
                 'count': num,
@@ -146,17 +145,16 @@ class ViewTests(TestCase):
             self, path='', num=1, metadata={}, next_msgs=None, prev_msgs=None):
         if next_msgs is not None:
             next_msgs = ('http://ms.example.com/inbound/?ordering='
-                         '-created_at&limit=100&from_addr=%2B2340000000000&'
+                         '-created_at&limit=100&from_identity=operator_id&'
                          'offset={}'.format(next_msgs))
         if prev_msgs is not None:
             prev_msgs = ('http://ms.example.com/indbound/?ordering='
-                         '-created_at&limit=100&from_addr=%2B2340000000000&'
+                         '-created_at&limit=100&from_identity=operator_id&'
                          'offset={}'.format(prev_msgs))
         inbounds = []
 
         for i in range(1, num+1):
             inbounds.append({
-                'from_addr': 'addr',
                 'content': 'content',
                 'delivered': True if i % 2 == 0 else False,
                 'created_at': '2017-01-0{}T10:30:21.0Z'.format(i),
@@ -174,7 +172,7 @@ class ViewTests(TestCase):
         responses.add(
             responses.GET,
             ('http://ms.example.com/inbound/?ordering=-created_at&limit=100'
-             '&from_addr=%2B2340000000000{}'.format(path)),
+             '&from_identity=operator_id{}'.format(path)),
             match_querystring=True,
             json=data,
             status=200,
@@ -248,10 +246,10 @@ class ViewTests(TestCase):
         session = self.client.session
         self.assertEqual(session['next_outbound_params'], {
             "limit": ["100"], "offset": ["100"], "ordering": ["-created_at"],
-            "to_addr": ["+2340000000000"]})
+            "to_identity": ["operator_id"]})
         self.assertEqual(session['prev_outbound_params'], {
             "limit": ["100"], "offset": ["0"], "ordering": ["-created_at"],
-            "to_addr": ["+2340000000000"]})
+            "to_identity": ["operator_id"]})
 
     @responses.activate
     def test_get_identity_next_outbounds_display(self):
@@ -260,7 +258,7 @@ class ViewTests(TestCase):
         session = self.client.session
         session['next_outbound_params'] = {
             "limit": ["100"], "offset": ["100"], "ordering": ["-created_at"],
-            "to_addr": ["+2340000000000"]}
+            "to_identity": ["operator_id"]}
         session.save()
 
         self.add_messagesets_callback()
@@ -281,7 +279,7 @@ class ViewTests(TestCase):
         session = self.client.session
         self.assertEqual(session['next_outbound_params'], {
             "limit": ["100"], "offset": ["200"], "ordering": ["-created_at"],
-            "to_addr": ["+2340000000000"]})
+            "to_identity": ["operator_id"]})
 
     @responses.activate
     def test_get_identity_prev_outbounds_display(self):
@@ -290,7 +288,7 @@ class ViewTests(TestCase):
         session = self.client.session
         session['prev_outbound_params'] = {
             "limit": ["100"], "offset": ["100"], "ordering": ["-created_at"],
-            "to_addr": ["+2340000000000"]}
+            "to_identity": ["operator_id"]}
         session.save()
 
         self.add_messagesets_callback()
@@ -311,7 +309,7 @@ class ViewTests(TestCase):
         session = self.client.session
         self.assertEqual(session['prev_outbound_params'], {
             "limit": ["100"], "offset": ["0"], "ordering": ["-created_at"],
-            "to_addr": ["+2340000000000"]})
+            "to_identity": ["operator_id"]})
 
     @responses.activate
     def test_get_identity_inbounds_context(self):
@@ -337,7 +335,7 @@ class ViewTests(TestCase):
         self.assertEqual(response.context['inbounds'], inbounds)
         self.assertEqual(self.client.session['inbound_next_params'], {
             "limit": ["100"], "offset": ["100"], "ordering": ["-created_at"],
-            "from_addr": ["+2340000000000"]})
+            "from_identity": ["operator_id"]})
         self.assertEqual(self.client.session['inbound_prev_params'], {})
 
     @responses.activate
@@ -352,7 +350,7 @@ class ViewTests(TestCase):
         session = self.client.session
         session['inbound_next_params'] = {
             "limit": ["100"], "offset": ["100"], "ordering": ["-created_at"],
-            "from_addr": ["+2340000000000"]}
+            "from_identity": ["operator_id"]}
         session.save()
 
         self.add_messagesets_callback()
@@ -371,10 +369,10 @@ class ViewTests(TestCase):
         self.assertEqual(response.context['inbounds'], inbounds)
         self.assertEqual(self.client.session['inbound_next_params'], {
             "limit": ["100"], "offset": ["200"], "ordering": ["-created_at"],
-            "from_addr": ["+2340000000000"]})
+            "from_identity": ["operator_id"]})
         self.assertEqual(self.client.session['inbound_prev_params'], {
             "limit": ["100"], "offset": ["0"], "ordering": ["-created_at"],
-            "from_addr": ["+2340000000000"]})
+            "from_identity": ["operator_id"]})
 
     @responses.activate
     def test_get_identity_previous_inbounds_context(self):
@@ -388,7 +386,7 @@ class ViewTests(TestCase):
         session = self.client.session
         session['inbound_prev_params'] = {
             "limit": ["100"], "offset": ["200"], "ordering": ["-created_at"],
-            "from_addr": ["+2340000000000"]}
+            "from_identity": ["operator_id"]}
         session.save()
 
         self.add_messagesets_callback()
@@ -407,10 +405,10 @@ class ViewTests(TestCase):
         self.assertEqual(response.context['inbounds'], inbounds)
         self.assertEqual(self.client.session['inbound_next_params'], {
             "limit": ["100"], "offset": ["300"], "ordering": ["-created_at"],
-            "from_addr": ["+2340000000000"]})
+            "from_identity": ["operator_id"]})
         self.assertEqual(self.client.session['inbound_prev_params'], {
             "limit": ["100"], "offset": ["100"], "ordering": ["-created_at"],
-            "from_addr": ["+2340000000000"]})
+            "from_identity": ["operator_id"]})
 
 
 @override_settings(

@@ -214,7 +214,6 @@
     <table class="table">
       <thead>
         <tr>
-          <th>MSISDN</th>
           <th>Delivered</th>
           <th>Attempts</th>
           <th>Content</th>
@@ -225,7 +224,6 @@
       <tbody>
         {% for outbound in outbound_messages.results %}
         <tr>
-          <td>{{ outbound.to_addr }}</td>
           <td>{{ outbound.delivered }}</td>
           <td>{{ outbound.attempts }}</td>
           <td>{{ outbound.content }}</td>
@@ -257,7 +255,6 @@
       <thead>
         <tr>
           <th>To Address</th>
-          <th>From Address (MSISDN)</th>
           <th>Content</th>
           <th>Created Date</th>
           <th>Last Updated Date</th>
@@ -267,7 +264,6 @@
         {% for inbound in inbounds.results %}
         <tr>
           <td>{{ inbound.to_addr }}</td>
-          <td>{{ inbound.from_addr }}</td>
           <td>{{ inbound.content }}</td>
           <td>{{ inbound.created_at|get_date|date:"D d M Y H:i" }}</td>
           <td>{{ inbound.updated_at|get_date|date:"D d M Y H:i" }}</td>
