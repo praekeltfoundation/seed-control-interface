@@ -469,13 +469,11 @@ def create_outbound_messages_filter(request, identity):
             request.session['prev_outbound_params'] is not None:
         return request.session['prev_outbound_params']
 
-    addresses = get_identity_addresses(identity).keys()
-    if addresses:
-        return {
-            "to_addr": addresses,
-            "ordering": "-created_at",
-            "limit": settings.MESSAGES_PER_IDENTITY,
-        }
+    return {
+        "to_identity": identity,
+        "ordering": "-created_at",
+        "limit": settings.MESSAGES_PER_IDENTITY,
+    }
 
 
 def create_inbound_messages_filter(request, identity):
@@ -493,13 +491,11 @@ def create_inbound_messages_filter(request, identity):
             request.session.get('inbound_prev_params') is not None):
         return request.session['inbound_prev_params']
 
-    addresses = get_identity_addresses(identity).keys()
-    if addresses:
-        return {
-            'from_addr': addresses,
-            'ordering': '-created_at',
-            'limit': settings.MESSAGES_PER_IDENTITY,
-        }
+    return {
+        'from_identity': identity,
+        'ordering': '-created_at',
+        'limit': settings.MESSAGES_PER_IDENTITY,
+    }
 
 
 @login_required(login_url='/login/')
@@ -602,7 +598,7 @@ def identity(request, identity):
         if results is None:
             return redirect('not_found')
 
-        outbound_filter = create_outbound_messages_filter(request, results)
+        outbound_filter = create_outbound_messages_filter(request, identity)
         if outbound_filter is not None:
             outbound_messages = msApi.get_outbounds(params=outbound_filter)
         else:
@@ -616,7 +612,7 @@ def identity(request, identity):
                 'previous', ""))
 
         # Inbound messages
-        inbound_filter = create_inbound_messages_filter(request, results)
+        inbound_filter = create_inbound_messages_filter(request, identity)
         if inbound_filter is not None:
             inbound_messages = msApi.get_inbounds(inbound_filter)
         else:
