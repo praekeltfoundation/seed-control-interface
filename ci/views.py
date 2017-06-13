@@ -591,29 +591,36 @@ def identity(request, identity):
                     )
 
             elif 'optout_identity' in request.POST:
-                details = results.get('details', {})
-                addresses = details.get('addresses', {})
+                try:
+                    details = results.get('details', {})
+                    addresses = details.get('addresses', {})
 
-                for address_type, addresses in addresses.items():
-                    for address, info in addresses.items():
-                        idApi.create_optout({
-                            "identity": identity,
-                            "optout_type": "stop",
-                            "address_type": address_type,
-                            "address": address,
-                            "request_source": "ci"})
+                    for address_type, addresses in addresses.items():
+                        for address, info in addresses.items():
+                            idApi.create_optout({
+                                "identity": identity,
+                                "optout_type": "stop",
+                                "address_type": address_type,
+                                "address": address,
+                                "request_source": "ci"})
 
-                for subscription in subscriptions['results']:
-                    if subscription['active']:
-                        sbmApi.update_subscription(subscription['id'],
-                                                   {"active": False})
+                    hubApi.create_optout_admin({
+                        settings.IDENTITY_FIELD: identity
+                    })
 
-                messages.add_message(
-                    request,
-                    messages.INFO,
-                    'Successfully opted out.',
-                    extra_tags='success'
-                )
+                    messages.add_message(
+                        request,
+                        messages.INFO,
+                        'Successfully opted out.',
+                        extra_tags='success'
+                    )
+                except:
+                    messages.add_message(
+                        request,
+                        messages.ERROR,
+                        'Optout failed.',
+                        extra_tags='danger'
+                    )
 
         hub_filter = {
             settings.IDENTITY_FIELD: identity
@@ -655,10 +662,9 @@ def identity(request, identity):
         optout_visible = False
         details = results.get('details', {})
         addresses = details.get('addresses', {})
-        for address_type, addresses in addresses.items():
-            for address, info in addresses.items():
-                if not info.get("optedout", False):
-                    optout_visible = True
+        msisdns = addresses.get('msisdn', {})
+        optout_visible = any(
+            (not d.get('optedout') for _, d in msisdns.items()))
 
         context.update({
             "identity": results,

@@ -467,9 +467,9 @@ class ViewTests(TestCase):
             content_type='application/json')
 
         responses.add(
-            responses.PATCH,
-            'http://sbm.example.com/subscriptions/10176584-2a47-42b6-b9f3-a3a98070f35e/',  # noqa
-            json={"active": False},
+            responses.POST,
+            'http://hub.example.com/optout_admin/',
+            json={"mother_id": "operator_id"},
             status=201,
             content_type='application/json'
         )
