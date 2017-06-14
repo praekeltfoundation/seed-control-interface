@@ -410,6 +410,76 @@ class ViewTests(TestCase):
             "limit": ["100"], "offset": ["100"], "ordering": ["-created_at"],
             "from_identity": ["operator_id"]})
 
+    @responses.activate
+    def test_optout_identity(self):
+        self.login()
+        self.set_session_user_tokens()
+        self.add_messagesets_callback()
+        self.add_identity_callback()
+        self.add_registrations_callback()
+        self.add_changes_callback()
+        self.add_outbounds_callback()
+        self.add_inbounds_callback()
+
+        subscription = {
+            'lang': 'eng_NG',
+            'created_at': '2016-11-22T08:12:45.343829Z',
+            'messageset': 4,
+            'schedule': 5,
+            'url': 'url',
+            'completed': False,
+            'initial_sequence_number': 1,
+            'updated_at': '2016-11-22T08:12:52.411545Z',
+            'version': 1,
+            'next_sequence_number': 1,
+            'process_status': 0,
+            'active': True,
+            'id': '10176584-2a47-42b6-b9f3-a3a98070f35e',
+            'identity': '17cf37cf-edd6-4634-88e3-f793575f7e3a',
+            'metadata': {
+                'scheduler_schedule_id':
+                    'a64d153f-1515-42c1-997a-9a3444c916fc'
+            }
+        }
+
+        responses.add(
+            responses.GET,
+            'http://sbm.example.com/subscriptions/?identity=operator_id',
+            match_querystring=True,
+            json={
+                'count': 1,
+                'next': None,
+                'results': [subscription],
+            },
+            status=200,
+            content_type='application/json')
+
+        responses.add(
+            responses.POST,
+            'http://idstore.example.com/optout/',
+            json={
+                "identity": "operator_id",
+                "optout_type": "stop",
+                "address_type": "msisdn",
+                "address": "+2340000000000",
+                "request_source": "ci"},
+            status=200,
+            content_type='application/json')
+
+        responses.add(
+            responses.POST,
+            'http://hub.example.com/optout_admin/',
+            json={"mother_id": "operator_id"},
+            status=201,
+            content_type='application/json'
+        )
+
+        response = self.client.post(
+            "/identities/operator_id/",
+            {"optout_identity": ['']})
+
+        self.assertEqual(response.status_code, 200)
+
 
 @override_settings(
     HUB_URL='http://hub.example.com/',

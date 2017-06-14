@@ -533,6 +533,10 @@ def identity(request, identity):
             choices.append((messageset["id"], messageset["short_name"]))
 
         results = idApi.get_identity(identity)
+        sbm_filter = {
+            "identity": identity
+        }
+        subscriptions = sbmApi.get_subscriptions(params=sbm_filter)
 
         if request.method == "POST":
             if 'add_subscription' in request.POST:
@@ -586,15 +590,43 @@ def identity(request, identity):
                         extra_tags='success'
                     )
 
+            elif 'optout_identity' in request.POST:
+                try:
+                    details = results.get('details', {})
+                    addresses = details.get('addresses', {})
+
+                    for address_type, addresses in addresses.items():
+                        for address, info in addresses.items():
+                            idApi.create_optout({
+                                "identity": identity,
+                                "optout_type": "stop",
+                                "address_type": address_type,
+                                "address": address,
+                                "request_source": "ci"})
+
+                    hubApi.create_optout_admin({
+                        settings.IDENTITY_FIELD: identity
+                    })
+
+                    messages.add_message(
+                        request,
+                        messages.INFO,
+                        'Successfully opted out.',
+                        extra_tags='success'
+                    )
+                except:
+                    messages.add_message(
+                        request,
+                        messages.ERROR,
+                        'Optout failed.',
+                        extra_tags='danger'
+                    )
+
         hub_filter = {
             settings.IDENTITY_FIELD: identity
         }
         registrations = hubApi.get_registrations(params=hub_filter)
         changes = hubApi.get_changes(params=hub_filter)
-        sbm_filter = {
-            "identity": identity
-        }
-        subscriptions = sbmApi.get_subscriptions(params=sbm_filter)
         if results is None:
             return redirect('not_found')
 
@@ -627,6 +659,13 @@ def identity(request, identity):
         add_subscription_form.fields['messageset'] = forms.ChoiceField(
                                                         choices=choices)
 
+        optout_visible = False
+        details = results.get('details', {})
+        addresses = details.get('addresses', {})
+        msisdns = addresses.get('msisdn', {})
+        optout_visible = any(
+            (not d.get('optedout') for _, d in msisdns.items()))
+
         context.update({
             "identity": results,
             "registrations": registrations,
@@ -637,6 +676,7 @@ def identity(request, identity):
             "add_subscription_form": add_subscription_form,
             "deactivate_subscription_form": deactivate_subscription_form,
             "inbounds": inbound_messages,
+            "optout_visible": optout_visible
         })
         context.update(csrf(request))
         return render(request, 'ci/identities_detail.html', context)

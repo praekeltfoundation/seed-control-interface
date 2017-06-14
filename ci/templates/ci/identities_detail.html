@@ -67,6 +67,16 @@
   </div>
 </div>
 
+{% if optout_visible == True %}
+  <div class="call-to-action call-to-action__new-section">
+    <form class="form-inline" method="post" action=".">
+    {% csrf_token %}
+      <button type="submit" name="optout_identity" class="call-to-action__item call-to-action__item--submit-entry">Optout</button>
+      <br/>
+    </form>
+  </div>
+{% endif %}
+
 <h3 class="identity__heading">Addresses</h3>
 <div class="table-full">
   <div class="table-responsive">
