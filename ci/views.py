@@ -851,15 +851,20 @@ def subscription(request, subscription):
         messagesets = {}
         for messageset in messagesets_results["results"]:
             messagesets[messageset["id"]] = messageset["short_name"]
+
         if request.method == "POST":
             pass
         else:
             results = sbmApi.get_subscription(subscription)
             if results is None:
                 return redirect('not_found')
+
+        languages = sbmApi.get_messageset_languages()
+
         context.update({
             "subscription": results,
-            "messagesets": messagesets
+            "messagesets": messagesets,
+            "languages": languages
         })
         context.update(csrf(request))
         return render(request, 'ci/subscriptions_detail.html', context)
