@@ -73,6 +73,11 @@ class AddSubscriptionForm(forms.Form):
 class DeactivateSubscriptionForm(forms.Form):
     subscription_id = forms.CharField()
 
+
+class ChangeSubscriptionForm(forms.Form):
+    language = forms.CharField()
+    messageset = forms.IntegerField()
+
 STAGE_CHOICES = (
     ('', "Stage - all"),
     ('prebirth', "Mother is pregnant"),
