@@ -566,7 +566,7 @@ class ViewTests(TestCase):
         self.assertEqual(change_request.url,
                          "http://hub.example.com/change_admin/")
         self.assertEqual(
-            json.loads(change_request.body.decode("utf-8")),
+            json.loads(change_request.body),
             {
                 "mother_id": identity_id,
                 "messageset": "test2",
