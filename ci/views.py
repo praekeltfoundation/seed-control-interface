@@ -26,7 +26,7 @@ from seed_services_client.stage_based_messaging \
     import StageBasedMessagingApiClient
 from seed_services_client.scheduler import SchedulerApiClient
 from seed_services_client.message_sender import MessageSenderApiClient
-from go_http.metrics import MetricsApiClient
+from seed_services_client.metrics import MetricsApiClient
 from .forms import (AuthenticationForm, IdentitySearchForm,
                     RegistrationFilterForm, SubscriptionFilterForm,
                     ChangeFilterForm, ReportGenerationForm,
@@ -241,14 +241,16 @@ def index(request):
 def health_messages(request):
     if request.is_ajax():
         METRIC_SENT_SUM = 'message.sent.sum'
-        client = MetricsApiClient(settings.METRIC_API_TOKEN,
-                                  settings.METRIC_API_URL)
+        client = MetricsApiClient(
+            settings.METRIC_API_URL,
+            auth=(settings.METRIC_API_USER, settings.METRIC_API_PASSWORD))
         chart_type = request.GET.get('chart_type', None)
         today = now()
         if chart_type == 'estimated-vs-sent':
             get_days = today.weekday() + 1
-            sent = client.get_metric(METRIC_SENT_SUM, '-%sd' % get_days,
-                                     '1d', 'zeroize')
+            sent = client.get_metrics(
+                m=METRIC_SENT_SUM, from_='-%sd' % get_days, interval='1d',
+                nulls='zeroize')
             sent_data = utils.get_ranged_data_from_timeseries(
                 sent, today, range_type='week')
 
@@ -258,9 +260,9 @@ def health_messages(request):
             # 0 = Monday.
             estimate_data = []
             for day in range(7):
-                estimated = client.get_metric(
-                    'subscriptions.send.estimate.%s.last' % day,
-                    '-7d', '1d', 'zeroize')
+                estimated = client.get_metrics(
+                    m='subscriptions.send.estimate.%s.last' % day, from_='-7d',
+                    interval='1d', nulls='zeroize')
                 estimate_data.append(
                     utils.get_last_value_from_timeseries(estimated))
             return JsonResponse({
@@ -270,8 +272,9 @@ def health_messages(request):
 
         elif chart_type == 'sent-today':
             get_hours = today.hour
-            sent = client.get_metric(METRIC_SENT_SUM, '-%sh' % get_hours,
-                                     '1h', 'zeroize')
+            sent = client.get_metrics(
+                m=METRIC_SENT_SUM, from_='-%sh' % get_hours, interval='1h',
+                nulls='zeroize')
             sent_data = utils.get_ranged_data_from_timeseries(
                 sent, today, range_type='day')
             return JsonResponse({
@@ -280,8 +283,9 @@ def health_messages(request):
 
         elif chart_type == 'sent-this-week':
             get_days = today.weekday() + 7  # Include last week in the set.
-            sent = client.get_metric(METRIC_SENT_SUM, '-%sd' % get_days,
-                                     '1d', 'zeroize')
+            sent = client.get_metrics(
+                m=METRIC_SENT_SUM, from_='-%sd' % get_days, interval='1d',
+                nulls='zeroize')
             this_week_data = utils.get_ranged_data_from_timeseries(
                 sent, today, range_type='week')
             last_week_data = utils.get_ranged_data_from_timeseries(
@@ -300,14 +304,16 @@ def health_messages(request):
 def health_subscriptions(request):
     if request.is_ajax():
         METRIC_SUBSCRIPTIONS_SUM = 'subscriptions.created.sum'
-        client = MetricsApiClient(settings.METRIC_API_TOKEN,
-                                  settings.METRIC_API_URL)
+        client = MetricsApiClient(
+            settings.METRIC_API_URL,
+            auth=(settings.METRIC_API_USER, settings.METRIC_API_PASSWORD))
         chart_type = request.GET.get('chart_type', None)
         today = now()
         if chart_type == 'subscriptions-today':
             get_hours = today.hour + 24  # Include yesterday in the set.
-            subscriptions = client.get_metric(
-                METRIC_SUBSCRIPTIONS_SUM, '-%sh' % get_hours, '1h', 'zeroize')
+            subscriptions = client.get_metrics(
+                m=METRIC_SUBSCRIPTIONS_SUM, from_='-%sh' % get_hours,
+                interval='1h', nulls='zeroize')
             today_data = utils.get_ranged_data_from_timeseries(
                 subscriptions, today, range_type='day')
             yesterday_data = utils.get_ranged_data_from_timeseries(
@@ -319,8 +325,9 @@ def health_subscriptions(request):
 
         elif chart_type == 'subscriptions-this-week':
             get_days = today.weekday() + 7  # Include last week in the set.
-            subscriptions = client.get_metric(
-                METRIC_SUBSCRIPTIONS_SUM, '-%sd' % get_days, '1d', 'zeroize')
+            subscriptions = client.get_metrics(
+                m=METRIC_SUBSCRIPTIONS_SUM, from_='-%sd' % get_days,
+                interval='1d', nulls='zeroize')
             this_week_data = utils.get_ranged_data_from_timeseries(
                 subscriptions, today, range_type='week')
             last_week_data = utils.get_ranged_data_from_timeseries(
@@ -339,14 +346,16 @@ def health_subscriptions(request):
 def health_registrations(request):
     if request.is_ajax():
         METRIC_REGISTRATIONS_SUM = 'registrations.created.sum'
-        client = MetricsApiClient(settings.METRIC_API_TOKEN,
-                                  settings.METRIC_API_URL)
+        client = MetricsApiClient(
+            settings.METRIC_API_URL,
+            auth=(settings.METRIC_API_USER, settings.METRIC_API_PASSWORD))
         chart_type = request.GET.get('chart_type', None)
         today = now()
         if chart_type == 'registrations-today':
             get_hours = today.hour + 24  # Include yesterday in the set.
-            registrations = client.get_metric(
-                METRIC_REGISTRATIONS_SUM, '-%sh' % get_hours, '1h', 'zeroize')
+            registrations = client.get_metrics(
+                m=METRIC_REGISTRATIONS_SUM, from_='-%sh' % get_hours,
+                interval='1h', nulls='zeroize')
             today_data = utils.get_ranged_data_from_timeseries(
                 registrations, today, range_type='day')
             yesterday_data = utils.get_ranged_data_from_timeseries(
@@ -358,8 +367,9 @@ def health_registrations(request):
 
         elif chart_type == 'registrations-this-week':
             get_days = today.weekday() + 7  # Include last week in the set.
-            registrations = client.get_metric(
-                METRIC_REGISTRATIONS_SUM, '-%sd' % get_days, '1d', 'zeroize')
+            registrations = client.get_metrics(
+                m=METRIC_REGISTRATIONS_SUM, from_='-%sd' % get_days,
+                interval='1d', nulls='zeroize')
             this_week_data = utils.get_ranged_data_from_timeseries(
                 registrations, today, range_type='week')
             last_week_data = utils.get_ranged_data_from_timeseries(
@@ -387,8 +397,9 @@ def dashboard(request, dashboard_id):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def dashboard_metric(request):
-    client = MetricsApiClient(settings.METRIC_API_TOKEN,
-                              settings.METRIC_API_URL)
+    client = MetricsApiClient(
+        settings.METRIC_API_URL,
+        auth=(settings.METRIC_API_USER, settings.METRIC_API_PASSWORD))
     response = {"objects": []}
     filters = {
         "m": [],
@@ -400,11 +411,13 @@ def dashboard_metric(request):
     for k, v in request.GET.lists():
         filters[k] = v
 
+    if filters.get('from') is not None:
+        filters['from'] = filters['start']
+
     for metric in filters['m']:
-        results = client.get_metric(metric,
-                                    filters['start'],
-                                    filters['interval'],
-                                    filters['nulls'])
+        results = client.get_metrics(
+            m=metric, **filters)
+
         if metric in results:
             response["objects"].append({
                 "key": metric, "values": results[metric]})
