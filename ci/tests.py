@@ -180,13 +180,13 @@ class ViewTests(TestCase):
             content_type='application/json')
         return data
 
-    def add_messagesets_callback(self):
+    def add_messagesets_callback(self, count=0, results=[]):
         responses.add(
             responses.GET,
             'http://sbm.example.com/messageset/',
             json={
-                'count': 0,
-                'results': [],
+                'count': count,
+                'results': results,
             },
             status=200,
             content_type='application/json')
@@ -502,19 +502,10 @@ class ViewTests(TestCase):
         subscription_id = "sub12312-63e2-4acc-9b94-26663b9bc267"
         identity_id = "mother01-63e2-4acc-9b94-26663b9bc267"
 
-        responses.add(
-            responses.GET,
-            'http://sbm.example.com/messageset/',
-            json={
-                'count': 1,
-                'results': [
-                    {"id": 2, "short_name": "test"},
-                    {"id": 4, "short_name": "test2"}
-                ],
-            },
-            status=200,
-            content_type='application/json')
-
+        self.add_messagesets_callback(count=2, results=[
+            {"id": 2, "short_name": "test"},
+            {"id": 4, "short_name": "test2"}
+        ])
         self.add_messageset_language_callback()
 
         responses.add(
