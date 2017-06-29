@@ -511,7 +511,7 @@ class ViewTests(TestCase):
             follow=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(json.loads(response.content), {
+        self.assertEqual(json.loads(response.content.decode('utf-8')), {
             "objects": [{
                     "values": [{"y": 1.0, "x": 111}, {"y": 2.0, "x": 222}],
                     "key": "one.total.sum"
