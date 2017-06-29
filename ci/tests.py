@@ -1,4 +1,5 @@
 import responses
+import json
 
 from tempfile import NamedTemporaryFile
 from datetime import datetime
@@ -479,6 +480,49 @@ class ViewTests(TestCase):
             {"optout_identity": ['']})
 
         self.assertEqual(response.status_code, 200)
+
+    @responses.activate
+    def test_dashboard_metric(self):
+        """
+        When requesting a dashboard widget the metric api must be called and
+        data must be returned in the correct format
+        """
+        self.login()
+        self.set_session_user_tokens()
+
+        responses.add(
+            responses.GET,
+            "http://metrics-api.mama.qa.p16n.org/mama-ng/infr/metrics-api/"
+            "metrics/?start=-30d&interval=1d&m=one.total.sum&m=two.total.sum"
+            "&m=three.total.sum&nulls=zeroize",
+            match_querystring=True,
+            json={
+                'one.total.sum': [{'y': 1.0, 'x': 111}, {'y': 2.0, 'x': 222}],
+                'two.total.sum': [{'y': 4.0, 'x': 333}, {'y': 5.0, 'x': 444}],
+                'three.total.sum': [{'y': 6.0, 'x': 123}, {'y': 7.0, 'x': 321}]
+            },
+            status=200,
+            content_type='application/json'
+        )
+
+        response = self.client.get(
+            "/api/v1/metric/?start=-30d&interval=1d&m=one.total.sum&m="
+            "two.total.sum&m=three.total.sum&nulls=zeroize",
+            follow=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(json.loads(response.content), {
+            "objects": [{
+                    "values": [{"y": 1.0, "x": 111}, {"y": 2.0, "x": 222}],
+                    "key": "one.total.sum"
+                }, {
+                    "values": [{"y": 4.0, "x": 333}, {"y": 5.0, "x": 444}],
+                    "key": "two.total.sum"
+                }, {
+                    "values": [{"y": 6.0, "x": 123}, {"y": 7.0, "x": 321}],
+                    "key": "three.total.sum"
+                }
+            ]})
 
 
 @override_settings(

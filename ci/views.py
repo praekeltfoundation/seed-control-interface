@@ -413,10 +413,8 @@ def dashboard_metric(request):
     if filters.get('from') is not None:
         filters['from'] = filters['start']
 
+    results = client.get_metrics(**filters)
     for metric in filters['m']:
-        results = client.get_metrics(
-            m=metric, **filters)
-
         if metric in results:
             response["objects"].append({
                 "key": metric, "values": results[metric]})
