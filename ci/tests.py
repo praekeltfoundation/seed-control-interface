@@ -482,6 +482,7 @@ class ViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
 
     @responses.activate
+    @override_settings(METRIC_API_URL='http://metrics-api.org/')
     def test_dashboard_metric(self):
         """
         When requesting a dashboard widget the metric api must be called and
@@ -492,9 +493,8 @@ class ViewTests(TestCase):
 
         responses.add(
             responses.GET,
-            "http://metrics-api.mama.qa.p16n.org/mama-ng/infr/metrics-api/"
-            "metrics/?start=-30d&interval=1d&m=one.total.sum&m=two.total.sum"
-            "&m=three.total.sum&nulls=zeroize",
+            "http://metrics-api.org/metrics/?start=-30d&interval=1d&"
+            "m=one.total.sum&m=two.total.sum&m=three.total.sum&nulls=zeroize",
             match_querystring=True,
             json={
                 'one.total.sum': [{'y': 1.0, 'x': 111}, {'y': 2.0, 'x': 222}],
