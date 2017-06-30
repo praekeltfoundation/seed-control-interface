@@ -19,48 +19,96 @@
 <h3>Details</h3>
 <div class="table-full">
   <div class="table-responsive">
-    <table class="table" data-sort="table">
-      <tbody>
-        <tr>
-          <th>Subscription ID:</th><td>{{ subscription.id }}</td>
-        </tr>
-        <tr>
-          <th>Subscriber:</th>
-          {% url 'identities-detail' subscription.identity as url %}
-          <td><a href="{{ url }}">{{ subscription.identity|truncatechars:12 }}</a></td>
-        </tr>
-        <tr>
-          <th>Created:</th><td>{{ subscription.created_at|get_date|date:"D d M Y H:i" }}</td>
-        </tr>
-        <tr>
-          <th>Last Updated:</th><td>{{ subscription.updated_at|get_date|date:"D d M Y H:i" }}</td>
-        </tr>
-        <tr>
-          <th>Message Set:</th><td>{{ messagesets|get_item:subscription.messageset }}</td>
-        </tr>
-        <tr>
-          <th>Next Sequence Number:</th><td>{{ subscription.next_sequence_number }}</td>
-        </tr>
-        <tr>
-          <th>Language:</th><td>{{ subscription.lang }}</td>
-        </tr>
-        <tr>
-          <th>Active:</th><td>{{ subscription.active }}</td>
-        </tr>
-        <tr>
-          <th>Completed:</th><td>{{ subscription.completed }}</td>
-        </tr>
-        <tr>
-          <th>Process Status:</th><td>{{ subscription.process_status }}</td>
-        </tr>
-        <tr>
-          <th>Additional Information:</th><td>{% for k, v in subscription.metadata.items %}<strong>{{ k }}</strong>: {{ v }}<br />{% endfor %}</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+    <form class="form-inline" method="post" action=".">
+      {% csrf_token %}
+      <table class="table" data-sort="table">
+        <tbody>
+          <tr>
+            <th>Subscription ID:</th><td>{{ subscription.id }}</td>
+          </tr>
+          <tr>
+            <th>Subscriber:</th>
+            {% url 'identities-detail' subscription.identity as url %}
+            <td><a href="{{ url }}">{{ subscription.identity|truncatechars:12 }}</a></td>
+          </tr>
+          <tr>
+            <th>Created:</th><td>{{ subscription.created_at|get_date|date:"D d M Y H:i" }}</td>
+          </tr>
+          <tr>
+            <th>Last Updated:</th><td>{{ subscription.updated_at|get_date|date:"D d M Y H:i" }}</td>
+          </tr>
+          <tr>
+            <th>Message Set:</th><td><select id="messagesets" class="form-control" disabled="disabled"></select></td>
+          </tr>
+          <tr>
+            <th>Language:</th><td><select id="languagesets" class="form-control" disabled="disabled"></select></td>
+          </tr>
+          <tr>
+            <th>Next Sequence Number:</th><td>{{ subscription.next_sequence_number }}</td>
+          </tr>
+          <tr>
+            <th>Active:</th><td>{{ subscription.active }}</td>
+          </tr>
+          <tr>
+            <th>Completed:</th><td>{{ subscription.completed }}</td>
+          </tr>
+          <tr>
+            <th>Process Status:</th><td>{{ subscription.process_status }}</td>
+          </tr>
+          <tr>
+            <th>Additional Information:</th><td>{% for k, v in subscription.metadata.items %}<strong>{{ k }}</strong>: {{ v }}<br />{% endfor %}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class='btn-toolbar pull-right'>
+        <div class='btn-group pull-right' role="group">
+          <button id="edit-button" class="btn btn-default" type="button" name="button">Edit</button>
+          <button id="save-button" class="btn btn-primary" type="submit" name="update_subscription">Save</button>
+        </div>
+      </div>
+    </div>
+  </form>
 </div>
-
+<script type="text/javascript">
+  $(document).ready(function() {
+    
+    $("#save-button").hide();
+    
+    var messagesets = [
+      {% for k, v in messagesets.iteritems %}
+      ["{{ k }}","{{ v }}"]{% if not forloop.last %},{% endif %}
+      {% endfor %}
+    ];
+    
+    var languagesets = [
+      {% for k, v in languages.iteritems %}
+      ["{{ k }}","{{ v }}"]{% if not forloop.last %},{% endif %}
+      {% endfor %}
+    ];
+    
+    $.each(messagesets,function(key, value) {
+      $("#messagesets").append('<option value=' + value[0] + '>' + value[1] + '</option>');
+    });
+    
+    $("#messagesets option[value='{{ subscription.messageset }}']").attr('selected','selected');
+    
+    $.each(languagesets,function(key, value) {
+      $("#languagesets").append('<option value=' + value[0] + '>' + value[1] + '</option>');
+    });
+    
+    $("#edit-button").click(function() {
+      $("#messagesets, #languagesets").attr('disabled', !$("#messagesets, #languagesets").attr('disabled'));
+      $("#save-button").toggle();
+      $(this).text( $(this).text() == 'Edit' ? 'Cancel' : 'Edit' );
+    });
+    
+    $("#messagesets").change(function() {
+      var id = $(this).val();
+      $("#languagesets").val(id);
+    });
+    
+  });
+</script>
 
 <!-- <div class="text-center">
   <ul class="pagination">
