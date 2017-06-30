@@ -1,5 +1,6 @@
 from functools import wraps
 import logging
+import json
 from datetime import timedelta
 
 from django.shortcuts import render, redirect, resolve_url
@@ -915,7 +916,7 @@ def subscription(request, subscription):
         context.update({
             "subscription": results,
             "messagesets": messagesets,
-            "languages": languages
+            "languages": json.dumps(languages)
         })
         context.update(csrf(request))
         return render(request, 'ci/subscriptions_detail.html', context)

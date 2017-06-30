@@ -71,42 +71,49 @@
 </div>
 <script type="text/javascript">
   $(document).ready(function() {
-    
+
     $("#save-button").hide();
-    
+
     var messagesets = [
       {% for k, v in messagesets.iteritems %}
       ["{{ k }}","{{ v }}"]{% if not forloop.last %},{% endif %}
       {% endfor %}
     ];
-    
-    var languagesets = [
-      {% for k, v in languages.iteritems %}
-      ["{{ k }}","{{ v }}"]{% if not forloop.last %},{% endif %}
-      {% endfor %}
-    ];
-    
+
+    var langs = {{ languages|safe }};
+    var selected_set = '{{ subscription.messageset }}';
+
+    var populate_languages = function(messageset){
+        $("#languagesets").children().remove();
+        for (var key in langs) {
+            if (key == '' + messageset) {
+                for (var lang in langs[key]){
+                    $("#languagesets").append('<option value=' + langs[key][lang] + '>' + langs[key][lang] + '</option>');
+                }
+            }
+        }
+        $("#languagesets option[value='{{ subscription.lang }}']").attr('selected','selected');
+    }
+
     $.each(messagesets,function(key, value) {
       $("#messagesets").append('<option value=' + value[0] + '>' + value[1] + '</option>');
     });
-    
+
     $("#messagesets option[value='{{ subscription.messageset }}']").attr('selected','selected');
-    
-    $.each(languagesets,function(key, value) {
-      $("#languagesets").append('<option value=' + value[0] + '>' + value[1] + '</option>');
-    });
-    
+
+    populate_languages(selected_set);
+
     $("#edit-button").click(function() {
       $("#messagesets, #languagesets").attr('disabled', !$("#messagesets, #languagesets").attr('disabled'));
       $("#save-button").toggle();
       $(this).text( $(this).text() == 'Edit' ? 'Cancel' : 'Edit' );
     });
-    
+
     $("#messagesets").change(function() {
-      var id = $(this).val();
-      $("#languagesets").val(id);
+        var selected_set = $(this).val();
+        populate_languages(selected_set);
     });
-    
+
   });
 </script>
 
