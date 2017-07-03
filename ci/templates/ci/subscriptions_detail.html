@@ -16,6 +16,10 @@
 
 <hr class="m-t">
 
+{% for message in messages %}
+<div class="alert alert-{{ message.tags }}">{{ message }}</div>
+{% endfor %}
+
 <h3>Details</h3>
 <div class="table-full">
   <div class="table-responsive">
@@ -38,10 +42,10 @@
             <th>Last Updated:</th><td>{{ subscription.updated_at|get_date|date:"D d M Y H:i" }}</td>
           </tr>
           <tr>
-            <th>Message Set:</th><td><select id="messages" class="form-control" disabled="disabled"></select></td>
+            <th>Message Set:</th><td><select id="messageset" name="messageset" class="form-control" disabled="disabled"></select></td>
           </tr>
           <tr>
-            <th>Language:</th><td><select id="languages" class="form-control" disabled="disabled"></select></td>
+            <th>Language:</th><td><select id="language" name="language" class="form-control" disabled="disabled"></select></td>
           </tr>
           <tr>
             <th>Next Sequence Number:</th><td>{{ subscription.next_sequence_number }}</td>
@@ -77,8 +81,8 @@
     var editGrp = $("#edit-group");
         editBtn = $("#edit-button");
         cancelBtn = $("#cancel-button");
-        msgSel = $("#messages");
-        langSel = $("#languages");
+        msgSel = $("#messageset");
+        langSel = $("#language");
 
     editGrp.hide();
 
