@@ -64,6 +64,7 @@
           </tr>
         </tbody>
       </table>
+      {% if subscription.active %}
       <div class='btn-toolbar pull-right'>
         <div id="edit-button" class='btn-group pull-right' role="group">
           <button class="btn btn-default" type="button" name="button">Edit</button>
@@ -73,6 +74,7 @@
           <button class="btn btn-primary" type="submit" name="update_subscription">Save</button>
         </div>
       </div>
+      {% endif %}
     </div>
   </form>
 </div>
