@@ -38,10 +38,10 @@
             <th>Last Updated:</th><td>{{ subscription.updated_at|get_date|date:"D d M Y H:i" }}</td>
           </tr>
           <tr>
-            <th>Message Set:</th><td><select id="messagesets" class="form-control" disabled="disabled"></select></td>
+            <th>Message Set:</th><td><select id="messages" class="form-control" disabled="disabled"></select></td>
           </tr>
           <tr>
-            <th>Language:</th><td><select id="languagesets" class="form-control" disabled="disabled"></select></td>
+            <th>Language:</th><td><select id="languages" class="form-control" disabled="disabled"></select></td>
           </tr>
           <tr>
             <th>Next Sequence Number:</th><td>{{ subscription.next_sequence_number }}</td>
@@ -61,9 +61,12 @@
         </tbody>
       </table>
       <div class='btn-toolbar pull-right'>
-        <div class='btn-group pull-right' role="group">
-          <button id="edit-button" class="btn btn-default" type="button" name="button">Edit</button>
-          <button id="save-button" class="btn btn-primary" type="submit" name="update_subscription">Save</button>
+        <div id="edit-button" class='btn-group pull-right' role="group">
+          <button class="btn btn-default" type="button" name="button">Edit</button>
+        </div>
+        <div id="edit-group" class='btn-group pull-right' role="group">
+          <button id="cancel-button" class="btn btn-default" type="button" name="button">Cancel</button>
+          <button class="btn btn-primary" type="submit" name="update_subscription">Save</button>
         </div>
       </div>
     </div>
@@ -71,8 +74,13 @@
 </div>
 <script type="text/javascript">
   $(document).ready(function() {
+    var editGrp = $("#edit-group");
+        editBtn = $("#edit-button");
+        cancelBtn = $("#cancel-button");
+        msgSel = $("#messages");
+        langSel = $("#languages");
 
-    $("#save-button").hide();
+    editGrp.hide();
 
     var messagesets = [
       {% for k, v in messagesets.iteritems %}
@@ -84,34 +92,42 @@
     var selected_set = '{{ subscription.messageset }}';
 
     var populate_languages = function(messageset){
-        $("#languagesets").children().remove();
-        for (var key in langs) {
-            if (key == '' + messageset) {
-                for (var lang in langs[key]){
-                    $("#languagesets").append('<option value=' + langs[key][lang] + '>' + langs[key][lang] + '</option>');
-                }
-            }
+      langSel.children().remove();
+      $.each(langs,function(key) {
+        if (key == '' + messageset) {
+          $.each(langs[key],function(lang) {
+            langSel.append('<option value=' + langs[key][lang] + '>' + langs[key][lang] + '</option>');
+          })
         }
-        $("#languagesets option[value='{{ subscription.lang }}']").attr('selected','selected');
+      })
+      langSel.val("{{ subscription.lang }}");
     }
 
     $.each(messagesets,function(key, value) {
-      $("#messagesets").append('<option value=' + value[0] + '>' + value[1] + '</option>');
+      msgSel.append('<option value=' + value[0] + '>' + value[1] + '</option>');
     });
 
-    $("#messagesets option[value='{{ subscription.messageset }}']").attr('selected','selected');
+    msgSel.val("{{ subscription.messageset }}");
 
     populate_languages(selected_set);
 
-    $("#edit-button").click(function() {
-      $("#messagesets, #languagesets").attr('disabled', !$("#messagesets, #languagesets").attr('disabled'));
-      $("#save-button").toggle();
-      $(this).text( $(this).text() == 'Edit' ? 'Cancel' : 'Edit' );
+    editBtn.click(function() {
+      msgSel.add(langSel).prop('disabled', false);
+      editBtn.hide();
+      editGrp.show();
     });
 
-    $("#messagesets").change(function() {
-        var selected_set = $(this).val();
-        populate_languages(selected_set);
+    cancelBtn.click(function() {
+      msgSel.add(langSel).prop('disabled', true);
+      msgSel.val("{{ subscription.messageset }}");
+      langSel.val("{{ subscription.lang }}");
+      editGrp.hide();
+      editBtn.show();
+    });
+
+    msgSel.change(function() {
+      var selected_set = $(this).val();
+      populate_languages(selected_set);
     });
 
   });
