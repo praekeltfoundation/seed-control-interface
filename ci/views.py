@@ -1,5 +1,6 @@
 from functools import wraps
 import logging
+import json
 from datetime import timedelta
 
 from django.shortcuts import render, redirect, resolve_url
@@ -30,7 +31,8 @@ from seed_services_client.metrics import MetricsApiClient
 from .forms import (AuthenticationForm, IdentitySearchForm,
                     RegistrationFilterForm, SubscriptionFilterForm,
                     ChangeFilterForm, ReportGenerationForm,
-                    AddSubscriptionForm, DeactivateSubscriptionForm)
+                    AddSubscriptionForm, DeactivateSubscriptionForm,
+                    ChangeSubscriptionForm)
 from . import utils
 
 logger = logging.getLogger(__name__)
@@ -862,15 +864,57 @@ def subscription(request, subscription):
         messagesets = {}
         for messageset in messagesets_results["results"]:
             messagesets[messageset["id"]] = messageset["short_name"]
+
+        results = sbmApi.get_subscription(subscription)
+        if results is None:
+            return redirect('not_found')
+
         if request.method == "POST":
-            pass
-        else:
-            results = sbmApi.get_subscription(subscription)
-            if results is None:
-                return redirect('not_found')
+            try:
+                form = ChangeSubscriptionForm(request.POST)
+                if form.is_valid():
+
+                    lang = form.cleaned_data["language"]
+                    messageset = form.cleaned_data["messageset"]
+
+                    if (lang != results["lang"] or
+                            messageset != results["messageset"]):
+                        hubApi = HubApiClient(
+                            request.session["user_tokens"]["HUB"]["token"],
+                            api_url=request.session["user_tokens"]["HUB"]["url"])  # noqa
+
+                        change = {
+                            settings.IDENTITY_FIELD: results["identity"],
+                            "subscription": subscription
+                        }
+
+                        if lang != results["lang"]:
+                            change["language"] = lang
+                        if messageset != results["messageset"]:
+                            change["messageset"] = messagesets[messageset]
+
+                        hubApi.create_change_admin(change)
+
+                        messages.add_message(
+                            request,
+                            messages.INFO,
+                            'Successfully added change.',
+                            extra_tags='success'
+                        )
+            except:
+                messages.add_message(
+                    request,
+                    messages.ERROR,
+                    'Change failed.',
+                    extra_tags='danger'
+                )
+
+        languages = sbmApi.get_messageset_languages()
+
         context.update({
             "subscription": results,
-            "messagesets": messagesets
+            "messagesets": messagesets,
+            "languages": json.dumps(languages)
         })
         context.update(csrf(request))
         return render(request, 'ci/subscriptions_detail.html', context)

@@ -180,13 +180,24 @@ class ViewTests(TestCase):
             content_type='application/json')
         return data
 
-    def add_messagesets_callback(self):
+    def add_messagesets_callback(self, count=0, results=[]):
         responses.add(
             responses.GET,
             'http://sbm.example.com/messageset/',
             json={
-                'count': 0,
-                'results': [],
+                'count': count,
+                'results': results,
+            },
+            status=200,
+            content_type='application/json')
+
+    def add_messageset_language_callback(self):
+        responses.add(
+            responses.GET,
+            'http://sbm.example.com/messageset_languages/',
+            json={
+                "2": ["afr_ZA", "eng_ZA"],
+                "4": ["afr_ZA", "eng_ZA", "zul_ZA"]
             },
             status=200,
             content_type='application/json')
@@ -480,6 +491,79 @@ class ViewTests(TestCase):
             {"optout_identity": ['']})
 
         self.assertEqual(response.status_code, 200)
+        messages = list(response.context['messages'])
+        self.assertEqual(messages[0].message, 'Successfully opted out.')
+
+    @responses.activate
+    def test_change_subscription(self):
+        self.login()
+        self.set_session_user_tokens()
+
+        subscription_id = "sub12312-63e2-4acc-9b94-26663b9bc267"
+        identity_id = "mother01-63e2-4acc-9b94-26663b9bc267"
+
+        self.add_messagesets_callback(count=2, results=[
+            {"id": 2, "short_name": "test"},
+            {"id": 4, "short_name": "test2"}
+        ])
+        self.add_messageset_language_callback()
+
+        responses.add(
+            responses.POST,
+            'http://hub.example.com/change_admin/',
+            json={
+                "mother_id": identity_id,
+                "subscription": subscription_id
+            },
+            status=201,
+            content_type='application/json'
+        )
+        responses.add(
+            responses.GET,
+            "http://sbm.example.com/subscriptions/%s/" % subscription_id,
+            match_querystring=True,
+            json={
+                "id": subscription_id,
+                "identity": identity_id,
+                "active": True,
+                "completed": False,
+                "lang": "eng_ZA",
+                "messageset": 2,
+                "next_sequence_number": 32,
+                "schedule": 132,
+                "process_status": 0,
+                "version": 1,
+                "metadata": {},
+                "created_at": "2015-07-10T06:13:29.693272Z",
+                "updated_at": "2015-07-10T06:13:29.693272Z"
+            },
+            status=200,
+            content_type='application/json')
+
+        response = self.client.post(
+            "/subscriptions/%s/" % subscription_id,
+            {
+                "language": "zul_ZA",
+                "messageset": 4
+            })
+
+        self.assertEqual(response.status_code, 200)
+
+        messages = list(response.context['messages'])
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(messages[0].message, 'Successfully added change.')
+
+        change_request = responses.calls[2].request
+        self.assertEqual(change_request.url,
+                         "http://hub.example.com/change_admin/")
+        self.assertEqual(
+            json.loads(change_request.body),
+            {
+                "mother_id": identity_id,
+                "messageset": "test2",
+                "language": "zul_ZA",
+                "subscription": subscription_id
+            })
 
     @responses.activate
     @override_settings(METRIC_API_URL='http://metrics-api.org/')
