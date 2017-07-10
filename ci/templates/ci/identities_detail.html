@@ -236,7 +236,15 @@
         <tr>
           <td>{{ outbound.delivered }}</td>
           <td>{{ outbound.attempts }}</td>
-          <td>{{ outbound.content }}</td>
+          <td>
+             {% if outbound.content %}
+                {{ outbound.content }}
+             {% elif outbound.metadata.voice_speech_url %}
+                <a href="{{outbound.metadata.voice_speech_url}}" target="_blank">{{outbound.metadata.voice_speech_url}}</a>
+             {% else %}
+                Content not found.
+             {% endif %}
+          </td>
           <td>{{ outbound.created_at|get_date|date:"D d M Y H:i" }}</td>
           <td>{{ outbound.updated_at|get_date|date:"D d M Y H:i" }}</td>
         </tr>
