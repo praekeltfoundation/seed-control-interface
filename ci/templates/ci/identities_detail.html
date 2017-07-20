@@ -67,6 +67,16 @@
   </div>
 </div>
 
+{% if optout_visible == True %}
+  <div class="call-to-action call-to-action__new-section">
+    <form class="form-inline" method="post" action=".">
+    {% csrf_token %}
+      <button type="submit" name="optout_identity" class="call-to-action__item call-to-action__item--submit-entry">Optout</button>
+      <br/>
+    </form>
+  </div>
+{% endif %}
+
 <h3 class="identity__heading">Addresses</h3>
 <div class="table-full">
   <div class="table-responsive">
@@ -214,7 +224,6 @@
     <table class="table">
       <thead>
         <tr>
-          <th>MSISDN</th>
           <th>Delivered</th>
           <th>Attempts</th>
           <th>Content</th>
@@ -225,10 +234,17 @@
       <tbody>
         {% for outbound in outbound_messages.results %}
         <tr>
-          <td>{{ outbound.to_addr }}</td>
           <td>{{ outbound.delivered }}</td>
           <td>{{ outbound.attempts }}</td>
-          <td>{{ outbound.content }}</td>
+          <td>
+             {% if outbound.content %}
+                {{ outbound.content }}
+             {% elif outbound.metadata.voice_speech_url %}
+                <a href="{{outbound.metadata.voice_speech_url}}" target="_blank">{{outbound.metadata.voice_speech_url}}</a>
+             {% else %}
+                Content not found.
+             {% endif %}
+          </td>
           <td>{{ outbound.created_at|get_date|date:"D d M Y H:i" }}</td>
           <td>{{ outbound.updated_at|get_date|date:"D d M Y H:i" }}</td>
         </tr>
@@ -257,7 +273,6 @@
       <thead>
         <tr>
           <th>To Address</th>
-          <th>From Address (MSISDN)</th>
           <th>Content</th>
           <th>Created Date</th>
           <th>Last Updated Date</th>
@@ -267,7 +282,6 @@
         {% for inbound in inbounds.results %}
         <tr>
           <td>{{ inbound.to_addr }}</td>
-          <td>{{ inbound.from_addr }}</td>
           <td>{{ inbound.content }}</td>
           <td>{{ inbound.created_at|get_date|date:"D d M Y H:i" }}</td>
           <td>{{ inbound.updated_at|get_date|date:"D d M Y H:i" }}</td>
@@ -278,12 +292,12 @@
   </div>
 </div>
 <div class="pagination pagination-list">
-  {% if inbound_messages.previous %}
+  {% if inbounds.previous %}
     <a href="{{request.site.root_page.url}}?inbound_prev" class="pagination__link pagination__link--previous">
       <span class="pagination__link--arrow">&larr;</span> Prev
     </a>
   {% endif %}
-  {% if inbound_messages.next %}
+  {% if inbounds.next %}
     <a href="{{request.site.root_page.url}}?inbound_next" class="pagination__link pagination__link--next">Next
       <span class="pagination__link--arrow">&rarr;</span>
     </a>

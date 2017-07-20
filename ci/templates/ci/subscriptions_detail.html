@@ -16,51 +16,128 @@
 
 <hr class="m-t">
 
+{% for message in messages %}
+<div class="alert alert-{{ message.tags }}">{{ message }}</div>
+{% endfor %}
+
 <h3>Details</h3>
 <div class="table-full">
   <div class="table-responsive">
-    <table class="table" data-sort="table">
-      <tbody>
-        <tr>
-          <th>Subscription ID:</th><td>{{ subscription.id }}</td>
-        </tr>
-        <tr>
-          <th>Subscriber:</th>
-          {% url 'identities-detail' subscription.identity as url %}
-          <td><a href="{{ url }}">{{ subscription.identity|truncatechars:12 }}</a></td>
-        </tr>
-        <tr>
-          <th>Created:</th><td>{{ subscription.created_at|get_date|date:"D d M Y H:i" }}</td>
-        </tr>
-        <tr>
-          <th>Last Updated:</th><td>{{ subscription.updated_at|get_date|date:"D d M Y H:i" }}</td>
-        </tr>
-        <tr>
-          <th>Message Set:</th><td>{{ messagesets|get_item:subscription.messageset }}</td>
-        </tr>
-        <tr>
-          <th>Next Sequence Number:</th><td>{{ subscription.next_sequence_number }}</td>
-        </tr>
-        <tr>
-          <th>Language:</th><td>{{ subscription.lang }}</td>
-        </tr>
-        <tr>
-          <th>Active:</th><td>{{ subscription.active }}</td>
-        </tr>
-        <tr>
-          <th>Completed:</th><td>{{ subscription.completed }}</td>
-        </tr>
-        <tr>
-          <th>Process Status:</th><td>{{ subscription.process_status }}</td>
-        </tr>
-        <tr>
-          <th>Additional Information:</th><td>{% for k, v in subscription.metadata.items %}<strong>{{ k }}</strong>: {{ v }}<br />{% endfor %}</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+    <form class="form-inline" method="post" action=".">
+      {% csrf_token %}
+      <table class="table" data-sort="table">
+        <tbody>
+          <tr>
+            <th>Subscription ID:</th><td>{{ subscription.id }}</td>
+          </tr>
+          <tr>
+            <th>Subscriber:</th>
+            {% url 'identities-detail' subscription.identity as url %}
+            <td><a href="{{ url }}">{{ subscription.identity|truncatechars:12 }}</a></td>
+          </tr>
+          <tr>
+            <th>Created:</th><td>{{ subscription.created_at|get_date|date:"D d M Y H:i" }}</td>
+          </tr>
+          <tr>
+            <th>Last Updated:</th><td>{{ subscription.updated_at|get_date|date:"D d M Y H:i" }}</td>
+          </tr>
+          <tr>
+            <th>Message Set:</th><td><select id="messageset" name="messageset" class="form-control" disabled="disabled"></select></td>
+          </tr>
+          <tr>
+            <th>Language:</th><td><select id="language" name="language" class="form-control" disabled="disabled"></select></td>
+          </tr>
+          <tr>
+            <th>Next Sequence Number:</th><td>{{ subscription.next_sequence_number }}</td>
+          </tr>
+          <tr>
+            <th>Active:</th><td>{{ subscription.active }}</td>
+          </tr>
+          <tr>
+            <th>Completed:</th><td>{{ subscription.completed }}</td>
+          </tr>
+          <tr>
+            <th>Process Status:</th><td>{{ subscription.process_status }}</td>
+          </tr>
+          <tr>
+            <th>Additional Information:</th><td>{% for k, v in subscription.metadata.items %}<strong>{{ k }}</strong>: {{ v }}<br />{% endfor %}</td>
+          </tr>
+        </tbody>
+      </table>
+      {% if subscription.active %}
+      <div class='btn-toolbar pull-right'>
+        <div id="edit-button" class='btn-group pull-right' role="group">
+          <button class="btn btn-default" type="button" name="button">Edit</button>
+        </div>
+        <div id="edit-group" class='btn-group pull-right' role="group">
+          <button id="cancel-button" class="btn btn-default" type="button" name="button">Cancel</button>
+          <button class="btn btn-primary" type="submit" name="update_subscription">Save</button>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </form>
 </div>
+<script type="text/javascript">
+  $(document).ready(function() {
+    var editGrp = $("#edit-group");
+        editBtn = $("#edit-button");
+        cancelBtn = $("#cancel-button");
+        msgSel = $("#messageset");
+        langSel = $("#language");
 
+    editGrp.hide();
+
+    var messagesets = [
+      {% for k, v in messagesets.iteritems %}
+      ["{{ k }}","{{ v }}"]{% if not forloop.last %},{% endif %}
+      {% endfor %}
+    ];
+
+    var langs = {{ languages|safe }};
+    var selected_set = '{{ subscription.messageset }}';
+
+    var populate_languages = function(messageset){
+      langSel.children().remove();
+      $.each(langs,function(key) {
+        if (key == '' + messageset) {
+          $.each(langs[key],function(lang) {
+            langSel.append('<option value=' + langs[key][lang] + '>' + langs[key][lang] + '</option>');
+          })
+        }
+      })
+      langSel.val("{{ subscription.lang }}");
+    }
+
+    $.each(messagesets,function(key, value) {
+      msgSel.append('<option value=' + value[0] + '>' + value[1] + '</option>');
+    });
+
+    msgSel.val("{{ subscription.messageset }}");
+
+    populate_languages(selected_set);
+
+    editBtn.click(function() {
+      msgSel.add(langSel).prop('disabled', false);
+      editBtn.hide();
+      editGrp.show();
+    });
+
+    cancelBtn.click(function() {
+      msgSel.add(langSel).prop('disabled', true);
+      msgSel.val("{{ subscription.messageset }}");
+      langSel.val("{{ subscription.lang }}");
+      editGrp.hide();
+      editBtn.show();
+    });
+
+    msgSel.change(function() {
+      var selected_set = $(this).val();
+      populate_languages(selected_set);
+    });
+
+  });
+</script>
 
 <!-- <div class="text-center">
   <ul class="pagination">

@@ -2,7 +2,8 @@ include README.rst LICENCE docs/Makefile manage.py
 include requirements*.txt
 recursive-include docs *.rst
 recursive-include docs *.py
-recursive-include templates *.html
+recursive-include ci/templates *.html
+recursive-include ci/static *
 prune docs/_build
 
 # Prune stray bytecode files.

@@ -138,8 +138,12 @@ METRIC_API_URL = os.environ.get(
     'METRIC_API_URL',
     'http://localhost:8005/api/v1')
 
-METRIC_API_TOKEN = os.environ.get(
-    'METRIC_API_TOKEN',
+METRIC_API_USER = os.environ.get(
+    'METRIC_API_USER',
+    'REPLACEME')
+
+METRIC_API_PASSWORD = os.environ.get(
+    'METRIC_API_PASSWORD',
     'REPLACEME')
 
 AUTH_SERVICE_URL = os.environ.get(
