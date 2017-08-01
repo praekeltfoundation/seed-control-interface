@@ -153,9 +153,6 @@ class SubscriptionFilterForm(forms.Form):
 
 
 class ReportGenerationForm(forms.Form):
-    output_file = forms.CharField(
-        widget=forms.TextInput(attrs={'placeholder': 'Name of output file'}),
-        required=True)
     start_date = forms.DateField(
         widget=DatePicker(options={
             'placeholder': 'YYYY-MM-DD', 'format': 'yyyy-mm-dd',
