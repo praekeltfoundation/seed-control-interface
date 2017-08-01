@@ -163,7 +163,7 @@ class ReportGenerationForm(forms.Form):
             'placeholder': 'YYYY-MM-DD', 'format': 'yyyy-mm-dd',
             'autoclose': True}),
         required=False)
-    email_to = SimpleArrayField(forms.EmailField(), required=False)
+    email_to = SimpleArrayField(forms.EmailField(), required=True)
     email_from = forms.EmailField(
         widget=forms.EmailInput(attrs={
             'placeholder': 'Address the email is from'}),
