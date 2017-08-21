@@ -1053,6 +1053,10 @@ def report_generation(request):
     if "HUB" not in request.session["user_tokens"]:
         return redirect('denied')
 
+    hubApi = HubApiClient(
+        request.session["user_tokens"]["HUB"]["token"],
+        api_url=request.session["user_tokens"]["HUB"]["url"])
+
     if request.method == "POST":
         form = ReportGenerationForm(request.POST)
         if form.is_valid():
@@ -1068,9 +1072,6 @@ def report_generation(request):
             if form.cleaned_data.get('email_subject') == "":
                 del form.cleaned_data['email_subject']
 
-            hubApi = HubApiClient(
-                request.session["user_tokens"]["HUB"]["token"],
-                api_url=request.session["user_tokens"]["HUB"]["url"])
             results = hubApi.trigger_report_generation(form.cleaned_data)
             if 'report_generation_requested' in results:
                 messages.add_message(
@@ -1086,8 +1087,12 @@ def report_generation(request):
                 )
     else:
         form = ReportGenerationForm()
+
+    report_tasks = hubApi.get_report_tasks()
+
     context.update({
-        "form": form
+        "form": form,
+        "report_tasks": report_tasks
     })
     context.update(csrf(request))
     return render(request, 'ci/reports.html', context)
