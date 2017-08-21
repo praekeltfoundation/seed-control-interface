@@ -28,7 +28,6 @@
 <form class="form-horizontal" method="post" action=".">
   <div class="row col-md-8 col-md-offset-2">
     <div class="panel panel-default ">
-      
         <ul class="list-group">
           <li class="list-group-item">
             Request generation of the reports for the given date range. The reports will be emailed to recipients if they are specified.
@@ -47,10 +46,48 @@
   </div>
 </form>
 
+<div class="row col-md-12">
+  <h3 class="reports__heading">Report Tasks</h3>
+  <div class="table-full">
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Created</th>
+            <th>Start Date</th>
+            <th>End Date</th>
+            <th>Email Subject</th>
+            <th>Size</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for task in report_tasks.results %}
+          <tr>
+            <td>{{ task.created_at|get_date|date:"D d M Y H:i" }}</td>
+            <td>{{ task.start_date }}</td>
+            <td>{{ task.end_date }}</td>
+            <td>{{ task.email_subject }}</td>
+            <td>{% if task.file_size %}{{ task.file_size|filesizeformat }}{% endif %}</td>
+            <td>
+                {% if task.error %}
+                  <a data-toggle="popover" title="{{ task.error }}">{{ task.status }}</a>
+                {% else %}
+                   {{ task.status }}
+                {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <div class="email-to hide">
   <div class="input-group control-group bottom-buffer-10 email-to-group">
     <input type="text" class="form-control email-fields" placeholder="Recipient email">
-    <div class="input-group-btn"> 
+    <div class="input-group-btn">
       <button class="btn btn-danger remove" type="button"><i class="fa fa-times" aria-hidden="true"></i></button>
     </div>
   </div>
@@ -61,9 +98,9 @@
 
 <hr class="m-t">
 <script type="text/javascript">
- 
+
     $(document).ready(function() {
-      
+
       if ($("#id_email_to").val() != '') {
         var emails = $("#id_email_to").val().split(",");
         $("#id_email_to").val('');
@@ -81,14 +118,14 @@
       $("#id_email_to").addClass("hide")
       $(".field-clone:first .remove").replaceWith($(".email-to .add-more").show());
 
-      $(".add-more").click(function(){ 
+      $(".add-more").click(function(){
           $(".field-clone:last").after($(".email-to .email-to-group").clone());
       });
-      
-      $("body").on("click",".remove",function(){ 
+
+      $("body").on("click",".remove",function(){
           $(this).parents(".control-group").remove();
       });
-      
+
       $("body").on("click",".generate",function(){
         $(".form-horizontal .email-fields").each(function(){
           if ($(this).val() == '')
@@ -98,10 +135,9 @@
               }).get().join(","));
         });
       });
- 
+
     });
- 
+
 </script>
 
 {% endblock %}
-
