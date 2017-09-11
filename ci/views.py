@@ -139,8 +139,7 @@ def permission_required(function=None, permission=None, object_id=None,
 
 def login(request, template_name='ci/login.html',
           redirect_field_name=REDIRECT_FIELD_NAME,
-          authentication_form=AuthenticationForm,
-          extra_context=None):
+          authentication_form=AuthenticationForm):
     """
     Displays the login form and handles the login action.
     """
@@ -197,8 +196,6 @@ def login(request, template_name='ci/login.html',
         'site': current_site,
         'site_name': current_site.name,
     }
-    if extra_context is not None:
-        context.update(extra_context)
 
     return TemplateResponse(request, template_name, context)
 
