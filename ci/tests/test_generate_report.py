@@ -7,7 +7,6 @@ from openpyxl import load_workbook
 from django.test import TestCase, override_settings
 from django.core import mail
 from django.core.management import call_command
-from ci.management.commands.generate_reports import parse_cursor_params
 
 
 @override_settings(
@@ -30,17 +29,6 @@ class GenerateReportTest(TestCase):
         self.addCleanup(tmp_file.close)
         return tmp_file
 
-    def test_parse_cursor_params(self):
-        cursor = ("https://example"
-                  "?created_after=2010-01-01T00%3A00%3A00%2B00%3A00"
-                  "&created_before=2016-10-17T00%3A00%3A00%2B00%3A00"
-                  "&limit=1000&offset=1000")
-        params = parse_cursor_params(cursor)
-        self.assertEqual(params['created_after'], '2010-01-01T00:00:00+00:00')
-        self.assertEqual(params['created_before'], '2016-10-17T00:00:00+00:00')
-        self.assertEqual(params['limit'], '1000')
-        self.assertEqual(params['offset'], '1000')
-
     def add_blank_registration_callback(self, next_='?foo=bar'):
         if next_:
             next_ = 'http://hub.example.com/registrations/{}'.format(next_)
@@ -52,7 +40,6 @@ class GenerateReportTest(TestCase):
              "&created_after=2016-01-01T00%3A00%3A00%2B00%3A00"),
             match_querystring=True,
             json={
-                'count': 0,
                 'next': next_,
                 'results': [],
             },
@@ -82,7 +69,6 @@ class GenerateReportTest(TestCase):
             'http://hub.example.com/registrations/{}'.format(path),
             match_querystring=True,
             json={
-                'count': num,
                 'next': None,
                 'results': registrations,
             },
@@ -101,7 +87,6 @@ class GenerateReportTest(TestCase):
              "&created_after=2016-01-01T00%3A00%3A00%2B00%3A00"),
             match_querystring=True,
             json={
-                'count': 0,
                 'next': next_,
                 'results': [],
             },
@@ -127,7 +112,6 @@ class GenerateReportTest(TestCase):
             "http://hub.example.com/changes/{}".format(path),
             match_querystring=True,
             json={
-                'count': num,
                 'next': None,
                 'results': changes,
             },
@@ -166,7 +150,6 @@ class GenerateReportTest(TestCase):
              "created_before=2016-02-01T00%3A00%3A00%2B00%3A00"),
             match_querystring=True,
             json={
-                'count': 0,
                 'next': next_,
                 'results': [],
             },
@@ -200,7 +183,6 @@ class GenerateReportTest(TestCase):
             'http://sbm.example.com/subscriptions/{}'.format(path),
             match_querystring=True,
             json={
-                'count': num,
                 'next': None,
                 'results': subscriptions,
             },
@@ -218,7 +200,6 @@ class GenerateReportTest(TestCase):
              "&after=2016-01-01T00%3A00%3A00%2B00%3A00"),
             match_querystring=True,
             json={
-                'count': 0,
                 'next': next_,
                 'results': [],
             },
@@ -242,7 +223,6 @@ class GenerateReportTest(TestCase):
             'http://ms.example.com/outbound/?foo=bar',
             match_querystring=True,
             json={
-                'count': num,
                 'next': None,
                 'results': outbounds,
             },
@@ -278,7 +258,6 @@ class GenerateReportTest(TestCase):
              "created_at__gte=2016-01-01T00%3A00%3A00%2B00%3A00"),
             match_querystring=True,
             json={
-                'count': 0,
                 'next': next_,
                 'results': [],
             },
@@ -303,7 +282,6 @@ class GenerateReportTest(TestCase):
             'http://idstore.example.com/optouts/search/{}'.format(path),
             match_querystring=True,
             json={
-                'count': num,
                 'next': None,
                 'results': optouts,
             },
