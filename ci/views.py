@@ -606,7 +606,8 @@ def identity(request, identity):
     outbound_messages = msApi.get_outbounds(params=outbound_message_params)
     outbound_page = request.GET.get('outbound_page')
     outbound_paginator = Paginator(
-        list(outbound_messages['results']), settings.MESSAGES_PER_IDENTITY)
+        list(outbound_messages['results']),
+        settings.IDENTITY_MESSAGES_PAGE_SIZE)
 
     try:
         outbound_messages = outbound_paginator.page(outbound_page)
@@ -623,7 +624,8 @@ def identity(request, identity):
     inbound_messages = msApi.get_inbounds(inbound_message_params)
     inbound_page = request.GET.get('inbound_page')
     inbound_paginator = Paginator(
-        list(inbound_messages['results']), settings.MESSAGES_PER_IDENTITY)
+        list(inbound_messages['results']),
+        settings.IDENTITY_MESSAGES_PAGE_SIZE)
 
     try:
         inbound_messages = inbound_paginator.page(inbound_page)

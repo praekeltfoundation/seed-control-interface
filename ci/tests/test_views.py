@@ -104,7 +104,7 @@ class ViewTestsTemplate(TestCase):
             content_type='application/json')
 
 
-@override_settings(MESSAGES_PER_IDENTITY=100)
+@override_settings(IDENTITY_MESSAGES_PAGE_SIZE=100)
 class ViewTests(ViewTestsTemplate):
     def add_messageset_language_callback(self):
         responses.add(
@@ -319,7 +319,7 @@ class IdentityViewTest(ViewTestsTemplate):
         self.assertContains(response, 'Outbound message')
 
     @responses.activate
-    @override_settings(MESSAGES_PER_IDENTITY=1)
+    @override_settings(IDENTITY_MESSAGES_PAGE_SIZE=1)
     def test_should_paginate_outbound_messages(self):
         self.add_message_sender_inbound_responses()
         self.add_message_sender_outbound_responses(count=2)
@@ -338,7 +338,7 @@ class IdentityViewTest(ViewTestsTemplate):
         self.assertContains(response, 'Inbound message')
 
     @responses.activate
-    @override_settings(MESSAGES_PER_IDENTITY=1)
+    @override_settings(IDENTITY_MESSAGES_PAGE_SIZE=1)
     def test_should_paginate_inbound_messages(self):
         self.add_message_sender_inbound_responses(count=2)
         self.add_message_sender_outbound_responses()
