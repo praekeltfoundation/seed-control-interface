@@ -6004,18 +6004,16 @@ body {
   margin-left: -5px;
   border-spacing: 5px;
 }
-.nav > .nav-header {
+.nav-header {
   padding-left: 15px;
   padding-right: 15px;
+  margin-top: 20px;
   margin-bottom: 5px;
-  font-size: 85%;
+  font-size: 16px;
   font-weight: normal;
   letter-spacing: 1px;
   color: #aeaeae;
   text-transform: uppercase;
-}
-.nav > li + .nav-header {
-  margin-top: 20px;
 }
 .nav-bordered > li {
   float: left;
@@ -9130,7 +9128,6 @@ canvas {
 }
 .sidebar-header {
   position: relative;
-  padding-bottom: 20px;
 }
 .sidebar-header:before,
 .sidebar-header:after {
