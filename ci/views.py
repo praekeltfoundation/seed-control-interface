@@ -20,13 +20,14 @@ from django.conf import settings
 from django import forms
 import dateutil.parser
 
-from seed_services_client.control_interface import ControlInterfaceApiClient
-from seed_services_client.identity_store import IdentityStoreApiClient
-from seed_services_client.hub import HubApiClient
-from seed_services_client.stage_based_messaging \
-    import StageBasedMessagingApiClient
-from seed_services_client.scheduler import SchedulerApiClient
-from seed_services_client.message_sender import MessageSenderApiClient
+from seed_services_client import (
+    ControlInterfaceApiClient,
+    HubApiClient,
+    IdentityStoreApiClient,
+    MessageSenderApiClient,
+    SchedulerApiClient,
+    StageBasedMessagingApiClient,
+)
 from seed_services_client.metrics import MetricsApiClient
 from .forms import (AuthenticationForm, IdentitySearchForm,
                     RegistrationFilterForm, SubscriptionFilterForm,
