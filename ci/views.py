@@ -139,8 +139,7 @@ def permission_required(function=None, permission=None, object_id=None,
 
 def login(request, template_name='ci/login.html',
           redirect_field_name=REDIRECT_FIELD_NAME,
-          authentication_form=AuthenticationForm,
-          extra_context=None):
+          authentication_form=AuthenticationForm):
     """
     Displays the login form and handles the login action.
     """
@@ -196,10 +195,7 @@ def login(request, template_name='ci/login.html',
         redirect_field_name: redirect_to,
         'site': current_site,
         'site_name': current_site.name,
-        'logo_url': settings.CI_LOGO_URL
     }
-    if extra_context is not None:
-        context.update(extra_context)
 
     return TemplateResponse(request, template_name, context)
 
@@ -217,14 +213,6 @@ def logout(request):
     return redirect('index')
 
 
-def default_context(session):
-    context = {
-        "logo_url": settings.CI_LOGO_URL,
-        "dashboards": session["user_dashboards"],
-    }
-    return context
-
-
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def index(request):
@@ -233,8 +221,7 @@ def index(request):
         return HttpResponseRedirect(reverse('dashboard', args=(
             request.session["user_default_dashboard"],)))
     else:
-        context = default_context(request.session)
-        return render(request, 'ci/index.html', context)
+        return render(request, 'ci/index.html')
 
 
 @login_required(login_url='/login/')
@@ -296,8 +283,7 @@ def health_messages(request):
                 'This week': this_week_data
             })
 
-    context = default_context(request.session)
-    return render(request, 'ci/health_messages.html', context)
+    return render(request, 'ci/health_messages.html')
 
 
 @login_required(login_url='/login/')
@@ -338,8 +324,7 @@ def health_subscriptions(request):
                 'This week': this_week_data
             })
 
-    context = default_context(request.session)
-    return render(request, 'ci/health_subscriptions.html', context)
+    return render(request, 'ci/health_subscriptions.html')
 
 
 @login_required(login_url='/login/')
@@ -380,18 +365,14 @@ def health_registrations(request):
                 'This week': this_week_data
             })
 
-    context = default_context(request.session)
-    return render(request, 'ci/health_registrations.html', context)
+    return render(request, 'ci/health_registrations.html')
 
 
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def dashboard(request, dashboard_id):
-    context = default_context(request.session)
     dashboard = ciApi.get_dashboard(int(dashboard_id))
-    context.update({
-        "dashboard": dashboard
-    })
+    context = {"dashboard": dashboard}
     return render(request, 'ci/dashboard.html', context)
 
 
@@ -430,21 +411,18 @@ def dashboard_metric(request):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def denied(request):
-    context = default_context(request.session)
-    return render(request, 'ci/denied.html', context)
+    return render(request, 'ci/denied.html')
 
 
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def not_found(request):
-    context = default_context(request.session)
-    return render(request, 'ci/not_found.html', context)
+    return render(request, 'ci/not_found.html')
 
 
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def identities(request):
-    context = default_context(request.session)
     if "SEED_IDENTITY_SERVICE" not in request.session["user_tokens"]:
         return redirect('denied')
     else:
@@ -462,9 +440,7 @@ def identities(request):
                 results = {"count": form.errors}
         else:
             results = idApi.get_identities()
-        context.update({
-            "identities": results
-        })
+        context = {"identities": results}
         context.update(csrf(request))
         return render(request, 'ci/identities.html', context)
 
@@ -514,7 +490,6 @@ def create_inbound_messages_filter(request, identity):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def identity(request, identity):
-    context = default_context(request.session)
     if "SEED_IDENTITY_SERVICE" not in request.session["user_tokens"] and \
             "HUB" not in request.session["user_tokens"] and \
             "SEED_STAGE_BASED_MESSAGING" not in request.session["user_tokens"]:
@@ -679,7 +654,7 @@ def identity(request, identity):
         optout_visible = any(
             (not d.get('optedout') for _, d in msisdns.items()))
 
-        context.update({
+        context = {
             "identity": results,
             "registrations": registrations,
             "changes": changes,
@@ -690,7 +665,7 @@ def identity(request, identity):
             "deactivate_subscription_form": deactivate_subscription_form,
             "inbounds": inbound_messages,
             "optout_visible": optout_visible
-        })
+        }
         context.update(csrf(request))
         return render(request, 'ci/identities_detail.html', context)
 
@@ -698,7 +673,6 @@ def identity(request, identity):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def registrations(request):
-    context = default_context(request.session)
     if "HUB" not in request.session["user_tokens"]:
         return redirect('denied')
     else:
@@ -721,10 +695,10 @@ def registrations(request):
         else:
             form = RegistrationFilterForm()
             results = hubApi.get_registrations()
-        context.update({
+        context = {
             "registrations": results,
             "form": form
-        })
+        }
         context.update(csrf(request))
         return render(request, 'ci/registrations.html', context)
 
@@ -732,7 +706,6 @@ def registrations(request):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def registration(request, registration):
-    context = default_context(request.session)
     if "HUB" not in request.session["user_tokens"]:
         return redirect('denied')
     else:
@@ -746,9 +719,9 @@ def registration(request, registration):
             results = hubApi.get_registration(registration)
             if results is None:
                 return redirect('not_found')
-        context.update({
+        context = {
             "registration": results
-        })
+        }
         context.update(csrf(request))
         return render(request, 'ci/registrations_detail.html', context)
 
@@ -756,7 +729,6 @@ def registration(request, registration):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def changes(request):
-    context = default_context(request.session)
     if "HUB" not in request.session["user_tokens"]:
         return redirect('denied')
     else:
@@ -779,10 +751,10 @@ def changes(request):
         else:
             form = ChangeFilterForm()
             results = hubApi.get_changes()
-        context.update({
+        context = {
             "changes": results,
             "form": form
-        })
+        }
         context.update(csrf(request))
         return render(request, 'ci/changes.html', context)
 
@@ -790,7 +762,6 @@ def changes(request):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def change(request, change):
-    context = default_context(request.session)
     if "HUB" not in request.session["user_tokens"]:
         return redirect('denied')
     else:
@@ -804,9 +775,7 @@ def change(request, change):
             results = hubApi.get_change(change)
             if results is None:
                 return redirect('not_found')
-        context.update({
-            "change": results
-        })
+        context = {"change": results}
         context.update(csrf(request))
         return render(request, 'ci/changes_detail.html', context)
 
@@ -814,7 +783,6 @@ def change(request, change):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def subscriptions(request):
-    context = default_context(request.session)
     if "SEED_STAGE_BASED_MESSAGING" not in request.session["user_tokens"]:
         return redirect('denied')
     else:
@@ -840,11 +808,11 @@ def subscriptions(request):
         else:
             form = SubscriptionFilterForm()
             results = sbmApi.get_subscriptions()
-        context.update({
+        context = {
             "subscriptions": results,
             "messagesets": messagesets,
             "form": form
-        })
+        }
         context.update(csrf(request))
         return render(request, 'ci/subscriptions.html', context)
 
@@ -852,7 +820,6 @@ def subscriptions(request):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def subscription(request, subscription):
-    context = default_context(request.session)
     if "SEED_STAGE_BASED_MESSAGING" not in request.session["user_tokens"]:
         return redirect('denied')
     else:
@@ -911,11 +878,11 @@ def subscription(request, subscription):
 
         languages = sbmApi.get_messageset_languages()
 
-        context.update({
+        context = {
             "subscription": results,
             "messagesets": messagesets,
             "languages": json.dumps(languages)
-        })
+        }
         context.update(csrf(request))
         return render(request, 'ci/subscriptions_detail.html', context)
 
@@ -923,31 +890,26 @@ def subscription(request, subscription):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def services(request):
-    context = default_context(request.session)
     services = ciApi.get_services()
-    context.update({
-        "services": services
-    })
+    context = {"services": services}
     return render(request, 'ci/services.html', context)
 
 
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def service(request, service):
-    context = default_context(request.session)
     results = ciApi.get_service(service)
     service_status = ciApi.get_service_status(service)
-    context.update({
+    context = {
         "service": results,
         "service_status": service_status
-    })
+    }
     return render(request, 'ci/services_detail.html', context)
 
 
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def subscription_failures(request):
-    context = default_context(request.session)
     if "SEED_STAGE_BASED_MESSAGING" not in request.session["user_tokens"]:
         return redirect('denied')
 
@@ -971,9 +933,9 @@ def subscription_failures(request):
                 messages.ERROR,
                 'Could not re-queued all subscription tasks'
             )
-    context.update({
+    context = {
         'failures': results['results'],
-    })
+    }
     context.update(csrf(request))
     return render(request, 'ci/failures_subscriptions.html', context)
 
@@ -981,7 +943,6 @@ def subscription_failures(request):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def schedule_failures(request):
-    context = default_context(request.session)
     if "SEED_SCHEDULER" not in request.session["user_tokens"]:
         return redirect('denied')
 
@@ -1005,9 +966,9 @@ def schedule_failures(request):
                 messages.ERROR,
                 'Could not re-queued all scheduler tasks'
             )
-    context.update({
+    context = {
         'failures': results,
-    })
+    }
     context.update(csrf(request))
     return render(request, 'ci/failures_schedules.html', context)
 
@@ -1015,7 +976,6 @@ def schedule_failures(request):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def outbound_failures(request):
-    context = default_context(request.session)
     if "SEED_MESSAGE_SENDER" not in request.session["user_tokens"]:
         return redirect('denied')
 
@@ -1039,9 +999,9 @@ def outbound_failures(request):
                 messages.ERROR,
                 'Could not re-queued all outbound tasks'
             )
-    context.update({
+    context = {
         'failures': results['results'],
-    })
+    }
     context.update(csrf(request))
     return render(request, 'ci/failures_outbounds.html', context)
 
@@ -1049,7 +1009,6 @@ def outbound_failures(request):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def report_generation(request):
-    context = default_context(request.session)
     if "HUB" not in request.session["user_tokens"]:
         return redirect('denied')
 
@@ -1090,9 +1049,9 @@ def report_generation(request):
 
     report_tasks = hubApi.get_report_tasks()
 
-    context.update({
+    context = {
         "form": form,
         "report_tasks": report_tasks
-    })
+    }
     context.update(csrf(request))
     return render(request, 'ci/reports.html', context)
