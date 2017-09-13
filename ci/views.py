@@ -9,6 +9,7 @@ from django.utils.six.moves.urllib.parse import urlparse
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.contrib.sites.shortcuts import get_current_site
 from django.contrib import messages
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.urlresolvers import reverse
 from django.utils.http import is_safe_url
 from django.utils.timezone import now
@@ -20,14 +21,18 @@ from django.conf import settings
 from django import forms
 import dateutil.parser
 
-from seed_services_client.control_interface import ControlInterfaceApiClient
-from seed_services_client.identity_store import IdentityStoreApiClient
-from seed_services_client.hub import HubApiClient
-from seed_services_client.stage_based_messaging \
-    import StageBasedMessagingApiClient
-from seed_services_client.scheduler import SchedulerApiClient
-from seed_services_client.message_sender import MessageSenderApiClient
+from seed_services_client import (
+    ControlInterfaceApiClient,
+    HubApiClient,
+    IdentityStoreApiClient,
+    MessageSenderApiClient,
+    SchedulerApiClient,
+    StageBasedMessagingApiClient,
+)
 from seed_services_client.metrics import MetricsApiClient
+
+from urlobject import URLObject
+
 from .forms import (AuthenticationForm, IdentitySearchForm,
                     RegistrationFilterForm, SubscriptionFilterForm,
                     ChangeFilterForm, ReportGenerationForm,
@@ -58,6 +63,12 @@ def get_item(dictionary, key):
 def get_date(date_string):
     if date_string is not None:
         return dateutil.parser.parse(date_string)
+
+
+@register.simple_tag
+def replace_query_param(url, parameter, value):
+    url = URLObject(url)
+    return url.set_query_params([(parameter, value)])
 
 
 ciApi = ControlInterfaceApiClient(
@@ -178,11 +189,12 @@ def login(request, template_name='ci/login.html',
 
             # Set user dashboards because they are slow to change
             dashboards = ciApi.get_user_dashboards(user["id"])
-            if len(dashboards["results"]) > 0:
+            dashboard_list = list(dashboards['results'])
+            if len(dashboard_list) > 0:
                 request.session['user_dashboards'] = \
-                    dashboards["results"][0]["dashboards"]
+                    dashboard_list[0]["dashboards"]
                 request.session['user_default_dashboard'] = \
-                    dashboards["results"][0]["default_dashboard"]["id"]
+                    dashboard_list[0]["default_dashboard"]["id"]
             else:
                 request.session['user_dashboards'] = []
                 request.session['user_default_dashboard'] = None
@@ -190,9 +202,10 @@ def login(request, template_name='ci/login.html',
             # Get the user access tokens too and format for easy access
             tokens = ciApi.get_user_service_tokens(
                 params={"user_id": user["id"]})
+            token_list = list(tokens['results'])
             user_tokens = {}
-            if len(tokens["results"]) > 0:
-                for token in tokens["results"]:
+            if len(token_list) > 0:
+                for token in token_list:
                     user_tokens[token["service"]["name"]] = {
                         "token": token["token"],
                         "url": token["service"]["url"] + "/api/v1"
@@ -458,48 +471,6 @@ def identities(request):
     return render(request, 'ci/identities.html', context)
 
 
-def create_outbound_messages_filter(request, identity):
-    """
-    Has a look at the request to see if the next/previous page of outbound
-    messages was requested, else get the first page of outbound messages for
-    the given identity.
-    """
-    if request.GET.get("outbound_next", None) is not None and \
-            request.session['next_outbound_params'] is not None:
-        return request.session['next_outbound_params']
-    if request.GET.get("outbound_prev", None) is not None and \
-            request.session['prev_outbound_params'] is not None:
-        return request.session['prev_outbound_params']
-
-    return {
-        "to_identity": identity,
-        "ordering": "-created_at",
-        "limit": settings.MESSAGES_PER_IDENTITY,
-    }
-
-
-def create_inbound_messages_filter(request, identity):
-    """
-    Has a look at the request to see if the next/previous page of inbound
-    messages was requested, else get the first page of inbound messages for
-    the given identity.
-    """
-    if (
-            request.GET.get('inbound_next') is not None and
-            request.session.get('inbound_next_params') is not None):
-        return request.session['inbound_next_params']
-    if (
-            request.GET.get('inbound_prev') is not None and
-            request.session.get('inbound_prev_params') is not None):
-        return request.session['inbound_prev_params']
-
-    return {
-        'from_identity': identity,
-        'ordering': '-created_at',
-        'limit': settings.MESSAGES_PER_IDENTITY,
-    }
-
-
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 @tokens_required(['SEED_IDENTITY_SERVICE', 'HUB',
@@ -628,29 +599,40 @@ def identity(request, identity):
     if results is None:
         return redirect('not_found')
 
-    outbound_filter = create_outbound_messages_filter(request, identity)
-    if outbound_filter is not None:
-        outbound_messages = msApi.get_outbounds(params=outbound_filter)
-    else:
-        outbound_messages = {}
+    outbound_message_params = {
+        'to_identity': identity,
+        'ordering': '-created_at',
+    }
+    outbound_messages = msApi.get_outbounds(params=outbound_message_params)
+    outbound_page = request.GET.get('outbound_page')
+    outbound_paginator = Paginator(
+        list(outbound_messages['results']),
+        settings.IDENTITY_MESSAGES_PAGE_SIZE)
 
-    # Store next and previous filters in session for pagination
-    request.session['next_outbound_params'] = \
-        utils.extract_query_params(outbound_messages.get('next', ""))
-    request.session['prev_outbound_params'] = \
-        utils.extract_query_params(outbound_messages.get(
-            'previous', ""))
+    try:
+        outbound_messages = outbound_paginator.page(outbound_page)
+    except PageNotAnInteger:
+        outbound_messages = outbound_paginator.page(1)
+    except EmptyPage:
+        outbound_messages = outbound_paginator.page(
+            outbound_paginator.num_pages)
 
-    # Inbound messages
-    inbound_filter = create_inbound_messages_filter(request, identity)
-    if inbound_filter is not None:
-        inbound_messages = msApi.get_inbounds(inbound_filter)
-    else:
-        inbound_messages = {}
-    request.session['inbound_next_params'] = (
-        utils.extract_query_params(inbound_messages.get('next')))
-    request.session['inbound_prev_params'] = (
-        utils.extract_query_params(inbound_messages.get('previous')))
+    inbound_message_params = {
+        'from_identity': identity,
+        'ordering': '-created_at',
+    }
+    inbound_messages = msApi.get_inbounds(inbound_message_params)
+    inbound_page = request.GET.get('inbound_page')
+    inbound_paginator = Paginator(
+        list(inbound_messages['results']),
+        settings.IDENTITY_MESSAGES_PAGE_SIZE)
+
+    try:
+        inbound_messages = inbound_paginator.page(inbound_page)
+    except PageNotAnInteger:
+        inbound_messages = inbound_paginator.page(1)
+    except EmptyPage:
+        inbound_messages = inbound_paginator.page(inbound_paginator.num_pages)
 
     deactivate_subscription_form = DeactivateSubscriptionForm()
     add_subscription_form = AddSubscriptionForm()
@@ -673,7 +655,7 @@ def identity(request, identity):
         "outbound_messages": outbound_messages,
         "add_subscription_form": add_subscription_form,
         "deactivate_subscription_form": deactivate_subscription_form,
-        "inbounds": inbound_messages,
+        "inbound_messages": inbound_messages,
         "optout_visible": optout_visible
     }
     context.update(csrf(request))

@@ -4,11 +4,6 @@ import collections
 from functools import partial
 import itertools
 
-# NOTE: Python 3 compatibility
-try:
-    from urlparse import urlparse, parse_qs
-except ImportError:
-    from urllib.parse import urlparse, parse_qs
 from datetime import datetime, timedelta
 import dateutil.parser
 
@@ -86,12 +81,6 @@ class ExportWorkbook(object):
 
     def save(self, file_name):
         return self._workbook.save(file_name)
-
-
-def parse_cursor_params(cursor):
-    parse_result = urlparse(cursor)
-    params = parse_qs(parse_result.query)
-    return dict([(key, value[0]) for key, value in params.items()])
 
 
 class Command(BaseCommand):
@@ -263,61 +252,26 @@ class Command(BaseCommand):
 
     def get_registrations(self, hub_client, **kwargs):
         registrations = hub_client.get_registrations(kwargs)
-        cursor = registrations['next']
-        while cursor:
-            for result in registrations['results']:
-                yield result
-            params = parse_cursor_params(cursor)
-            registrations = hub_client.get_registrations(params)
-            cursor = registrations['next']
         for result in registrations['results']:
             yield result
 
     def get_subscriptions(self, sbm_client, **kwargs):
         subscriptions = sbm_client.get_subscriptions(kwargs)
-        cursor = subscriptions['next']
-        while cursor:
-            for result in subscriptions['results']:
-                yield result
-            params = parse_cursor_params(cursor)
-            subscriptions = sbm_client.get_subscriptions(params)
-            cursor = subscriptions['next']
         for result in subscriptions['results']:
             yield result
 
     def get_outbounds(self, ms_client, **kwargs):
         outbounds = ms_client.get_outbounds(kwargs)
-        cursor = outbounds['next']
-        while cursor:
-            for result in outbounds['results']:
-                yield result
-            params = parse_cursor_params(cursor)
-            outbounds = ms_client.get_outbounds(params)
-            cursor = outbounds['next']
         for result in outbounds['results']:
             yield result
 
     def get_optouts(self, ids_client, **kwargs):
         optouts = ids_client.get_optouts(kwargs)
-        cursor = optouts['next']
-        while cursor:
-            for result in optouts['results']:
-                yield result
-            params = parse_cursor_params(cursor)
-            optouts = ids_client.get_optouts(params)
-            cursor = optouts['next']
         for result in optouts['results']:
             yield result
 
     def get_changes(self, hub_client, **kwargs):
         changes = hub_client.get_changes(kwargs)
-        cursor = changes['next']
-        while cursor:
-            for result in changes['results']:
-                yield result
-            params = parse_cursor_params(cursor)
-            changes = hub_client.get_changes(params)
-            cursor = changes['next']
         for result in changes['results']:
             yield result
 
