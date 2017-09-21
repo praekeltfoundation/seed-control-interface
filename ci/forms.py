@@ -153,9 +153,6 @@ class SubscriptionFilterForm(forms.Form):
 
 
 class ReportGenerationForm(forms.Form):
-    output_file = forms.CharField(
-        widget=forms.TextInput(attrs={'placeholder': 'Name of output file'}),
-        required=True)
     start_date = forms.DateField(
         widget=DatePicker(options={
             'placeholder': 'YYYY-MM-DD', 'format': 'yyyy-mm-dd',
@@ -166,7 +163,7 @@ class ReportGenerationForm(forms.Form):
             'placeholder': 'YYYY-MM-DD', 'format': 'yyyy-mm-dd',
             'autoclose': True}),
         required=False)
-    email_to = SimpleArrayField(forms.EmailField(), required=False)
+    email_to = SimpleArrayField(forms.EmailField(), required=True)
     email_from = forms.EmailField(
         widget=forms.EmailInput(attrs={
             'placeholder': 'Address the email is from'}),

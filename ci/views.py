@@ -9,6 +9,7 @@ from django.utils.six.moves.urllib.parse import urlparse
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.contrib.sites.shortcuts import get_current_site
 from django.contrib import messages
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.urlresolvers import reverse
 from django.utils.http import is_safe_url
 from django.utils.timezone import now
@@ -20,14 +21,18 @@ from django.conf import settings
 from django import forms
 import dateutil.parser
 
-from seed_services_client.control_interface import ControlInterfaceApiClient
-from seed_services_client.identity_store import IdentityStoreApiClient
-from seed_services_client.hub import HubApiClient
-from seed_services_client.stage_based_messaging \
-    import StageBasedMessagingApiClient
-from seed_services_client.scheduler import SchedulerApiClient
-from seed_services_client.message_sender import MessageSenderApiClient
+from seed_services_client import (
+    ControlInterfaceApiClient,
+    HubApiClient,
+    IdentityStoreApiClient,
+    MessageSenderApiClient,
+    SchedulerApiClient,
+    StageBasedMessagingApiClient,
+)
 from seed_services_client.metrics import MetricsApiClient
+
+from urlobject import URLObject
+
 from .forms import (AuthenticationForm, IdentitySearchForm,
                     RegistrationFilterForm, SubscriptionFilterForm,
                     ChangeFilterForm, ReportGenerationForm,
@@ -58,6 +63,12 @@ def get_item(dictionary, key):
 def get_date(date_string):
     if date_string is not None:
         return dateutil.parser.parse(date_string)
+
+
+@register.simple_tag
+def replace_query_param(url, parameter, value):
+    url = URLObject(url)
+    return url.set_query_params([(parameter, value)])
 
 
 ciApi = ControlInterfaceApiClient(
@@ -137,10 +148,24 @@ def permission_required(function=None, permission=None, object_id=None,
     return actual_decorator
 
 
+def tokens_required(service_list):
+    """
+    Ensure the user has the necessary tokens for the specified services
+    """
+    def decorator(func):
+        @wraps(func)
+        def inner(request, *args, **kwargs):
+            for service in service_list:
+                if service not in request.session["user_tokens"]:
+                    return redirect('denied')
+            return func(request, *args, **kwargs)
+        return inner
+    return decorator
+
+
 def login(request, template_name='ci/login.html',
           redirect_field_name=REDIRECT_FIELD_NAME,
-          authentication_form=AuthenticationForm,
-          extra_context=None):
+          authentication_form=AuthenticationForm):
     """
     Displays the login form and handles the login action.
     """
@@ -164,11 +189,12 @@ def login(request, template_name='ci/login.html',
 
             # Set user dashboards because they are slow to change
             dashboards = ciApi.get_user_dashboards(user["id"])
-            if len(dashboards["results"]) > 0:
+            dashboard_list = list(dashboards['results'])
+            if len(dashboard_list) > 0:
                 request.session['user_dashboards'] = \
-                    dashboards["results"][0]["dashboards"]
+                    dashboard_list[0]["dashboards"]
                 request.session['user_default_dashboard'] = \
-                    dashboards["results"][0]["default_dashboard"]["id"]
+                    dashboard_list[0]["default_dashboard"]["id"]
             else:
                 request.session['user_dashboards'] = []
                 request.session['user_default_dashboard'] = None
@@ -176,9 +202,10 @@ def login(request, template_name='ci/login.html',
             # Get the user access tokens too and format for easy access
             tokens = ciApi.get_user_service_tokens(
                 params={"user_id": user["id"]})
+            token_list = list(tokens['results'])
             user_tokens = {}
-            if len(tokens["results"]) > 0:
-                for token in tokens["results"]:
+            if len(token_list) > 0:
+                for token in token_list:
                     user_tokens[token["service"]["name"]] = {
                         "token": token["token"],
                         "url": token["service"]["url"] + "/api/v1"
@@ -196,10 +223,7 @@ def login(request, template_name='ci/login.html',
         redirect_field_name: redirect_to,
         'site': current_site,
         'site_name': current_site.name,
-        'logo_url': settings.CI_LOGO_URL
     }
-    if extra_context is not None:
-        context.update(extra_context)
 
     return TemplateResponse(request, template_name, context)
 
@@ -217,14 +241,6 @@ def logout(request):
     return redirect('index')
 
 
-def default_context(session):
-    context = {
-        "logo_url": settings.CI_LOGO_URL,
-        "dashboards": session["user_dashboards"],
-    }
-    return context
-
-
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def index(request):
@@ -233,8 +249,7 @@ def index(request):
         return HttpResponseRedirect(reverse('dashboard', args=(
             request.session["user_default_dashboard"],)))
     else:
-        context = default_context(request.session)
-        return render(request, 'ci/index.html', context)
+        return render(request, 'ci/index.html')
 
 
 @login_required(login_url='/login/')
@@ -296,8 +311,7 @@ def health_messages(request):
                 'This week': this_week_data
             })
 
-    context = default_context(request.session)
-    return render(request, 'ci/health_messages.html', context)
+    return render(request, 'ci/health_messages.html')
 
 
 @login_required(login_url='/login/')
@@ -338,8 +352,7 @@ def health_subscriptions(request):
                 'This week': this_week_data
             })
 
-    context = default_context(request.session)
-    return render(request, 'ci/health_subscriptions.html', context)
+    return render(request, 'ci/health_subscriptions.html')
 
 
 @login_required(login_url='/login/')
@@ -380,18 +393,14 @@ def health_registrations(request):
                 'This week': this_week_data
             })
 
-    context = default_context(request.session)
-    return render(request, 'ci/health_registrations.html', context)
+    return render(request, 'ci/health_registrations.html')
 
 
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def dashboard(request, dashboard_id):
-    context = default_context(request.session)
     dashboard = ciApi.get_dashboard(int(dashboard_id))
-    context.update({
-        "dashboard": dashboard
-    })
+    context = {"dashboard": dashboard}
     return render(request, 'ci/dashboard.html', context)
 
 
@@ -430,527 +439,458 @@ def dashboard_metric(request):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def denied(request):
-    context = default_context(request.session)
-    return render(request, 'ci/denied.html', context)
+    return render(request, 'ci/denied.html')
 
 
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def not_found(request):
-    context = default_context(request.session)
-    return render(request, 'ci/not_found.html', context)
+    return render(request, 'ci/not_found.html')
 
 
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
+@tokens_required(['SEED_IDENTITY_SERVICE'])
 def identities(request):
-    context = default_context(request.session)
-    if "SEED_IDENTITY_SERVICE" not in request.session["user_tokens"]:
-        return redirect('denied')
-    else:
-        idApi = IdentityStoreApiClient(
-            api_url=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["url"],  # noqa
-            auth_token=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["token"]  # noqa
-        )
-        if request.method == "POST":
-            form = IdentitySearchForm(request.POST)
-            if form.is_valid():
-                results = idApi.get_identity_by_address(
-                    address_type=form.cleaned_data['address_type'],
-                    address_value=form.cleaned_data['address_value'])
-            else:
-                results = {"count": form.errors}
+    idApi = IdentityStoreApiClient(
+        api_url=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["url"],  # noqa
+        auth_token=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["token"]  # noqa
+    )
+    if request.method == "POST":
+        form = IdentitySearchForm(request.POST)
+        if form.is_valid():
+            results = idApi.get_identity_by_address(
+                address_type=form.cleaned_data['address_type'],
+                address_value=form.cleaned_data['address_value'])
         else:
-            results = idApi.get_identities()
-        context.update({
-            "identities": results
-        })
-        context.update(csrf(request))
-        return render(request, 'ci/identities.html', context)
-
-
-def create_outbound_messages_filter(request, identity):
-    """
-    Has a look at the request to see if the next/previous page of outbound
-    messages was requested, else get the first page of outbound messages for
-    the given identity.
-    """
-    if request.GET.get("outbound_next", None) is not None and \
-            request.session['next_outbound_params'] is not None:
-        return request.session['next_outbound_params']
-    if request.GET.get("outbound_prev", None) is not None and \
-            request.session['prev_outbound_params'] is not None:
-        return request.session['prev_outbound_params']
-
-    return {
-        "to_identity": identity,
-        "ordering": "-created_at",
-        "limit": settings.MESSAGES_PER_IDENTITY,
-    }
-
-
-def create_inbound_messages_filter(request, identity):
-    """
-    Has a look at the request to see if the next/previous page of inbound
-    messages was requested, else get the first page of inbound messages for
-    the given identity.
-    """
-    if (
-            request.GET.get('inbound_next') is not None and
-            request.session.get('inbound_next_params') is not None):
-        return request.session['inbound_next_params']
-    if (
-            request.GET.get('inbound_prev') is not None and
-            request.session.get('inbound_prev_params') is not None):
-        return request.session['inbound_prev_params']
-
-    return {
-        'from_identity': identity,
-        'ordering': '-created_at',
-        'limit': settings.MESSAGES_PER_IDENTITY,
-    }
+            results = {"count": form.errors}
+    else:
+        results = idApi.get_identities()
+    context = {"identities": results}
+    context.update(csrf(request))
+    return render(request, 'ci/identities.html', context)
 
 
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
+@tokens_required(['SEED_IDENTITY_SERVICE', 'HUB',
+                  'SEED_STAGE_BASED_MESSAGING'])
 def identity(request, identity):
-    context = default_context(request.session)
-    if "SEED_IDENTITY_SERVICE" not in request.session["user_tokens"] and \
-            "HUB" not in request.session["user_tokens"] and \
-            "SEED_STAGE_BASED_MESSAGING" not in request.session["user_tokens"]:
-        return redirect('denied')
-    else:
-        idApi = IdentityStoreApiClient(
-            api_url=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["url"],  # noqa
-            auth_token=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["token"]  # noqa
-        )
-        hubApi = HubApiClient(
-            api_url=request.session["user_tokens"]["HUB"]["url"],  # noqa
-            auth_token=request.session["user_tokens"]["HUB"]["token"]  # noqa
-        )
-        sbmApi = StageBasedMessagingApiClient(
-            api_url=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["url"],  # noqa
-            auth_token=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["token"]  # noqa
-        )
-        msApi = MessageSenderApiClient(
-            api_url=request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["url"],  # noqa
-            auth_token=request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["token"]  # noqa
-        )
-        messagesets_results = sbmApi.get_messagesets()
-        messagesets = {}
-        schedules = {}
-        choices = []
-        for messageset in messagesets_results["results"]:
-            messagesets[messageset["id"]] = messageset["short_name"]
-            schedules[messageset["id"]] = messageset["default_schedule"]
-            choices.append((messageset["id"], messageset["short_name"]))
+    idApi = IdentityStoreApiClient(
+        api_url=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["url"],  # noqa
+        auth_token=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["token"]  # noqa
+    )
+    hubApi = HubApiClient(
+        api_url=request.session["user_tokens"]["HUB"]["url"],  # noqa
+        auth_token=request.session["user_tokens"]["HUB"]["token"]  # noqa
+    )
+    sbmApi = StageBasedMessagingApiClient(
+        api_url=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["url"],  # noqa
+        auth_token=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["token"]  # noqa
+    )
+    msApi = MessageSenderApiClient(
+        api_url=request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["url"],  # noqa
+        auth_token=request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["token"]  # noqa
+    )
+    messagesets_results = sbmApi.get_messagesets()
+    messagesets = {}
+    schedules = {}
+    choices = []
+    for messageset in messagesets_results["results"]:
+        messagesets[messageset["id"]] = messageset["short_name"]
+        schedules[messageset["id"]] = messageset["default_schedule"]
+        choices.append((messageset["id"], messageset["short_name"]))
 
-        results = idApi.get_identity(identity)
-        sbm_filter = {
-            "identity": identity
-        }
-        subscriptions = sbmApi.get_subscriptions(params=sbm_filter)
+    results = idApi.get_identity(identity)
+    sbm_filter = {
+        "identity": identity
+    }
+    subscriptions = sbmApi.get_subscriptions(params=sbm_filter)
 
-        if request.method == "POST":
-            if 'add_subscription' in request.POST:
-                form = AddSubscriptionForm(request.POST)
+    if request.method == "POST":
+        if 'add_subscription' in request.POST:
+            form = AddSubscriptionForm(request.POST)
 
-                if results['details'].get('preferred_language'):
-
-                    if form.is_valid():
-                        subscription = {
-                            "active": True,
-                            "identity": identity,
-                            "completed": False,
-                            "lang":
-                                results['details'].get('preferred_language'),
-                            "messageset": form.cleaned_data['messageset'],
-                            "next_sequence_number": 1,
-                            "schedule":
-                                schedules[form.cleaned_data['messageset']],
-                            "process_status": 0,
-                        }
-                        sbmApi.create_subscription(subscription)
-
-                        messages.add_message(
-                            request,
-                            messages.INFO,
-                            'Successfully created a subscription.',
-                            extra_tags='success'
-                        )
-                else:
-                    messages.add_message(
-                        request,
-                        messages.ERROR,
-                        'No preferred language on the identity.',
-                        extra_tags='danger'
-                    )
-
-            elif 'deactivate_subscription' in request.POST:
-                form = DeactivateSubscriptionForm(request.POST)
+            if results['details'].get('preferred_language'):
 
                 if form.is_valid():
-                    data = {
-                        "active": False
+                    subscription = {
+                        "active": True,
+                        "identity": identity,
+                        "completed": False,
+                        "lang":
+                            results['details'].get('preferred_language'),
+                        "messageset": form.cleaned_data['messageset'],
+                        "next_sequence_number": 1,
+                        "schedule":
+                            schedules[form.cleaned_data['messageset']],
+                        "process_status": 0,
                     }
-                    sbmApi.update_subscription(
-                        form.cleaned_data['subscription_id'], data)
+                    sbmApi.create_subscription(subscription)
 
                     messages.add_message(
                         request,
                         messages.INFO,
-                        'Successfully deactivated the subscription.',
+                        'Successfully created a subscription.',
                         extra_tags='success'
                     )
-
-            elif 'optout_identity' in request.POST:
-                try:
-                    details = results.get('details', {})
-                    addresses = details.get('addresses', {})
-
-                    for address_type, addresses in addresses.items():
-                        for address, info in addresses.items():
-                            idApi.create_optout({
-                                "identity": identity,
-                                "optout_type": "stop",
-                                "address_type": address_type,
-                                "address": address,
-                                "request_source": "ci"})
-
-                    hubApi.create_optout_admin({
-                        settings.IDENTITY_FIELD: identity
-                    })
-
-                    messages.add_message(
-                        request,
-                        messages.INFO,
-                        'Successfully opted out.',
-                        extra_tags='success'
-                    )
-                except:
-                    messages.add_message(
-                        request,
-                        messages.ERROR,
-                        'Optout failed.',
-                        extra_tags='danger'
-                    )
-
-        hub_filter = {
-            settings.IDENTITY_FIELD: identity
-        }
-        registrations = hubApi.get_registrations(params=hub_filter)
-        changes = hubApi.get_changes(params=hub_filter)
-        if results is None:
-            return redirect('not_found')
-
-        outbound_filter = create_outbound_messages_filter(request, identity)
-        if outbound_filter is not None:
-            outbound_messages = msApi.get_outbounds(params=outbound_filter)
-        else:
-            outbound_messages = {}
-
-        # Store next and previous filters in session for pagination
-        request.session['next_outbound_params'] = \
-            utils.extract_query_params(outbound_messages.get('next', ""))
-        request.session['prev_outbound_params'] = \
-            utils.extract_query_params(outbound_messages.get(
-                'previous', ""))
-
-        # Inbound messages
-        inbound_filter = create_inbound_messages_filter(request, identity)
-        if inbound_filter is not None:
-            inbound_messages = msApi.get_inbounds(inbound_filter)
-        else:
-            inbound_messages = {}
-        request.session['inbound_next_params'] = (
-            utils.extract_query_params(inbound_messages.get('next')))
-        request.session['inbound_prev_params'] = (
-            utils.extract_query_params(inbound_messages.get('previous')))
-
-        deactivate_subscription_form = DeactivateSubscriptionForm()
-        add_subscription_form = AddSubscriptionForm()
-        add_subscription_form.fields['messageset'] = forms.ChoiceField(
-                                                        choices=choices)
-
-        optout_visible = False
-        details = results.get('details', {})
-        addresses = details.get('addresses', {})
-        msisdns = addresses.get('msisdn', {})
-        optout_visible = any(
-            (not d.get('optedout') for _, d in msisdns.items()))
-
-        context.update({
-            "identity": results,
-            "registrations": registrations,
-            "changes": changes,
-            "messagesets": messagesets,
-            "subscriptions": subscriptions,
-            "outbound_messages": outbound_messages,
-            "add_subscription_form": add_subscription_form,
-            "deactivate_subscription_form": deactivate_subscription_form,
-            "inbounds": inbound_messages,
-            "optout_visible": optout_visible
-        })
-        context.update(csrf(request))
-        return render(request, 'ci/identities_detail.html', context)
-
-
-@login_required(login_url='/login/')
-@permission_required(permission='ci:view', login_url='/login/')
-def registrations(request):
-    context = default_context(request.session)
-    if "HUB" not in request.session["user_tokens"]:
-        return redirect('denied')
-    else:
-        hubApi = HubApiClient(
-            api_url=request.session["user_tokens"]["HUB"]["url"],  # noqa
-            auth_token=request.session["user_tokens"]["HUB"]["token"]  # noqa
-        )
-        if request.method == "POST":
-            form = RegistrationFilterForm(request.POST)
-            if form.is_valid():
-                reg_filter = {
-                    "stage": form.cleaned_data['stage'],
-                    "validated": form.cleaned_data['validated'],
-                    settings.IDENTITY_FIELD:
-                        form.cleaned_data['mother_id']
-                }
-                results = hubApi.get_registrations(params=reg_filter)
             else:
-                results = {"count": form.errors}
-        else:
-            form = RegistrationFilterForm()
-            results = hubApi.get_registrations()
-        context.update({
-            "registrations": results,
-            "form": form
-        })
-        context.update(csrf(request))
-        return render(request, 'ci/registrations.html', context)
+                messages.add_message(
+                    request,
+                    messages.ERROR,
+                    'No preferred language on the identity.',
+                    extra_tags='danger'
+                )
 
+        elif 'deactivate_subscription' in request.POST:
+            form = DeactivateSubscriptionForm(request.POST)
 
-@login_required(login_url='/login/')
-@permission_required(permission='ci:view', login_url='/login/')
-def registration(request, registration):
-    context = default_context(request.session)
-    if "HUB" not in request.session["user_tokens"]:
-        return redirect('denied')
-    else:
-        hubApi = HubApiClient(
-            api_url=request.session["user_tokens"]["HUB"]["url"],  # noqa
-            auth_token=request.session["user_tokens"]["HUB"]["token"]  # noqa
-        )
-        if request.method == "POST":
-            pass
-        else:
-            results = hubApi.get_registration(registration)
-            if results is None:
-                return redirect('not_found')
-        context.update({
-            "registration": results
-        })
-        context.update(csrf(request))
-        return render(request, 'ci/registrations_detail.html', context)
-
-
-@login_required(login_url='/login/')
-@permission_required(permission='ci:view', login_url='/login/')
-def changes(request):
-    context = default_context(request.session)
-    if "HUB" not in request.session["user_tokens"]:
-        return redirect('denied')
-    else:
-        hubApi = HubApiClient(
-            api_url=request.session["user_tokens"]["HUB"]["url"],
-            auth_token=request.session["user_tokens"]["HUB"]["token"]
-        )
-        if request.method == "POST":
-            form = ChangeFilterForm(request.POST)
             if form.is_valid():
-                change_filter = {
-                    "action": form.cleaned_data['action'],
-                    "validated": form.cleaned_data['validated'],
-                    settings.IDENTITY_FIELD:
-                        form.cleaned_data['mother_id']
+                data = {
+                    "active": False
                 }
-                results = hubApi.get_changes(params=change_filter)
-            else:
-                results = {"count": form.errors}
-        else:
-            form = ChangeFilterForm()
-            results = hubApi.get_changes()
-        context.update({
-            "changes": results,
-            "form": form
-        })
-        context.update(csrf(request))
-        return render(request, 'ci/changes.html', context)
+                sbmApi.update_subscription(
+                    form.cleaned_data['subscription_id'], data)
 
+                messages.add_message(
+                    request,
+                    messages.INFO,
+                    'Successfully deactivated the subscription.',
+                    extra_tags='success'
+                )
 
-@login_required(login_url='/login/')
-@permission_required(permission='ci:view', login_url='/login/')
-def change(request, change):
-    context = default_context(request.session)
-    if "HUB" not in request.session["user_tokens"]:
-        return redirect('denied')
-    else:
-        hubApi = HubApiClient(
-            api_url=request.session["user_tokens"]["HUB"]["url"],
-            auth_token=request.session["user_tokens"]["HUB"]["token"]
-        )
-        if request.method == "POST":
-            pass
-        else:
-            results = hubApi.get_change(change)
-            if results is None:
-                return redirect('not_found')
-        context.update({
-            "change": results
-        })
-        context.update(csrf(request))
-        return render(request, 'ci/changes_detail.html', context)
-
-
-@login_required(login_url='/login/')
-@permission_required(permission='ci:view', login_url='/login/')
-def subscriptions(request):
-    context = default_context(request.session)
-    if "SEED_STAGE_BASED_MESSAGING" not in request.session["user_tokens"]:
-        return redirect('denied')
-    else:
-        sbmApi = StageBasedMessagingApiClient(
-            api_url=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["url"],  # noqa
-            auth_token=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["token"]  # noqa
-        )
-        messagesets_results = sbmApi.get_messagesets()
-        messagesets = {}
-        for messageset in messagesets_results["results"]:
-            messagesets[messageset["id"]] = messageset["short_name"]
-        if request.method == "POST":
-            form = SubscriptionFilterForm(request.POST)
-            if form.is_valid():
-                sbm_filter = {
-                    "identity": form.cleaned_data['identity'],
-                    "active": form.cleaned_data['active'],
-                    "completed": form.cleaned_data['completed']
-                }
-                results = sbmApi.get_subscriptions(params=sbm_filter)
-            else:
-                results = {"count": form.errors}
-        else:
-            form = SubscriptionFilterForm()
-            results = sbmApi.get_subscriptions()
-        context.update({
-            "subscriptions": results,
-            "messagesets": messagesets,
-            "form": form
-        })
-        context.update(csrf(request))
-        return render(request, 'ci/subscriptions.html', context)
-
-
-@login_required(login_url='/login/')
-@permission_required(permission='ci:view', login_url='/login/')
-def subscription(request, subscription):
-    context = default_context(request.session)
-    if "SEED_STAGE_BASED_MESSAGING" not in request.session["user_tokens"]:
-        return redirect('denied')
-    else:
-        sbmApi = StageBasedMessagingApiClient(
-            api_url=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["url"],  # noqa
-            auth_token=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["token"]  # noqa
-        )
-        messagesets_results = sbmApi.get_messagesets()
-        messagesets = {}
-        for messageset in messagesets_results["results"]:
-            messagesets[messageset["id"]] = messageset["short_name"]
-
-        results = sbmApi.get_subscription(subscription)
-        if results is None:
-            return redirect('not_found')
-
-        if request.method == "POST":
+        elif 'optout_identity' in request.POST:
             try:
-                form = ChangeSubscriptionForm(request.POST)
-                if form.is_valid():
+                details = results.get('details', {})
+                addresses = details.get('addresses', {})
 
-                    lang = form.cleaned_data["language"]
-                    messageset = form.cleaned_data["messageset"]
+                for address_type, addresses in addresses.items():
+                    for address, info in addresses.items():
+                        idApi.create_optout({
+                            "identity": identity,
+                            "optout_type": "stop",
+                            "address_type": address_type,
+                            "address": address,
+                            "request_source": "ci"})
 
-                    if (lang != results["lang"] or
-                            messageset != results["messageset"]):
-                        hubApi = HubApiClient(
-                            request.session["user_tokens"]["HUB"]["token"],
-                            api_url=request.session["user_tokens"]["HUB"]["url"])  # noqa
+                hubApi.create_optout_admin({
+                    settings.IDENTITY_FIELD: identity
+                })
 
-                        change = {
-                            settings.IDENTITY_FIELD: results["identity"],
-                            "subscription": subscription
-                        }
-
-                        if lang != results["lang"]:
-                            change["language"] = lang
-                        if messageset != results["messageset"]:
-                            change["messageset"] = messagesets[messageset]
-
-                        hubApi.create_change_admin(change)
-
-                        messages.add_message(
-                            request,
-                            messages.INFO,
-                            'Successfully added change.',
-                            extra_tags='success'
-                        )
+                messages.add_message(
+                    request,
+                    messages.INFO,
+                    'Successfully opted out.',
+                    extra_tags='success'
+                )
             except:
                 messages.add_message(
                     request,
                     messages.ERROR,
-                    'Change failed.',
+                    'Optout failed.',
                     extra_tags='danger'
                 )
 
-        languages = sbmApi.get_messageset_languages()
+    hub_filter = {
+        settings.IDENTITY_FIELD: identity
+    }
+    registrations = hubApi.get_registrations(params=hub_filter)
+    changes = hubApi.get_changes(params=hub_filter)
+    if results is None:
+        return redirect('not_found')
 
-        context.update({
-            "subscription": results,
-            "messagesets": messagesets,
-            "languages": json.dumps(languages)
-        })
-        context.update(csrf(request))
-        return render(request, 'ci/subscriptions_detail.html', context)
+    outbound_message_params = {
+        'to_identity': identity,
+        'ordering': '-created_at',
+    }
+    outbound_messages = msApi.get_outbounds(params=outbound_message_params)
+    outbound_page = request.GET.get('outbound_page')
+    outbound_paginator = Paginator(
+        list(outbound_messages['results']),
+        settings.IDENTITY_MESSAGES_PAGE_SIZE)
+
+    try:
+        outbound_messages = outbound_paginator.page(outbound_page)
+    except PageNotAnInteger:
+        outbound_messages = outbound_paginator.page(1)
+    except EmptyPage:
+        outbound_messages = outbound_paginator.page(
+            outbound_paginator.num_pages)
+
+    inbound_message_params = {
+        'from_identity': identity,
+        'ordering': '-created_at',
+    }
+    inbound_messages = msApi.get_inbounds(inbound_message_params)
+    inbound_page = request.GET.get('inbound_page')
+    inbound_paginator = Paginator(
+        list(inbound_messages['results']),
+        settings.IDENTITY_MESSAGES_PAGE_SIZE)
+
+    try:
+        inbound_messages = inbound_paginator.page(inbound_page)
+    except PageNotAnInteger:
+        inbound_messages = inbound_paginator.page(1)
+    except EmptyPage:
+        inbound_messages = inbound_paginator.page(inbound_paginator.num_pages)
+
+    deactivate_subscription_form = DeactivateSubscriptionForm()
+    add_subscription_form = AddSubscriptionForm()
+    add_subscription_form.fields['messageset'] = forms.ChoiceField(
+                                                    choices=choices)
+
+    optout_visible = False
+    details = results.get('details', {})
+    addresses = details.get('addresses', {})
+    msisdns = addresses.get('msisdn', {})
+    optout_visible = any(
+        (not d.get('optedout') for _, d in msisdns.items()))
+
+    context = {
+        "identity": results,
+        "registrations": registrations,
+        "changes": changes,
+        "messagesets": messagesets,
+        "subscriptions": subscriptions,
+        "outbound_messages": outbound_messages,
+        "add_subscription_form": add_subscription_form,
+        "deactivate_subscription_form": deactivate_subscription_form,
+        "inbound_messages": inbound_messages,
+        "optout_visible": optout_visible
+    }
+    context.update(csrf(request))
+    return render(request, 'ci/identities_detail.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+@tokens_required(['HUB'])
+def registrations(request):
+    hubApi = HubApiClient(
+        api_url=request.session["user_tokens"]["HUB"]["url"],  # noqa
+        auth_token=request.session["user_tokens"]["HUB"]["token"]  # noqa
+    )
+    if request.method == "POST":
+        form = RegistrationFilterForm(request.POST)
+        if form.is_valid():
+            reg_filter = {
+                "stage": form.cleaned_data['stage'],
+                "validated": form.cleaned_data['validated'],
+                settings.IDENTITY_FIELD:
+                    form.cleaned_data['mother_id']
+            }
+            results = hubApi.get_registrations(params=reg_filter)
+        else:
+            results = {"count": form.errors}
+    else:
+        form = RegistrationFilterForm()
+        results = hubApi.get_registrations()
+    context = {
+        "registrations": results,
+        "form": form
+    }
+    context.update(csrf(request))
+    return render(request, 'ci/registrations.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+@tokens_required(['HUB'])
+def registration(request, registration):
+    hubApi = HubApiClient(
+        api_url=request.session["user_tokens"]["HUB"]["url"],  # noqa
+        auth_token=request.session["user_tokens"]["HUB"]["token"]  # noqa
+    )
+    if request.method == "POST":
+        pass
+    else:
+        results = hubApi.get_registration(registration)
+        if results is None:
+            return redirect('not_found')
+    context = {
+        "registration": results
+    }
+    context.update(csrf(request))
+    return render(request, 'ci/registrations_detail.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+@tokens_required(['HUB'])
+def changes(request):
+    hubApi = HubApiClient(
+        api_url=request.session["user_tokens"]["HUB"]["url"],
+        auth_token=request.session["user_tokens"]["HUB"]["token"]
+    )
+    if request.method == "POST":
+        form = ChangeFilterForm(request.POST)
+        if form.is_valid():
+            change_filter = {
+                "action": form.cleaned_data['action'],
+                "validated": form.cleaned_data['validated'],
+                settings.IDENTITY_FIELD:
+                    form.cleaned_data['mother_id']
+            }
+            results = hubApi.get_changes(params=change_filter)
+        else:
+            results = {"count": form.errors}
+    else:
+        form = ChangeFilterForm()
+        results = hubApi.get_changes()
+    context = {
+        "changes": results,
+        "form": form
+    }
+    context.update(csrf(request))
+    return render(request, 'ci/changes.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+@tokens_required(['HUB'])
+def change(request, change):
+    hubApi = HubApiClient(
+        api_url=request.session["user_tokens"]["HUB"]["url"],
+        auth_token=request.session["user_tokens"]["HUB"]["token"]
+    )
+    if request.method == "POST":
+        pass
+    else:
+        results = hubApi.get_change(change)
+        if results is None:
+            return redirect('not_found')
+    context = {"change": results}
+    context.update(csrf(request))
+    return render(request, 'ci/changes_detail.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+@tokens_required(['SEED_STAGE_BASED_MESSAGING'])
+def subscriptions(request):
+    sbmApi = StageBasedMessagingApiClient(
+        api_url=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["url"],  # noqa
+        auth_token=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["token"]  # noqa
+    )
+    messagesets_results = sbmApi.get_messagesets()
+    messagesets = {}
+    for messageset in messagesets_results["results"]:
+        messagesets[messageset["id"]] = messageset["short_name"]
+    if request.method == "POST":
+        form = SubscriptionFilterForm(request.POST)
+        if form.is_valid():
+            sbm_filter = {
+                "identity": form.cleaned_data['identity'],
+                "active": form.cleaned_data['active'],
+                "completed": form.cleaned_data['completed']
+            }
+            results = sbmApi.get_subscriptions(params=sbm_filter)
+        else:
+            results = {"count": form.errors}
+    else:
+        form = SubscriptionFilterForm()
+        results = sbmApi.get_subscriptions()
+    context = {
+        "subscriptions": results,
+        "messagesets": messagesets,
+        "form": form
+    }
+    context.update(csrf(request))
+    return render(request, 'ci/subscriptions.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+@tokens_required(['SEED_STAGE_BASED_MESSAGING'])
+def subscription(request, subscription):
+    sbmApi = StageBasedMessagingApiClient(
+        api_url=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["url"],  # noqa
+        auth_token=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["token"]  # noqa
+    )
+    messagesets_results = sbmApi.get_messagesets()
+    messagesets = {}
+    for messageset in messagesets_results["results"]:
+        messagesets[messageset["id"]] = messageset["short_name"]
+
+    results = sbmApi.get_subscription(subscription)
+    if results is None:
+        return redirect('not_found')
+
+    if request.method == "POST":
+        try:
+            form = ChangeSubscriptionForm(request.POST)
+            if form.is_valid():
+
+                lang = form.cleaned_data["language"]
+                messageset = form.cleaned_data["messageset"]
+
+                if (lang != results["lang"] or
+                        messageset != results["messageset"]):
+                    hubApi = HubApiClient(
+                        request.session["user_tokens"]["HUB"]["token"],
+                        api_url=request.session["user_tokens"]["HUB"]["url"])  # noqa
+
+                    change = {
+                        settings.IDENTITY_FIELD: results["identity"],
+                        "subscription": subscription
+                    }
+
+                    if lang != results["lang"]:
+                        change["language"] = lang
+                    if messageset != results["messageset"]:
+                        change["messageset"] = messagesets[messageset]
+
+                    hubApi.create_change_admin(change)
+
+                    messages.add_message(
+                        request,
+                        messages.INFO,
+                        'Successfully added change.',
+                        extra_tags='success'
+                    )
+        except:
+            messages.add_message(
+                request,
+                messages.ERROR,
+                'Change failed.',
+                extra_tags='danger'
+            )
+
+    languages = sbmApi.get_messageset_languages()
+
+    context = {
+        "subscription": results,
+        "messagesets": messagesets,
+        "languages": json.dumps(languages)
+    }
+    context.update(csrf(request))
+    return render(request, 'ci/subscriptions_detail.html', context)
 
 
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def services(request):
-    context = default_context(request.session)
     services = ciApi.get_services()
-    context.update({
-        "services": services
-    })
+    context = {"services": services}
     return render(request, 'ci/services.html', context)
 
 
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def service(request, service):
-    context = default_context(request.session)
     results = ciApi.get_service(service)
     service_status = ciApi.get_service_status(service)
-    context.update({
+    context = {
         "service": results,
         "service_status": service_status
-    })
+    }
     return render(request, 'ci/services_detail.html', context)
 
 
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
+@tokens_required(['SEED_STAGE_BASED_MESSAGING'])
 def subscription_failures(request):
-    context = default_context(request.session)
-    if "SEED_STAGE_BASED_MESSAGING" not in request.session["user_tokens"]:
-        return redirect('denied')
-
     sbmApi = StageBasedMessagingApiClient(
         api_url=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["url"],  # noqa
         auth_token=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["token"]  # noqa
@@ -971,20 +911,17 @@ def subscription_failures(request):
                 messages.ERROR,
                 'Could not re-queued all subscription tasks'
             )
-    context.update({
+    context = {
         'failures': results['results'],
-    })
+    }
     context.update(csrf(request))
     return render(request, 'ci/failures_subscriptions.html', context)
 
 
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
+@tokens_required(['SEED_SCHEDULER'])
 def schedule_failures(request):
-    context = default_context(request.session)
-    if "SEED_SCHEDULER" not in request.session["user_tokens"]:
-        return redirect('denied')
-
     schdApi = SchedulerApiClient(
         request.session["user_tokens"]["SEED_SCHEDULER"]["token"],  # noqa
         api_url=request.session["user_tokens"]["SEED_SCHEDULER"]["url"]  # noqa
@@ -1005,20 +942,17 @@ def schedule_failures(request):
                 messages.ERROR,
                 'Could not re-queued all scheduler tasks'
             )
-    context.update({
+    context = {
         'failures': results,
-    })
+    }
     context.update(csrf(request))
     return render(request, 'ci/failures_schedules.html', context)
 
 
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
+@tokens_required(['SEED_MESSAGE_SENDER'])
 def outbound_failures(request):
-    context = default_context(request.session)
-    if "SEED_MESSAGE_SENDER" not in request.session["user_tokens"]:
-        return redirect('denied')
-
     msApi = MessageSenderApiClient(
         request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["token"],  # noqa
         api_url=request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["url"]  # noqa
@@ -1039,19 +973,20 @@ def outbound_failures(request):
                 messages.ERROR,
                 'Could not re-queued all outbound tasks'
             )
-    context.update({
+    context = {
         'failures': results['results'],
-    })
+    }
     context.update(csrf(request))
     return render(request, 'ci/failures_outbounds.html', context)
 
 
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
+@tokens_required(['HUB'])
 def report_generation(request):
-    context = default_context(request.session)
-    if "HUB" not in request.session["user_tokens"]:
-        return redirect('denied')
+    hubApi = HubApiClient(
+        request.session["user_tokens"]["HUB"]["token"],
+        api_url=request.session["user_tokens"]["HUB"]["url"])
 
     if request.method == "POST":
         form = ReportGenerationForm(request.POST)
@@ -1068,9 +1003,6 @@ def report_generation(request):
             if form.cleaned_data.get('email_subject') == "":
                 del form.cleaned_data['email_subject']
 
-            hubApi = HubApiClient(
-                request.session["user_tokens"]["HUB"]["token"],
-                api_url=request.session["user_tokens"]["HUB"]["url"])
             results = hubApi.trigger_report_generation(form.cleaned_data)
             if 'report_generation_requested' in results:
                 messages.add_message(
@@ -1086,8 +1018,12 @@ def report_generation(request):
                 )
     else:
         form = ReportGenerationForm()
-    context.update({
-        "form": form
-    })
+
+    report_tasks = hubApi.get_report_tasks()
+
+    context = {
+        "form": form,
+        "report_tasks": report_tasks
+    }
     context.update(csrf(request))
     return render(request, 'ci/reports.html', context)
