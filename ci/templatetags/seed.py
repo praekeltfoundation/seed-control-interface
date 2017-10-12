@@ -26,3 +26,11 @@ def is_dict(value):
 @register.filter
 def get_identity(obj):
     return obj.get(settings.IDENTITY_FIELD)
+
+
+@register.filter
+def get_stage(obj):
+    stage = obj.get(settings.STAGE_FIELD)
+    for key, label in settings.STAGES:
+        if key == stage:
+            return label

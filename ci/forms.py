@@ -79,12 +79,10 @@ class ChangeSubscriptionForm(forms.Form):
     language = forms.CharField()
     messageset = forms.IntegerField()
 
-STAGE_CHOICES = (
+default_stage = (
     ('', "Stage - all"),
-    ('prebirth', "Mother is pregnant"),
-    ('postbirth', "Baby has been born"),
-    ('loss', "Baby loss")
 )
+STAGE_CHOICES = default_stage + settings.STAGES
 
 VALIDATED_CHOICES = (
     ('', "Validated - all"),

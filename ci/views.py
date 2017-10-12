@@ -674,30 +674,35 @@ def identity(request, identity):
 @permission_required(permission='ci:view', login_url='/login/')
 @tokens_required(['HUB'])
 def registrations(request):
+    context = {}
     hubApi = HubApiClient(
         api_url=request.session["user_tokens"]["HUB"]["url"],  # noqa
         auth_token=request.session["user_tokens"]["HUB"]["token"]  # noqa
     )
-    if request.method == "POST":
-        form = RegistrationFilterForm(request.POST)
+    if 'mother_id' in request.GET:
+        form = RegistrationFilterForm(request.GET)
         if form.is_valid():
             reg_filter = {
-                "stage": form.cleaned_data['stage'],
+                settings.STAGE_FIELD: form.cleaned_data['stage'],
                 "validated": form.cleaned_data['validated'],
                 settings.IDENTITY_FIELD:
                     form.cleaned_data['mother_id']
             }
-            results = hubApi.get_registrations(params=reg_filter)
+            registrations = hubApi.get_registrations(
+                params=reg_filter)['results']
         else:
-            results = {"count": form.errors}
+            registrations = []
     else:
         form = RegistrationFilterForm()
-        results = hubApi.get_registrations()
-    context = {
-        "registrations": results,
-        "form": form
-    }
-    context.update(csrf(request))
+        registrations = hubApi.get_registrations()['results']
+
+    context['form'] = form
+    context['registrations'] = utils.get_page_of_iterator(
+        registrations,
+        settings.REGISTRATION_LIST_PAGE_SIZE,
+        request.GET.get('page')
+    )
+
     return render(request, 'ci/registrations.html', context)
 
 

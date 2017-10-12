@@ -96,16 +96,30 @@ class ViewTestsTemplate(TestCase):
             status=200,
             content_type='application/json')
 
-    def add_registrations_callback(self):
+    def add_registrations_callback(self, num=10, registrations=None, qs=None):
+        if registrations is None:
+            registrations = [
+                {
+                    'id': 'registration-{}'.format(i),
+                    'reg_type': settings.STAGES[0][0],
+                    settings.IDENTITY_FIELD: 'identity-{}'.format(i),
+                    'validated': True,
+                    'data': {},
+                    'created_at': '2016-01-01T10:30:21.{:0>5}Z'.format(i),
+                    'updated_at': '2016-01-01T10:30:21.{:0>5}Z'.format(i),
+                }
+                for i in range(num)
+            ]
+
+        url = 'http://hub.example.com/registrations/'
+        if qs is not None:
+            url = '{}{}'.format(url, qs)
+
         responses.add(
-            responses.GET,
-            "http://hub.example.com/registrations/?{}=operator_id".format(
-                settings.IDENTITY_FIELD),
-            match_querystring=True,
+            responses.GET, url, match_querystring=bool(qs), status=200,
             json={
-                'results': [],
+                'results': registrations,
             },
-            status=200,
             content_type='application/json')
 
     def add_changes_callback(self):
@@ -191,6 +205,7 @@ class ViewTests(ViewTestsTemplate):
         }), {})
 
     @responses.activate
+    @override_settings(IDENTITY_FIELD='mother_id')
     def test_change_subscription(self):
         self.login()
         self.set_session_user_tokens()
@@ -343,7 +358,8 @@ class IdentityViewTest(ViewTestsTemplate):
         self.set_session_user_tokens()
         self.add_messagesets_callback()
         self.add_identity_callback()
-        self.add_registrations_callback()
+        self.add_registrations_callback(
+            num=0, qs='?{}=operator_id'.format(settings.IDENTITY_FIELD))
         self.add_changes_callback()
         self.add_subscriptions_callback()
 
@@ -505,3 +521,63 @@ class IdentitiesViewTest(ViewTestsTemplate):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(context['identities']), 5)
+
+
+class RegistrationsViewTest(ViewTestsTemplate):
+    @override_settings(REGISTRATION_LIST_PAGE_SIZE=5)
+    @responses.activate
+    def test_get_registration_list(self):
+        """
+        Doing a GET request should return a page of registrations.
+        """
+        self.login()
+        self.set_session_user_tokens()
+        self.add_registrations_callback(num=10)
+
+        response = self.client.get(reverse('registrations'))
+        context = response.context
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(context['registrations']), 5)
+
+    @override_settings(REGISTRATION_LIST_PAGE_SIZE=5)
+    @responses.activate
+    def test_get_registration_list_filter_error(self):
+        """
+        If the data submitted for filtering the list of identities is invalid,
+        then the errors should be sent in the form, as well as an empty list
+        of identities.
+        """
+        self.login()
+        self.set_session_user_tokens()
+
+        qs = "?mother_id=&stage=invalid&validated="
+        response = self.client.get('{}{}'.format(reverse('registrations'), qs))
+        context = response.context
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(context['registrations']), 0)
+        self.assertFalse(context['form'].is_valid())
+        self.assertEqual(len(context['form'].errors), 1)
+
+    @override_settings(REGISTRATION_LIST_PAGE_SIZE=5)
+    @responses.activate
+    def test_get_filtered_registrations_list(self):
+        """
+        If there are query parameters for filtering the list of registrations,
+        then that list should be filtered.
+        """
+        self.login()
+        self.set_session_user_tokens()
+        qs = "?validated=True&{}=1234&{}={}".format(
+            settings.IDENTITY_FIELD, settings.STAGE_FIELD,
+            settings.STAGES[0][0])
+        self.add_registrations_callback(num=10, qs=qs)
+
+        qs = "?mother_id=1234&stage={}&validated=True".format(
+            settings.STAGES[0][0])
+        response = self.client.get('{}{}'.format(reverse('registrations'), qs))
+        context = response.context
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(context['registrations']), 5)
