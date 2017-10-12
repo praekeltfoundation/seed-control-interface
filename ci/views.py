@@ -919,7 +919,6 @@ def subscription_failures(request):
         api_url=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["url"],  # noqa
         auth_token=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["token"]  # noqa
     )
-    results = sbmApi.get_failed_tasks()
     if request.method == "POST":
         requeue = sbmApi.requeue_failed_tasks()
         if ('requeued_failed_tasks' in requeue and
@@ -935,8 +934,11 @@ def subscription_failures(request):
                 messages.ERROR,
                 'Could not re-queued all subscription tasks'
             )
+    failures = sbmApi.get_failed_tasks()['results']
+    failures = utils.get_page_of_iterator(
+        failures, settings.FAILURE_LIST_PAGE_SIZE, request.GET.get('page'))
     context = {
-        'failures': results['results'],
+        'failures': failures
     }
     context.update(csrf(request))
     return render(request, 'ci/failures_subscriptions.html', context)
@@ -950,7 +952,6 @@ def schedule_failures(request):
         request.session["user_tokens"]["SEED_SCHEDULER"]["token"],  # noqa
         api_url=request.session["user_tokens"]["SEED_SCHEDULER"]["url"]  # noqa
     )
-    results = schdApi.get_failed_tasks()
     if request.method == "POST":
         requeue = schdApi.requeue_failed_tasks()
         if ('requeued_failed_tasks' in requeue and
@@ -966,8 +967,11 @@ def schedule_failures(request):
                 messages.ERROR,
                 'Could not re-queued all scheduler tasks'
             )
+    failures = schdApi.get_failed_tasks()['results']
+    failures = utils.get_page_of_iterator(
+        failures, settings.FAILURE_LIST_PAGE_SIZE, request.GET.get('page'))
     context = {
-        'failures': results,
+        'failures': failures,
     }
     context.update(csrf(request))
     return render(request, 'ci/failures_schedules.html', context)
@@ -981,7 +985,6 @@ def outbound_failures(request):
         request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["token"],  # noqa
         api_url=request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["url"]  # noqa
     )
-    results = msApi.get_failed_tasks()
     if request.method == "POST":
         requeue = msApi.requeue_failed_tasks()
         if ('requeued_failed_tasks' in requeue and
@@ -997,8 +1000,11 @@ def outbound_failures(request):
                 messages.ERROR,
                 'Could not re-queued all outbound tasks'
             )
+    failures = msApi.get_failed_tasks()['results']
+    failures = utils.get_page_of_iterator(
+        failures, settings.FAILURE_LIST_PAGE_SIZE, request.GET.get('page'))
     context = {
-        'failures': results['results'],
+        'failures': failures
     }
     context.update(csrf(request))
     return render(request, 'ci/failures_outbounds.html', context)
