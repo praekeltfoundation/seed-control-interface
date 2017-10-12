@@ -452,22 +452,29 @@ def not_found(request):
 @permission_required(permission='ci:view', login_url='/login/')
 @tokens_required(['SEED_IDENTITY_SERVICE'])
 def identities(request):
+    context = {}
     idApi = IdentityStoreApiClient(
         api_url=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["url"],  # noqa
         auth_token=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["token"]  # noqa
     )
-    if request.method == "POST":
-        form = IdentitySearchForm(request.POST)
+    if request.GET.get('address_value'):
+        form = IdentitySearchForm(request.GET)
         if form.is_valid():
             results = idApi.get_identity_by_address(
                 address_type=form.cleaned_data['address_type'],
-                address_value=form.cleaned_data['address_value'])
+                address_value=form.cleaned_data['address_value'])['results']
         else:
-            results = {"count": form.errors}
+            context['errors'] = form.errors
+            results = []
     else:
-        results = idApi.get_identities()
-    context = {"identities": results}
-    context.update(csrf(request))
+        results = idApi.get_identities()['results']
+
+    identities = utils.get_page_of_iterator(
+        results, settings.IDENTITY_LIST_PAGE_SIZE,
+        request.GET.get('page')
+    )
+
+    context['identities'] = identities
     return render(request, 'ci/identities.html', context)
 
 

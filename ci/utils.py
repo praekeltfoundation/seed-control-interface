@@ -1,6 +1,8 @@
 import time
+from itertools import islice
 from datetime import timedelta
 
+from django.core.paginator import EmptyPage, Page, PageNotAnInteger
 from django.utils import timezone
 from six.moves.urllib.parse import urlparse, parse_qs
 from six import string_types
@@ -114,3 +116,70 @@ def extract_query_params(url):
         return parse_qs(urlparse(url).query)
     else:
         return {}
+
+
+def validate_page_number(number):
+    """Validate the given 1-based page number."""
+    try:
+        number = int(number)
+    except (TypeError, ValueError):
+        raise PageNotAnInteger('That page number is not an integer')
+    if number < 1:
+        raise EmptyPage('That page number is less than 1')
+    return number
+
+
+class NoCountPage(Page):
+    """
+    An implementation of the Page class, that doesn't rely on having a count
+    of all the objects in the collection, or the parent paginator object.
+    """
+    def __init__(self, object_list, number, per_page, has_next):
+        self.object_list = object_list
+        self.number = number
+        self.per_page = per_page
+        self._has_next = has_next
+
+    def __repr__(self):
+        return '<Page {}>'.format(self.number)
+
+    def has_next(self):
+        return self._has_next
+
+    def next_page_number(self):
+        return validate_page_number(self.number + 1)
+
+    def previous_page_number(self):
+        return validate_page_number(self.number - 1)
+
+    def start_index(self):
+        raise NotImplementedError
+
+    def end_index(self):
+        raise NotImplementedError
+
+
+def get_page_of_iterator(iterator, page_size, page_number):
+    """
+    Get a page from an interator, handling invalid input from the page number
+    by defaulting to the first page.
+    """
+    try:
+        page_number = validate_page_number(page_number)
+    except (PageNotAnInteger, EmptyPage):
+        page_number = 1
+
+    start = (page_number - 1) * page_size
+    # End 1 more than we need, so that we can see if there's another page
+    end = (page_number * page_size) + 1
+    skipped_items = list(islice(iterator, start))
+    items = list(islice(iterator, end))
+
+    if len(items) == 0 and page_number != 1:
+        items = skipped_items
+        page_number = 1
+
+    has_next = len(items) > page_size
+    items = items[:page_size]
+
+    return NoCountPage(items, page_number, page_size, has_next)

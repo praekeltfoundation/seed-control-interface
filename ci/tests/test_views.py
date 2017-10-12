@@ -2,6 +2,7 @@ import json
 import responses
 
 from django.conf import settings
+from django.core.urlresolvers import reverse
 from django.test import TestCase, Client, override_settings
 
 from ..views import get_identity_addresses
@@ -33,6 +34,43 @@ class ViewTestsTemplate(TestCase):
             }
         }
         session.save()
+
+    def add_identities_callback(self, num=10, identities=None, qs=None):
+        """
+        Adds a callback for getting the list of identities.
+
+        If identities is specified, overwrites the auto generated identities
+        specified by num.
+
+        If qs is specified, ensures that the call contains the specified
+        querystring.
+        """
+        url = 'http://idstore.example.com/identities/'
+        if qs is not None:
+            url = '{}search/{}'.format(url, qs)
+
+        if identities is None:
+            identities = [
+                {
+                    'identity': 'identity-{}'.format(i),
+                    'details': {
+                        'addresses': {
+                            'msisdn': {
+                                '+27{:0>9}'.format(i): {}
+                            }
+                        }
+                    },
+                    'created_at': '2016-01-01T10:30:21.{:0>5}Z'.format(i),
+                    'updated_at': '2016-01-01T10:30:21.{:0>5}Z'.format(i),
+                } for i in range(num)]
+
+        data = {
+            'results': identities,
+        }
+
+        responses.add(
+            responses.GET, url, json=data, status=200,
+            content_type='application/json', match_querystring=bool(qs))
 
     def add_identity_callback(self, identity='operator_id'):
         responses.add(
@@ -410,3 +448,59 @@ class IdentityViewTest(ViewTestsTemplate):
         self.assertEqual(response.status_code, 200)
         messages = list(response.context['messages'])
         self.assertEqual(messages[0].message, 'Successfully opted out.')
+
+
+class IdentitiesViewTest(ViewTestsTemplate):
+    @override_settings(IDENTITY_LIST_PAGE_SIZE=5)
+    @responses.activate
+    def test_get_identity_list(self):
+        """
+        Doing a plain GET request should return a page worth of identities.
+        """
+        self.login()
+        self.set_session_user_tokens()
+        self.add_identities_callback(num=10)
+
+        response = self.client.get(reverse('identities'))
+        context = response.context
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(context['identities']), 5)
+
+    @override_settings(IDENTITY_LIST_PAGE_SIZE=5)
+    @responses.activate
+    def test_get_filtered_identity_list_error(self):
+        """
+        If the data submitted for filtering the list of identities is invalid,
+        then the errors should be sent in the context, as well as an empty list
+        of identities.
+        """
+        self.login()
+        self.set_session_user_tokens()
+
+        qs = "?address_value=1234&address_type=invalid"
+        response = self.client.get('{}{}'.format(reverse('identities'), qs))
+        context = response.context
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(context['identities']), 0)
+        self.assertNotEqual(context['errors'], None)
+
+    @override_settings(IDENTITY_LIST_PAGE_SIZE=5)
+    @responses.activate
+    def test_get_filtered_identity_list(self):
+        """
+        If there are query parameters for filtering the list of identities,
+        then that list should be filtered.
+        """
+        self.login()
+        self.set_session_user_tokens()
+        self.add_identities_callback(
+            num=10, qs='?details__addresses__msisdn=1234')
+
+        qs = "?address_value=1234&address_type=msisdn"
+        response = self.client.get('{}{}'.format(reverse('identities'), qs))
+        context = response.context
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(context['identities']), 5)

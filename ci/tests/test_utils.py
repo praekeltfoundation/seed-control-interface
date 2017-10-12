@@ -107,3 +107,63 @@ class UtilsTests(TestCase):
             r1.end,
             utc.localize(datetime(2016, 12, 5, 21, 0, 0, 0))
         )
+
+    def test_validate_page_number(self):
+        """
+        Ensures that it is a valid int, and that it is greater than 1.
+        """
+        self.assertRaises(
+            utils.PageNotAnInteger, utils.validate_page_number, 'a')
+        self.assertRaises(
+            utils.EmptyPage, utils.validate_page_number, 0)
+        self.assertEqual(utils.validate_page_number('3'), 3)
+
+    def test_no_count_page(self):
+        """
+        Replicates the same API as a django page object.
+        """
+        page = utils.NoCountPage(['a', 'b'], 2, 2, True)
+        self.assertEqual(str(page), "<Page 2>")
+        self.assertEqual(page.has_next(), True)
+        self.assertEqual(page.next_page_number(), 3)
+        self.assertEqual(page.previous_page_number(), 1)
+        self.assertRaises(NotImplementedError, page.start_index)
+        self.assertRaises(NotImplementedError, page.end_index)
+        self.assertEqual(list(page), ['a', 'b'])
+
+    def test_get_page_of_iterator_has_next(self):
+        """
+        If the iterator has more values, has_next is true.
+        """
+        iterator = (i for i in range(10))
+        page = utils.get_page_of_iterator(iterator, 5, 1)
+        self.assertEqual(list(page), [0, 1, 2, 3, 4])
+        self.assertEqual(page.has_next(), True)
+
+    def test_get_page_of_iterator_last_page(self):
+        """
+        If the iterator has more values, has_next is true.
+        """
+        iterator = (i for i in range(10))
+        page = utils.get_page_of_iterator(iterator, 5, 2)
+        self.assertEqual(list(page), [5, 6, 7, 8, 9])
+        self.assertEqual(page.has_next(), False)
+
+    def test_get_page_of_iterator(self):
+        """
+        Defaults to first page if any issues.
+        """
+        iterator = (i for i in range(10))
+        page = utils.get_page_of_iterator(iterator, 5, 'a')
+        self.assertEqual(page.number, 1)
+        self.assertEqual(list(page), [0, 1, 2, 3, 4])
+
+        iterator = (i for i in range(10))
+        page = utils.get_page_of_iterator(iterator, 5, -1)
+        self.assertEqual(page.number, 1)
+        self.assertEqual(list(page), [0, 1, 2, 3, 4])
+
+        iterator = (i for i in range(10))
+        page = utils.get_page_of_iterator(iterator, 5, 100)
+        self.assertEqual(page.number, 1)
+        self.assertEqual(list(page), [0, 1, 2, 3, 4])
