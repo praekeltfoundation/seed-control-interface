@@ -103,15 +103,10 @@ class RegistrationFilterForm(forms.Form):
     )
 
 
-ACTION_CHOICES = (
+default_action = (
     ('', "Action - all"),
-    ('change_messaging', "Change messaging type and/or reception times"),
-    ('change_loss', "Change to loss messaging"),
-    ('unsubscribe_household_only', "Unsubscribe household msg receiver"),
-    ('unsubscribe_mother_only', "Unsubscribe mother from messages"),
-    ('change_language', "Change language"),
-    ('change_baby', "Change to baby messages")
 )
+ACTION_CHOICES = default_action + settings.ACTIONS
 
 
 class ChangeFilterForm(forms.Form):

@@ -122,16 +122,31 @@ class ViewTestsTemplate(TestCase):
             },
             content_type='application/json')
 
-    def add_changes_callback(self):
+    def add_changes_callback(self, num=10, changes=None, qs=None):
+        if changes is None:
+            changes = [
+                {
+                    'id': 'change-{}'.format(i),
+                    'action': settings.ACTIONS[0][0],
+                    settings.IDENTITY_FIELD: 'identity-{}'.format(i),
+                    'data': {},
+                    'validated': True,
+                    'created_at': '2016-01-01T10:30:21.{:0>5}Z'.format(i),
+                    'updated_at': '2016-01-01T10:30:21.{:0>5}Z'.format(i),
+                }
+                for i in range(num)
+            ]
+
+        url = 'http://hub.example.com/changes/'
+
+        if qs is not None:
+            url = '{}{}'.format(url, qs)
+
         responses.add(
-            responses.GET,
-            "http://hub.example.com/changes/?{}=operator_id".format(
-                settings.IDENTITY_FIELD),
-            match_querystring=True,
+            responses.GET, url, status=200, match_querystring=bool(qs),
             json={
-                'results': [],
+                'results': changes,
             },
-            status=200,
             content_type='application/json')
 
     def add_subscriptions_callback(self):
@@ -360,7 +375,8 @@ class IdentityViewTest(ViewTestsTemplate):
         self.add_identity_callback()
         self.add_registrations_callback(
             num=0, qs='?{}=operator_id'.format(settings.IDENTITY_FIELD))
-        self.add_changes_callback()
+        self.add_changes_callback(
+            num=0, qs='?{}=operator_id'.format(settings.IDENTITY_FIELD))
         self.add_subscriptions_callback()
 
     @responses.activate
@@ -544,9 +560,9 @@ class RegistrationsViewTest(ViewTestsTemplate):
     @responses.activate
     def test_get_registration_list_filter_error(self):
         """
-        If the data submitted for filtering the list of identities is invalid,
-        then the errors should be sent in the form, as well as an empty list
-        of identities.
+        If the data submitted for filtering the list of registrations is
+        invalid, then the errors should be sent in the form, as well as an
+        empty list of registrations.
         """
         self.login()
         self.set_session_user_tokens()
@@ -581,3 +597,62 @@ class RegistrationsViewTest(ViewTestsTemplate):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(context['registrations']), 5)
+
+
+class ChangesViewTest(ViewTestsTemplate):
+    @override_settings(CHANGE_LIST_PAGE_SIZE=5)
+    @responses.activate
+    def test_get_changes_list(self):
+        """
+        Doing a GET request should return a page of changes.
+        """
+        self.login()
+        self.set_session_user_tokens()
+        self.add_changes_callback(num=10)
+
+        response = self.client.get(reverse('changes'))
+        context = response.context
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(context['changes']), 5)
+
+    @override_settings(CHANGE_LIST_PAGE_SIZE=5)
+    @responses.activate
+    def test_get_changes_list_filter_error(self):
+        """
+        If the data submitted for filtering the list of changes is invalid,
+        then the errors should be sent in the form, as well as an empty list
+        of changes.
+        """
+        self.login()
+        self.set_session_user_tokens()
+
+        qs = "?mother_id=&action=invalid&validated="
+        response = self.client.get('{}{}'.format(reverse('changes'), qs))
+        context = response.context
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(context['changes']), 0)
+        self.assertFalse(context['form'].is_valid())
+        self.assertEqual(len(context['form'].errors), 1)
+
+    @override_settings(CHANGE_LIST_PAGE_SIZE=5)
+    @responses.activate
+    def test_get_filtered_changes_list(self):
+        """
+        If there are query parameters for filtering the list of changes, then
+        that list should be filtered.
+        """
+        self.login()
+        self.set_session_user_tokens()
+        qs = "?validated=True&{}=1234&action={}".format(
+            settings.IDENTITY_FIELD, settings.ACTIONS[0][0])
+        self.add_changes_callback(num=10, qs=qs)
+
+        qs = "?mother_id=1234&action={}&validated=True".format(
+            settings.ACTIONS[0][0])
+        response = self.client.get('{}{}'.format(reverse('changes'), qs))
+        context = response.context
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(context['changes']), 5)

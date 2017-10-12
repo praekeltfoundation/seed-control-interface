@@ -176,6 +176,18 @@ _stage_string = os.environ.get(
 STAGES = tuple(
     tuple(stage.split(':')) for stage in _stage_string.split(','))
 
+_action_string = os.environ.get(
+    'ACTIONS',
+    'change_messaging:Change messaging type and/or reception times,'
+    'change_loss:Change to loss messaging,'
+    'unsubscribe_household_only:Unsubscribe household msg receiver,'
+    'unsubscribe_mother_only:Unsubscribe mother from messages,'
+    'change_language:Change language,change_baby:Change to baby message'
+)
+
+ACTIONS = tuple(
+    tuple(action.split(':')) for action in _action_string.split(','))
+
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'localhost')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
@@ -185,3 +197,4 @@ EMAIL_SUBJECT_PREFIX = os.environ.get('EMAIL_SUBJECT_PREFIX', '[Django]')
 IDENTITY_MESSAGES_PAGE_SIZE = 30
 IDENTITY_LIST_PAGE_SIZE = 30
 REGISTRATION_LIST_PAGE_SIZE = 30
+CHANGE_LIST_PAGE_SIZE = 30

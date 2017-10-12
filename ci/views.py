@@ -735,8 +735,8 @@ def changes(request):
         api_url=request.session["user_tokens"]["HUB"]["url"],
         auth_token=request.session["user_tokens"]["HUB"]["token"]
     )
-    if request.method == "POST":
-        form = ChangeFilterForm(request.POST)
+    if 'mother_id' in request.GET:
+        form = ChangeFilterForm(request.GET)
         if form.is_valid():
             change_filter = {
                 "action": form.cleaned_data['action'],
@@ -744,17 +744,20 @@ def changes(request):
                 settings.IDENTITY_FIELD:
                     form.cleaned_data['mother_id']
             }
-            results = hubApi.get_changes(params=change_filter)
+            changes = hubApi.get_changes(params=change_filter)['results']
         else:
-            results = {"count": form.errors}
+            changes = []
     else:
         form = ChangeFilterForm()
-        results = hubApi.get_changes()
+        changes = hubApi.get_changes()['results']
+
+    changes = utils.get_page_of_iterator(
+        changes, settings.CHANGE_LIST_PAGE_SIZE, request.GET.get('page'))
+
     context = {
-        "changes": results,
+        "changes": changes,
         "form": form
     }
-    context.update(csrf(request))
     return render(request, 'ci/changes.html', context)
 
 
