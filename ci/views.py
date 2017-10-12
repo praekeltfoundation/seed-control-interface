@@ -457,16 +457,16 @@ def identities(request):
         api_url=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["url"],  # noqa
         auth_token=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["token"]  # noqa
     )
-    if request.GET.get('address_value'):
+    if 'address_value' in request.GET:
         form = IdentitySearchForm(request.GET)
         if form.is_valid():
             results = idApi.get_identity_by_address(
                 address_type=form.cleaned_data['address_type'],
                 address_value=form.cleaned_data['address_value'])['results']
         else:
-            context['errors'] = form.errors
             results = []
     else:
+        form = IdentitySearchForm()
         results = idApi.get_identities()['results']
 
     identities = utils.get_page_of_iterator(
@@ -475,6 +475,7 @@ def identities(request):
     )
 
     context['identities'] = identities
+    context['form'] = form
     return render(request, 'ci/identities.html', context)
 
 

@@ -60,7 +60,8 @@ ADDRESS_TYPES = (
 
 
 class IdentitySearchForm(forms.Form):
-    address_value = forms.CharField(widget=forms.TextInput)
+    address_value = forms.CharField(
+        widget=forms.TextInput(attrs={'placeholder': 'Search for...'}))
     address_type = forms.ChoiceField(
         choices=ADDRESS_TYPES
     )

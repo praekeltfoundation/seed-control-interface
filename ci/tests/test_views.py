@@ -472,7 +472,7 @@ class IdentitiesViewTest(ViewTestsTemplate):
     def test_get_filtered_identity_list_error(self):
         """
         If the data submitted for filtering the list of identities is invalid,
-        then the errors should be sent in the context, as well as an empty list
+        then the errors should be sent in the form, as well as an empty list
         of identities.
         """
         self.login()
@@ -484,7 +484,8 @@ class IdentitiesViewTest(ViewTestsTemplate):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(context['identities']), 0)
-        self.assertNotEqual(context['errors'], None)
+        self.assertFalse(context['form'].is_valid())
+        self.assertEqual(len(context['form'].errors), 1)
 
     @override_settings(IDENTITY_LIST_PAGE_SIZE=5)
     @responses.activate
