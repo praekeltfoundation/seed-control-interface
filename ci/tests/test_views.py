@@ -149,15 +149,33 @@ class ViewTestsTemplate(TestCase):
             },
             content_type='application/json')
 
-    def add_subscriptions_callback(self):
+    def add_subscriptions_callback(self, num=10, subscriptions=None, qs=None):
+        if subscriptions is None:
+            subscriptions = [
+                {
+                    'id': 'subscription-{}'.format(i),
+                    'identity': 'identity-{}'.format(i),
+                    'messageset': 1,
+                    'next_sequence_number': i,
+                    'language': 'zul_ZA',
+                    'active': True,
+                    'completed': False,
+                    'created_at': '2016-01-01T10:30:21.{:0>5}Z'.format(i),
+                    'updated_at': '2016-01-01T10:30:21.{:0>5}Z'.format(i),
+                }
+                for i in range(num)
+            ]
+
+        url = 'http://sbm.example.com/subscriptions/'
+
+        if qs is not None:
+            url = '{}{}'.format(url, qs)
+
         responses.add(
-            responses.GET,
-            "http://sbm.example.com/subscriptions/?identity=operator_id",
-            match_querystring=True,
+            responses.GET, url, status=200, match_querystring=bool(qs),
             json={
-                'results': [],
+                'results': subscriptions,
             },
-            status=200,
             content_type='application/json')
 
     def add_messagesets_callback(self, results=[]):
@@ -656,3 +674,62 @@ class ChangesViewTest(ViewTestsTemplate):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(context['changes']), 5)
+
+
+class SubscriptionsViewTest(ViewTestsTemplate):
+    @override_settings(SUBSCRIPTION_LIST_PAGE_SIZE=5)
+    @responses.activate
+    def test_get_subscriptions_list(self):
+        """
+        Doing a GET request should return a page of subscriptions.
+        """
+        self.login()
+        self.set_session_user_tokens()
+        self.add_subscriptions_callback(num=10)
+        self.add_messagesets_callback([{'id': 1, 'short_name': 'ms.1'}])
+
+        response = self.client.get(reverse('subscriptions'))
+        context = response.context
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(context['subscriptions']), 5)
+
+    @override_settings(SUBSCRIPTION_LIST_PAGE_SIZE=5)
+    @responses.activate
+    def test_get_subscriptions_list_filter_error(self):
+        """
+        If the data submitted for filtering the list of subscriptions is
+        invalid, then the errors should be sent in the form, as well as an
+        empty list of subscriptions.
+        """
+        self.login()
+        self.set_session_user_tokens()
+        self.add_messagesets_callback([{'id': 1, 'short_name': 'ms.1'}])
+
+        qs = "?identity=&active=invalid&completed="
+        response = self.client.get('{}{}'.format(reverse('subscriptions'), qs))
+        context = response.context
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(context['subscriptions']), 0)
+        self.assertFalse(context['form'].is_valid())
+        self.assertEqual(len(context['form'].errors), 1)
+
+    @override_settings(SUBSCRIPTION_LIST_PAGE_SIZE=5)
+    @responses.activate
+    def test_get_filtered_subscriptions_list(self):
+        """
+        If there are query parameters for filtering the list of subscriptions,
+        then that list should be filtered.
+        """
+        self.login()
+        self.set_session_user_tokens()
+        qs = "?completed=True&identity=1234&active=True"
+        self.add_subscriptions_callback(num=10, qs=qs)
+        self.add_messagesets_callback([{'id': 1, 'short_name': 'ms.1'}])
+
+        response = self.client.get('{}{}'.format(reverse('subscriptions'), qs))
+        context = response.context
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(context['subscriptions']), 5)

@@ -788,26 +788,34 @@ def subscriptions(request):
         api_url=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["url"],  # noqa
         auth_token=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["token"]  # noqa
     )
+
     messagesets_results = sbmApi.get_messagesets()
     messagesets = {}
     for messageset in messagesets_results["results"]:
         messagesets[messageset["id"]] = messageset["short_name"]
-    if request.method == "POST":
-        form = SubscriptionFilterForm(request.POST)
+
+    if 'identity' in request.GET:
+        form = SubscriptionFilterForm(request.GET)
         if form.is_valid():
             sbm_filter = {
                 "identity": form.cleaned_data['identity'],
                 "active": form.cleaned_data['active'],
                 "completed": form.cleaned_data['completed']
             }
-            results = sbmApi.get_subscriptions(params=sbm_filter)
+            subscriptions = sbmApi.get_subscriptions(
+                params=sbm_filter)['results']
         else:
-            results = {"count": form.errors}
+            subscriptions = []
     else:
         form = SubscriptionFilterForm()
-        results = sbmApi.get_subscriptions()
+        subscriptions = sbmApi.get_subscriptions()['results']
+
+    subscriptions = utils.get_page_of_iterator(
+        subscriptions, settings.SUBSCRIPTION_LIST_PAGE_SIZE,
+        request.GET.get('page'))
+
     context = {
-        "subscriptions": results,
+        "subscriptions": subscriptions,
         "messagesets": messagesets,
         "form": form
     }
