@@ -60,4 +60,16 @@
     </table>
   </div>
 </div>
+<div class="pagination pagination-list">
+  {% if failures.has_previous %}
+    <a href="{% replace_query_param request.build_absolute_uri 'page' failures.previous_page_number %}" class="pagination__link pagination__link--previous">
+      <span class="pagination__link--arrow">&larr;</span> Prev
+    </a>
+  {% endif %}
+  {% if failures.has_next %}
+    <a href="{% replace_query_param request.build_absolute_uri 'page' failures.next_page_number %}" class="pagination__link pagination__link--next">Next
+      <span class="pagination__link--arrow">&rarr;</span>
+    </a>
+  {% endif %}
+</div>
 {% endblock %}

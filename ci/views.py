@@ -452,22 +452,30 @@ def not_found(request):
 @permission_required(permission='ci:view', login_url='/login/')
 @tokens_required(['SEED_IDENTITY_SERVICE'])
 def identities(request):
+    context = {}
     idApi = IdentityStoreApiClient(
         api_url=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["url"],  # noqa
         auth_token=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["token"]  # noqa
     )
-    if request.method == "POST":
-        form = IdentitySearchForm(request.POST)
+    if 'address_value' in request.GET:
+        form = IdentitySearchForm(request.GET)
         if form.is_valid():
             results = idApi.get_identity_by_address(
                 address_type=form.cleaned_data['address_type'],
-                address_value=form.cleaned_data['address_value'])
+                address_value=form.cleaned_data['address_value'])['results']
         else:
-            results = {"count": form.errors}
+            results = []
     else:
-        results = idApi.get_identities()
-    context = {"identities": results}
-    context.update(csrf(request))
+        form = IdentitySearchForm()
+        results = idApi.get_identities()['results']
+
+    identities = utils.get_page_of_iterator(
+        results, settings.IDENTITY_LIST_PAGE_SIZE,
+        request.GET.get('page')
+    )
+
+    context['identities'] = identities
+    context['form'] = form
     return render(request, 'ci/identities.html', context)
 
 
@@ -666,30 +674,35 @@ def identity(request, identity):
 @permission_required(permission='ci:view', login_url='/login/')
 @tokens_required(['HUB'])
 def registrations(request):
+    context = {}
     hubApi = HubApiClient(
         api_url=request.session["user_tokens"]["HUB"]["url"],  # noqa
         auth_token=request.session["user_tokens"]["HUB"]["token"]  # noqa
     )
-    if request.method == "POST":
-        form = RegistrationFilterForm(request.POST)
+    if 'mother_id' in request.GET:
+        form = RegistrationFilterForm(request.GET)
         if form.is_valid():
             reg_filter = {
-                "stage": form.cleaned_data['stage'],
+                settings.STAGE_FIELD: form.cleaned_data['stage'],
                 "validated": form.cleaned_data['validated'],
                 settings.IDENTITY_FIELD:
                     form.cleaned_data['mother_id']
             }
-            results = hubApi.get_registrations(params=reg_filter)
+            registrations = hubApi.get_registrations(
+                params=reg_filter)['results']
         else:
-            results = {"count": form.errors}
+            registrations = []
     else:
         form = RegistrationFilterForm()
-        results = hubApi.get_registrations()
-    context = {
-        "registrations": results,
-        "form": form
-    }
-    context.update(csrf(request))
+        registrations = hubApi.get_registrations()['results']
+
+    context['form'] = form
+    context['registrations'] = utils.get_page_of_iterator(
+        registrations,
+        settings.REGISTRATION_LIST_PAGE_SIZE,
+        request.GET.get('page')
+    )
+
     return render(request, 'ci/registrations.html', context)
 
 
@@ -722,8 +735,8 @@ def changes(request):
         api_url=request.session["user_tokens"]["HUB"]["url"],
         auth_token=request.session["user_tokens"]["HUB"]["token"]
     )
-    if request.method == "POST":
-        form = ChangeFilterForm(request.POST)
+    if 'mother_id' in request.GET:
+        form = ChangeFilterForm(request.GET)
         if form.is_valid():
             change_filter = {
                 "action": form.cleaned_data['action'],
@@ -731,17 +744,20 @@ def changes(request):
                 settings.IDENTITY_FIELD:
                     form.cleaned_data['mother_id']
             }
-            results = hubApi.get_changes(params=change_filter)
+            changes = hubApi.get_changes(params=change_filter)['results']
         else:
-            results = {"count": form.errors}
+            changes = []
     else:
         form = ChangeFilterForm()
-        results = hubApi.get_changes()
+        changes = hubApi.get_changes()['results']
+
+    changes = utils.get_page_of_iterator(
+        changes, settings.CHANGE_LIST_PAGE_SIZE, request.GET.get('page'))
+
     context = {
-        "changes": results,
+        "changes": changes,
         "form": form
     }
-    context.update(csrf(request))
     return render(request, 'ci/changes.html', context)
 
 
@@ -772,26 +788,34 @@ def subscriptions(request):
         api_url=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["url"],  # noqa
         auth_token=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["token"]  # noqa
     )
+
     messagesets_results = sbmApi.get_messagesets()
     messagesets = {}
     for messageset in messagesets_results["results"]:
         messagesets[messageset["id"]] = messageset["short_name"]
-    if request.method == "POST":
-        form = SubscriptionFilterForm(request.POST)
+
+    if 'identity' in request.GET:
+        form = SubscriptionFilterForm(request.GET)
         if form.is_valid():
             sbm_filter = {
                 "identity": form.cleaned_data['identity'],
                 "active": form.cleaned_data['active'],
                 "completed": form.cleaned_data['completed']
             }
-            results = sbmApi.get_subscriptions(params=sbm_filter)
+            subscriptions = sbmApi.get_subscriptions(
+                params=sbm_filter)['results']
         else:
-            results = {"count": form.errors}
+            subscriptions = []
     else:
         form = SubscriptionFilterForm()
-        results = sbmApi.get_subscriptions()
+        subscriptions = sbmApi.get_subscriptions()['results']
+
+    subscriptions = utils.get_page_of_iterator(
+        subscriptions, settings.SUBSCRIPTION_LIST_PAGE_SIZE,
+        request.GET.get('page'))
+
     context = {
-        "subscriptions": results,
+        "subscriptions": subscriptions,
         "messagesets": messagesets,
         "form": form
     }
@@ -895,7 +919,6 @@ def subscription_failures(request):
         api_url=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["url"],  # noqa
         auth_token=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["token"]  # noqa
     )
-    results = sbmApi.get_failed_tasks()
     if request.method == "POST":
         requeue = sbmApi.requeue_failed_tasks()
         if ('requeued_failed_tasks' in requeue and
@@ -911,8 +934,11 @@ def subscription_failures(request):
                 messages.ERROR,
                 'Could not re-queued all subscription tasks'
             )
+    failures = sbmApi.get_failed_tasks()['results']
+    failures = utils.get_page_of_iterator(
+        failures, settings.FAILURE_LIST_PAGE_SIZE, request.GET.get('page'))
     context = {
-        'failures': results['results'],
+        'failures': failures
     }
     context.update(csrf(request))
     return render(request, 'ci/failures_subscriptions.html', context)
@@ -926,7 +952,6 @@ def schedule_failures(request):
         request.session["user_tokens"]["SEED_SCHEDULER"]["token"],  # noqa
         api_url=request.session["user_tokens"]["SEED_SCHEDULER"]["url"]  # noqa
     )
-    results = schdApi.get_failed_tasks()
     if request.method == "POST":
         requeue = schdApi.requeue_failed_tasks()
         if ('requeued_failed_tasks' in requeue and
@@ -942,8 +967,11 @@ def schedule_failures(request):
                 messages.ERROR,
                 'Could not re-queued all scheduler tasks'
             )
+    failures = schdApi.get_failed_tasks()['results']
+    failures = utils.get_page_of_iterator(
+        failures, settings.FAILURE_LIST_PAGE_SIZE, request.GET.get('page'))
     context = {
-        'failures': results,
+        'failures': failures,
     }
     context.update(csrf(request))
     return render(request, 'ci/failures_schedules.html', context)
@@ -957,7 +985,6 @@ def outbound_failures(request):
         request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["token"],  # noqa
         api_url=request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["url"]  # noqa
     )
-    results = msApi.get_failed_tasks()
     if request.method == "POST":
         requeue = msApi.requeue_failed_tasks()
         if ('requeued_failed_tasks' in requeue and
@@ -973,8 +1000,11 @@ def outbound_failures(request):
                 messages.ERROR,
                 'Could not re-queued all outbound tasks'
             )
+    failures = msApi.get_failed_tasks()['results']
+    failures = utils.get_page_of_iterator(
+        failures, settings.FAILURE_LIST_PAGE_SIZE, request.GET.get('page'))
     context = {
-        'failures': results['results'],
+        'failures': failures
     }
     context.update(csrf(request))
     return render(request, 'ci/failures_outbounds.html', context)

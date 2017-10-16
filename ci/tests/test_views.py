@@ -2,6 +2,7 @@ import json
 import responses
 
 from django.conf import settings
+from django.core.urlresolvers import reverse
 from django.test import TestCase, Client, override_settings
 
 from ..views import get_identity_addresses
@@ -34,6 +35,43 @@ class ViewTestsTemplate(TestCase):
         }
         session.save()
 
+    def add_identities_callback(self, num=10, identities=None, qs=None):
+        """
+        Adds a callback for getting the list of identities.
+
+        If identities is specified, overwrites the auto generated identities
+        specified by num.
+
+        If qs is specified, ensures that the call contains the specified
+        querystring.
+        """
+        url = 'http://idstore.example.com/identities/'
+        if qs is not None:
+            url = '{}search/{}'.format(url, qs)
+
+        if identities is None:
+            identities = [
+                {
+                    'identity': 'identity-{}'.format(i),
+                    'details': {
+                        'addresses': {
+                            'msisdn': {
+                                '+27{:0>9}'.format(i): {}
+                            }
+                        }
+                    },
+                    'created_at': '2016-01-01T10:30:21.{:0>5}Z'.format(i),
+                    'updated_at': '2016-01-01T10:30:21.{:0>5}Z'.format(i),
+                } for i in range(num)]
+
+        data = {
+            'results': identities,
+        }
+
+        responses.add(
+            responses.GET, url, json=data, status=200,
+            content_type='application/json', match_querystring=bool(qs))
+
     def add_identity_callback(self, identity='operator_id'):
         responses.add(
             responses.GET,
@@ -58,39 +96,86 @@ class ViewTestsTemplate(TestCase):
             status=200,
             content_type='application/json')
 
-    def add_registrations_callback(self):
+    def add_registrations_callback(self, num=10, registrations=None, qs=None):
+        if registrations is None:
+            registrations = [
+                {
+                    'id': 'registration-{}'.format(i),
+                    'reg_type': settings.STAGES[0][0],
+                    settings.IDENTITY_FIELD: 'identity-{}'.format(i),
+                    'validated': True,
+                    'data': {},
+                    'created_at': '2016-01-01T10:30:21.{:0>5}Z'.format(i),
+                    'updated_at': '2016-01-01T10:30:21.{:0>5}Z'.format(i),
+                }
+                for i in range(num)
+            ]
+
+        url = 'http://hub.example.com/registrations/'
+        if qs is not None:
+            url = '{}{}'.format(url, qs)
+
         responses.add(
-            responses.GET,
-            "http://hub.example.com/registrations/?{}=operator_id".format(
-                settings.IDENTITY_FIELD),
-            match_querystring=True,
+            responses.GET, url, match_querystring=bool(qs), status=200,
             json={
-                'results': [],
+                'results': registrations,
             },
-            status=200,
             content_type='application/json')
 
-    def add_changes_callback(self):
+    def add_changes_callback(self, num=10, changes=None, qs=None):
+        if changes is None:
+            changes = [
+                {
+                    'id': 'change-{}'.format(i),
+                    'action': settings.ACTIONS[0][0],
+                    settings.IDENTITY_FIELD: 'identity-{}'.format(i),
+                    'data': {},
+                    'validated': True,
+                    'created_at': '2016-01-01T10:30:21.{:0>5}Z'.format(i),
+                    'updated_at': '2016-01-01T10:30:21.{:0>5}Z'.format(i),
+                }
+                for i in range(num)
+            ]
+
+        url = 'http://hub.example.com/changes/'
+
+        if qs is not None:
+            url = '{}{}'.format(url, qs)
+
         responses.add(
-            responses.GET,
-            "http://hub.example.com/changes/?{}=operator_id".format(
-                settings.IDENTITY_FIELD),
-            match_querystring=True,
+            responses.GET, url, status=200, match_querystring=bool(qs),
             json={
-                'results': [],
+                'results': changes,
             },
-            status=200,
             content_type='application/json')
 
-    def add_subscriptions_callback(self):
+    def add_subscriptions_callback(self, num=10, subscriptions=None, qs=None):
+        if subscriptions is None:
+            subscriptions = [
+                {
+                    'id': 'subscription-{}'.format(i),
+                    'identity': 'identity-{}'.format(i),
+                    'messageset': 1,
+                    'next_sequence_number': i,
+                    'language': 'zul_ZA',
+                    'active': True,
+                    'completed': False,
+                    'created_at': '2016-01-01T10:30:21.{:0>5}Z'.format(i),
+                    'updated_at': '2016-01-01T10:30:21.{:0>5}Z'.format(i),
+                }
+                for i in range(num)
+            ]
+
+        url = 'http://sbm.example.com/subscriptions/'
+
+        if qs is not None:
+            url = '{}{}'.format(url, qs)
+
         responses.add(
-            responses.GET,
-            "http://sbm.example.com/subscriptions/?identity=operator_id",
-            match_querystring=True,
+            responses.GET, url, status=200, match_querystring=bool(qs),
             json={
-                'results': [],
+                'results': subscriptions,
             },
-            status=200,
             content_type='application/json')
 
     def add_messagesets_callback(self, results=[]):
@@ -153,6 +238,7 @@ class ViewTests(ViewTestsTemplate):
         }), {})
 
     @responses.activate
+    @override_settings(IDENTITY_FIELD='mother_id')
     def test_change_subscription(self):
         self.login()
         self.set_session_user_tokens()
@@ -305,8 +391,10 @@ class IdentityViewTest(ViewTestsTemplate):
         self.set_session_user_tokens()
         self.add_messagesets_callback()
         self.add_identity_callback()
-        self.add_registrations_callback()
-        self.add_changes_callback()
+        self.add_registrations_callback(
+            num=0, qs='?{}=operator_id'.format(settings.IDENTITY_FIELD))
+        self.add_changes_callback(
+            num=0, qs='?{}=operator_id'.format(settings.IDENTITY_FIELD))
         self.add_subscriptions_callback()
 
     @responses.activate
@@ -410,3 +498,238 @@ class IdentityViewTest(ViewTestsTemplate):
         self.assertEqual(response.status_code, 200)
         messages = list(response.context['messages'])
         self.assertEqual(messages[0].message, 'Successfully opted out.')
+
+
+class IdentitiesViewTest(ViewTestsTemplate):
+    @override_settings(IDENTITY_LIST_PAGE_SIZE=5)
+    @responses.activate
+    def test_get_identity_list(self):
+        """
+        Doing a plain GET request should return a page worth of identities.
+        """
+        self.login()
+        self.set_session_user_tokens()
+        self.add_identities_callback(num=10)
+
+        response = self.client.get(reverse('identities'))
+        context = response.context
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(context['identities']), 5)
+
+    @override_settings(IDENTITY_LIST_PAGE_SIZE=5)
+    @responses.activate
+    def test_get_filtered_identity_list_error(self):
+        """
+        If the data submitted for filtering the list of identities is invalid,
+        then the errors should be sent in the form, as well as an empty list
+        of identities.
+        """
+        self.login()
+        self.set_session_user_tokens()
+
+        qs = "?address_value=1234&address_type=invalid"
+        response = self.client.get('{}{}'.format(reverse('identities'), qs))
+        context = response.context
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(context['identities']), 0)
+        self.assertFalse(context['form'].is_valid())
+        self.assertEqual(len(context['form'].errors), 1)
+
+    @override_settings(IDENTITY_LIST_PAGE_SIZE=5)
+    @responses.activate
+    def test_get_filtered_identity_list(self):
+        """
+        If there are query parameters for filtering the list of identities,
+        then that list should be filtered.
+        """
+        self.login()
+        self.set_session_user_tokens()
+        self.add_identities_callback(
+            num=10, qs='?details__addresses__msisdn=1234')
+
+        qs = "?address_value=1234&address_type=msisdn"
+        response = self.client.get('{}{}'.format(reverse('identities'), qs))
+        context = response.context
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(context['identities']), 5)
+
+
+class RegistrationsViewTest(ViewTestsTemplate):
+    @override_settings(REGISTRATION_LIST_PAGE_SIZE=5)
+    @responses.activate
+    def test_get_registration_list(self):
+        """
+        Doing a GET request should return a page of registrations.
+        """
+        self.login()
+        self.set_session_user_tokens()
+        self.add_registrations_callback(num=10)
+
+        response = self.client.get(reverse('registrations'))
+        context = response.context
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(context['registrations']), 5)
+
+    @override_settings(REGISTRATION_LIST_PAGE_SIZE=5)
+    @responses.activate
+    def test_get_registration_list_filter_error(self):
+        """
+        If the data submitted for filtering the list of registrations is
+        invalid, then the errors should be sent in the form, as well as an
+        empty list of registrations.
+        """
+        self.login()
+        self.set_session_user_tokens()
+
+        qs = "?mother_id=&stage=invalid&validated="
+        response = self.client.get('{}{}'.format(reverse('registrations'), qs))
+        context = response.context
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(context['registrations']), 0)
+        self.assertFalse(context['form'].is_valid())
+        self.assertEqual(len(context['form'].errors), 1)
+
+    @override_settings(REGISTRATION_LIST_PAGE_SIZE=5)
+    @responses.activate
+    def test_get_filtered_registrations_list(self):
+        """
+        If there are query parameters for filtering the list of registrations,
+        then that list should be filtered.
+        """
+        self.login()
+        self.set_session_user_tokens()
+        qs = "?validated=True&{}=1234&{}={}".format(
+            settings.IDENTITY_FIELD, settings.STAGE_FIELD,
+            settings.STAGES[0][0])
+        self.add_registrations_callback(num=10, qs=qs)
+
+        qs = "?mother_id=1234&stage={}&validated=True".format(
+            settings.STAGES[0][0])
+        response = self.client.get('{}{}'.format(reverse('registrations'), qs))
+        context = response.context
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(context['registrations']), 5)
+
+
+class ChangesViewTest(ViewTestsTemplate):
+    @override_settings(CHANGE_LIST_PAGE_SIZE=5)
+    @responses.activate
+    def test_get_changes_list(self):
+        """
+        Doing a GET request should return a page of changes.
+        """
+        self.login()
+        self.set_session_user_tokens()
+        self.add_changes_callback(num=10)
+
+        response = self.client.get(reverse('changes'))
+        context = response.context
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(context['changes']), 5)
+
+    @override_settings(CHANGE_LIST_PAGE_SIZE=5)
+    @responses.activate
+    def test_get_changes_list_filter_error(self):
+        """
+        If the data submitted for filtering the list of changes is invalid,
+        then the errors should be sent in the form, as well as an empty list
+        of changes.
+        """
+        self.login()
+        self.set_session_user_tokens()
+
+        qs = "?mother_id=&action=invalid&validated="
+        response = self.client.get('{}{}'.format(reverse('changes'), qs))
+        context = response.context
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(context['changes']), 0)
+        self.assertFalse(context['form'].is_valid())
+        self.assertEqual(len(context['form'].errors), 1)
+
+    @override_settings(CHANGE_LIST_PAGE_SIZE=5)
+    @responses.activate
+    def test_get_filtered_changes_list(self):
+        """
+        If there are query parameters for filtering the list of changes, then
+        that list should be filtered.
+        """
+        self.login()
+        self.set_session_user_tokens()
+        qs = "?validated=True&{}=1234&action={}".format(
+            settings.IDENTITY_FIELD, settings.ACTIONS[0][0])
+        self.add_changes_callback(num=10, qs=qs)
+
+        qs = "?mother_id=1234&action={}&validated=True".format(
+            settings.ACTIONS[0][0])
+        response = self.client.get('{}{}'.format(reverse('changes'), qs))
+        context = response.context
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(context['changes']), 5)
+
+
+class SubscriptionsViewTest(ViewTestsTemplate):
+    @override_settings(SUBSCRIPTION_LIST_PAGE_SIZE=5)
+    @responses.activate
+    def test_get_subscriptions_list(self):
+        """
+        Doing a GET request should return a page of subscriptions.
+        """
+        self.login()
+        self.set_session_user_tokens()
+        self.add_subscriptions_callback(num=10)
+        self.add_messagesets_callback([{'id': 1, 'short_name': 'ms.1'}])
+
+        response = self.client.get(reverse('subscriptions'))
+        context = response.context
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(context['subscriptions']), 5)
+
+    @override_settings(SUBSCRIPTION_LIST_PAGE_SIZE=5)
+    @responses.activate
+    def test_get_subscriptions_list_filter_error(self):
+        """
+        If the data submitted for filtering the list of subscriptions is
+        invalid, then the errors should be sent in the form, as well as an
+        empty list of subscriptions.
+        """
+        self.login()
+        self.set_session_user_tokens()
+        self.add_messagesets_callback([{'id': 1, 'short_name': 'ms.1'}])
+
+        qs = "?identity=&active=invalid&completed="
+        response = self.client.get('{}{}'.format(reverse('subscriptions'), qs))
+        context = response.context
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(context['subscriptions']), 0)
+        self.assertFalse(context['form'].is_valid())
+        self.assertEqual(len(context['form'].errors), 1)
+
+    @override_settings(SUBSCRIPTION_LIST_PAGE_SIZE=5)
+    @responses.activate
+    def test_get_filtered_subscriptions_list(self):
+        """
+        If there are query parameters for filtering the list of subscriptions,
+        then that list should be filtered.
+        """
+        self.login()
+        self.set_session_user_tokens()
+        qs = "?completed=True&identity=1234&active=True"
+        self.add_subscriptions_callback(num=10, qs=qs)
+        self.add_messagesets_callback([{'id': 1, 'short_name': 'ms.1'}])
+
+        response = self.client.get('{}{}'.format(reverse('subscriptions'), qs))
+        context = response.context
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(context['subscriptions']), 5)

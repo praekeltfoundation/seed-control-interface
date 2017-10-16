@@ -1,6 +1,7 @@
 {% extends "ci/base.html" %}
 {% load staticfiles %}
 {% load bootstrap %}
+{% load seed %}
 {% block pagetitle %}Registration Management{% endblock %}
 {% block content %}
 <div class="dashhead">
@@ -18,11 +19,9 @@
 <hr class="m-t">
 
 <div class="flextable">
-  <form class="form-inline" method="post" action=".">
-    {% csrf_token %}
+  <form class="form-inline" method="get" action=".">
     {{ form|bootstrap_inline }}
     <button type="submit" class="btn btn-default">Filter</button>
-    <b>Results:</b> {{ registrations.count }}
   </form>
 </div>
 <hr class="m-t">
@@ -39,12 +38,12 @@
         </tr>
       </thead>
       <tbody>
-        {% for registration in registrations.results %}
+        {% for registration in registrations %}
         <tr>
           {% url 'registrations-detail' registration.id as url %}
           <td><a href="{{ url }}">{{ registration.id|truncatechars:12 }}</a></td>
           <td>{{ registration.validated }}</td>
-          <td>{{ registration.stage }}</td>
+          <td>{{ registration | get_stage }}</td>
           <td>{{ registration.created_at|get_date|date:"D d M Y H:i" }}</td>
           <td>{{ registration.updated_at|get_date|date:"D d M Y H:i" }}</td>
         </tr>
@@ -52,5 +51,17 @@
       </tbody>
     </table>
   </div>
+</div>
+<div class="pagination pagination-list">
+  {% if registrations.has_previous %}
+    <a href="{% replace_query_param request.build_absolute_uri 'page' registrations.previous_page_number %}" class="pagination__link pagination__link--previous">
+      <span class="pagination__link--arrow">&larr;</span> Prev
+    </a>
+  {% endif %}
+  {% if registrations.has_next %}
+    <a href="{% replace_query_param request.build_absolute_uri 'page' registrations.next_page_number %}" class="pagination__link pagination__link--next">Next
+      <span class="pagination__link--arrow">&rarr;</span>
+    </a>
+  {% endif %}
 </div>
 {% endblock %}
