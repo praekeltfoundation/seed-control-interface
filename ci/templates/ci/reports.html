@@ -120,23 +120,33 @@
 <script type="text/javascript">
 
     $(document).ready(function() {
+      // Replace encoded quotes with double quotes to make valid json
+      var forms = JSON.parse("{{ forms.keys }}".replace(/&#39;/g, '\"'))
 
-      if ($("#id_email_to").val() != '') {
-        var emails = $("#id_email_to").val().split(",");
-        $("#id_email_to").val('');
-        $.each(emails,function(i){
-          $("#id_email_to").after($(".email-to .email-to-group").clone().addClass("field-clone"));
-          $(".field-clone .email-fields").each(function(i){
-            $(this).attr('value', emails[i]);
+      $.each(forms, function(k){
+        // Get form and email_to field ids
+        var form_id = "#".concat(forms[k]);
+        var prefix = forms[k].replace("_form", "");
+        var email_to_id = "#".concat(prefix, "_email_to");
+
+        if ($(email_to_id).val() != '') {
+          var emails = $(email_to_id).val().split(",");
+          $(email_to_id).val('');
+          $.each(emails,function(i){
+            $(email_to_id).after($(".email-to .email-to-group").clone().addClass("field-clone"));
+            $(form_id).find(".field-clone .email-fields").each(function(i){
+              $(this).attr('value', emails[i]);
+            });
           });
-        });
         }
-      else {
-        $("#id_email_to").after($(".email-to .email-to-group").clone().addClass("field-clone"));
-      };
+        else {
+          $(email_to_id).after($(".email-to .email-to-group").clone().addClass("field-clone"));
+        };
 
-      $("#id_email_to").addClass("hide")
-      $(".field-clone:first .remove").replaceWith($(".email-to .add-more").show());
+        $(email_to_id).addClass("hide")
+        $(form_id).find(".field-clone:first .remove")
+            .replaceWith($(".email-to .add-more").clone().show());
+      });
 
       $(".add-more").click(function(){
           $(".field-clone:last").after($(".email-to .email-to-group").clone());
