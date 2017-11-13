@@ -25,26 +25,33 @@
 </div>
 {% endif %}
 
-<form class="form-horizontal" method="post" action=".">
-  <div class="row col-md-8 col-md-offset-2">
-    <div class="panel panel-default ">
-        <ul class="list-group">
-          <li class="list-group-item">
-            Request generation of the reports for the given date range. The reports will be emailed to recipients if they are specified.
-          </li>
-          <li class="list-group-item">
-            <div class="top-buffer-10">
-              {% csrf_token %}
-              {{ form|bootstrap_horizontal:'col-md-3' }}
-            </div>
-          </li>
-        </ul>
-        <div class="panel-footer">
-          <button class="btn btn-primary generate"><i class="fa fa-cogs" aria-hidden="true"></i> Generate Reports</button>
+<div class="row">
+  {% for name, form in forms.items %}
+      <form id="{{ name }}" class="form-horizontal" method="post" action=".">
+        <div class="row col-md-8 col-md-offset-2">
+          <div class="panel panel-default ">
+              <ul class="list-group">
+                <li class="list-group-item">
+                  Request generation of the reports for the given date range. The reports will be emailed to recipients if they are specified.
+                </li>
+                <li class="list-group-item">
+                  <div class="top-buffer-10">
+                    {% csrf_token %}
+                    {{ form|bootstrap_horizontal:'col-md-3' }}
+                  </div>
+                </li>
+              </ul>
+              <div class="panel-footer">
+                <button class="btn btn-primary generate"><i class="fa fa-cogs" aria-hidden="true"></i> Generate Reports</button>
+              </div>
+          </div>
         </div>
-    </div>
-  </div>
-</form>
+      </form>
+  {% endfor %}
+
+</div>
+
+<hr class="m-t">
 
 <div class="row col-md-12">
   <h3 class="reports__heading">Report Tasks</h3>
