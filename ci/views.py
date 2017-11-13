@@ -1021,6 +1021,7 @@ def report_generation(request):
 
     if request.method == "POST":
         form = ReportGenerationForm(request.POST, auto_id='report_%s')
+        report_type = request.POST['report_type']
 
         if form.is_valid():
             # Remove fields that weren't supplied
@@ -1050,12 +1051,14 @@ def report_generation(request):
                 )
     else:
         form = ReportGenerationForm(auto_id='report_%s')
+        report_type = ""
 
     report_tasks = hubApi.get_report_tasks()
 
     context = {
         "forms": {"report_form": form},
-        "report_tasks": report_tasks
+        "report_tasks": report_tasks,
+        "report_type": report_type
     }
     context.update(csrf(request))
     return render(request, 'ci/reports.html', context)
