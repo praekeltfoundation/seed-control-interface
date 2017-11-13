@@ -26,8 +26,21 @@
 {% endif %}
 
 <div class="row">
+  <div class="form-horizontal form-group row col-md-5 col-md-offset-2">
+    <label class="control-label col-md-4" for="id_report_type">Report type</label>
+    <div class="col-md-8">
+      <select class="form-control" id="report_type">
+        <option value="">---</option>
+        {% for name, form in forms.items %}
+          <option value="{{ name }}">{{ name|cut:'_form'|title }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+    
+
   {% for name, form in forms.items %}
-      <form id="{{ name }}" class="form-horizontal" method="post" action=".">
+      <form hidden id="{{ name }}" class="form-horizontal report-form" enctype="multipart/form-data" method="post" action=".">
         <div class="row col-md-8 col-md-offset-2">
           <div class="panel panel-default ">
               <ul class="list-group">
@@ -141,6 +154,14 @@
                 return this.value;
               }).get().join(","));
         });
+      });
+
+      $("#report_type").on("change", function(){
+        var dropdown = $("#report_type");
+        var form = $("#"+dropdown.val());
+        $(".report-form:visible").hide();
+        form.show();
+        dropdown.attr("form", dropdown.val());
       });
 
     });
