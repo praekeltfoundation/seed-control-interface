@@ -149,7 +149,7 @@
       });
 
       $(".add-more").click(function(){
-          $(".field-clone:last").after($(".email-to .email-to-group").clone());
+          $(this).parents(".control-group").after($(".email-to .email-to-group").clone());
       });
 
       $("body").on("click",".remove",function(){
@@ -157,10 +157,11 @@
       });
 
       $("body").on("click",".generate",function(){
-        $(".form-horizontal .email-fields").each(function(){
+        var id_prefix = $(this).parents(".form-horizontal").attr("id").replace("_form", "");
+        $(this).parents(".form-horizontal").find(".email-fields").each(function(){
           if ($(this).val() == '')
             $(this).parents(".form-horizontal .control-group").remove();
-            $("#id_email_to").val($(".form-horizontal .email-fields").map( function() {
+            $("#".concat(id_prefix, "_email_to")).val($(".form-horizontal .email-fields").map( function() {
                 return this.value;
               }).get().join(","));
         });
