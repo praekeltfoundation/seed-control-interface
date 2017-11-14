@@ -123,7 +123,6 @@ def login_required(function=None, redirect_field_name=REDIRECT_FIELD_NAME,
 
 
 def has_permission(permissions, permission, object_id=None):
-    return True
     ids = [p['object_id'] for p in permissions if p['type'] == permission]
     if object_id is None and len(ids) == 1:
         return True
