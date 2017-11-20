@@ -1019,7 +1019,9 @@ def report_generation(request):
         api_url=request.session["user_tokens"]["HUB"]["url"])
 
     if request.method == "POST":
-        form = ReportGenerationForm(request.POST)
+        form = ReportGenerationForm(request.POST, auto_id='report_%s')
+        report_type = request.POST['report_type']
+
         if form.is_valid():
             # Remove fields that weren't supplied
             if form.cleaned_data.get('start_date') is None:
@@ -1047,13 +1049,15 @@ def report_generation(request):
                     'Could not start report generation'
                 )
     else:
-        form = ReportGenerationForm()
+        form = ReportGenerationForm(auto_id='report_%s')
+        report_type = ""
 
     report_tasks = hubApi.get_report_tasks()
 
     context = {
-        "form": form,
-        "report_tasks": report_tasks
+        "forms": {"report_form": form},
+        "report_tasks": report_tasks,
+        "report_type": report_type
     }
     context.update(csrf(request))
     return render(request, 'ci/reports.html', context)

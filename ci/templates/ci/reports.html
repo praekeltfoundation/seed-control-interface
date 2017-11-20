@@ -25,26 +25,46 @@
 </div>
 {% endif %}
 
-<form class="form-horizontal" method="post" action=".">
-  <div class="row col-md-8 col-md-offset-2">
-    <div class="panel panel-default ">
-        <ul class="list-group">
-          <li class="list-group-item">
-            Request generation of the reports for the given date range. The reports will be emailed to recipients if they are specified.
-          </li>
-          <li class="list-group-item">
-            <div class="top-buffer-10">
-              {% csrf_token %}
-              {{ form|bootstrap_horizontal:'col-md-3' }}
-            </div>
-          </li>
-        </ul>
-        <div class="panel-footer">
-          <button class="btn btn-primary generate"><i class="fa fa-cogs" aria-hidden="true"></i> Generate Reports</button>
-        </div>
+<div class="row">
+  <div class="form-horizontal form-group row col-md-5 col-md-offset-2">
+    <label class="control-label col-md-4" for="id_report_type">Report type</label>
+    <div class="col-md-8">
+      <select class="form-control" name="report_type" id="report_type">
+        <option value="">---</option>
+        {% for name, form in forms.items %}
+          <option value="{{ name }}">{{ name|cut:'_form'|title }}</option>
+        {% endfor %}
+      </select>
     </div>
   </div>
-</form>
+    
+
+  {% for name, form in forms.items %}
+      <form hidden id="{{ name }}" class="form-horizontal report-form" enctype="multipart/form-data" method="post" action=".">
+        <div class="row col-md-8 col-md-offset-2">
+          <div class="panel panel-default ">
+              <ul class="list-group">
+                <li class="list-group-item">
+                  Request generation of the reports for the given date range. The reports will be emailed to recipients if they are specified.
+                </li>
+                <li class="list-group-item">
+                  <div class="top-buffer-10">
+                    {% csrf_token %}
+                    {{ form|bootstrap_horizontal:'col-md-3' }}
+                  </div>
+                </li>
+              </ul>
+              <div class="panel-footer">
+                <button class="btn btn-primary generate"><i class="fa fa-cogs" aria-hidden="true"></i> Generate Reports</button>
+              </div>
+          </div>
+        </div>
+      </form>
+  {% endfor %}
+
+</div>
+
+<hr class="m-t">
 
 <div class="row col-md-12">
   <h3 class="reports__heading">Report Tasks</h3>
@@ -100,26 +120,36 @@
 <script type="text/javascript">
 
     $(document).ready(function() {
+      // Replace encoded quotes with double quotes to make valid json
+      var forms = JSON.parse("{{ forms.keys }}".replace(/&#39;/g, '\"'))
 
-      if ($("#id_email_to").val() != '') {
-        var emails = $("#id_email_to").val().split(",");
-        $("#id_email_to").val('');
-        $.each(emails,function(i){
-          $("#id_email_to").after($(".email-to .email-to-group").clone().addClass("field-clone"));
-          $(".field-clone .email-fields").each(function(i){
-            $(this).attr('value', emails[i]);
+      $.each(forms, function(k){
+        // Get form and email_to field ids
+        var form_id = "#".concat(forms[k]);
+        var prefix = forms[k].replace("_form", "");
+        var email_to_id = "#".concat(prefix, "_email_to");
+
+        if ($(email_to_id).val() != '') {
+          var emails = $(email_to_id).val().split(",");
+          $(email_to_id).val('');
+          $.each(emails,function(i){
+            $(email_to_id).after($(".email-to .email-to-group").clone().addClass("field-clone"));
+            $(form_id).find(".field-clone .email-fields").each(function(i){
+              $(this).attr('value', emails[i]);
+            });
           });
-        });
         }
-      else {
-        $("#id_email_to").after($(".email-to .email-to-group").clone().addClass("field-clone"));
-      };
+        else {
+          $(email_to_id).after($(".email-to .email-to-group").clone().addClass("field-clone"));
+        };
 
-      $("#id_email_to").addClass("hide")
-      $(".field-clone:first .remove").replaceWith($(".email-to .add-more").show());
+        $(email_to_id).addClass("hide")
+        $(form_id).find(".field-clone:first .remove")
+            .replaceWith($(".email-to .add-more").clone().show());
+      });
 
       $(".add-more").click(function(){
-          $(".field-clone:last").after($(".email-to .email-to-group").clone());
+          $(this).parents(".control-group").after($(".email-to .email-to-group").clone());
       });
 
       $("body").on("click",".remove",function(){
@@ -127,14 +157,26 @@
       });
 
       $("body").on("click",".generate",function(){
-        $(".form-horizontal .email-fields").each(function(){
+        var id_prefix = $(this).parents(".form-horizontal").attr("id").replace("_form", "");
+        $(this).parents(".form-horizontal").find(".email-fields").each(function(){
           if ($(this).val() == '')
             $(this).parents(".form-horizontal .control-group").remove();
-            $("#id_email_to").val($(".form-horizontal .email-fields").map( function() {
+            $("#".concat(id_prefix, "_email_to")).val($(".form-horizontal .email-fields").map( function() {
                 return this.value;
               }).get().join(","));
         });
       });
+
+      $("#report_type").on("change", function(){
+        var dropdown = $("#report_type");
+        var form = $("#"+dropdown.val());
+        $(".report-form:visible").hide();
+        form.show();
+        dropdown.attr("form", dropdown.val());
+      });
+
+      $("#report_type").val("{{ report_type }}");
+      $("#{{ report_type }}").show();
 
     });
 
