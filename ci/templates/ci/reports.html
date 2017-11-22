@@ -158,10 +158,11 @@
 
       $("body").on("click",".generate",function(){
         var id_prefix = $(this).parents(".form-horizontal").attr("id").replace("_form", "");
-        $(this).parents(".form-horizontal").find(".email-fields").each(function(){
+        var email_fields = $(this).parents(".form-horizontal").find(".email-fields")
+        email_fields.each(function(){
           if ($(this).val() == '')
             $(this).parents(".form-horizontal .control-group").remove();
-            $("#".concat(id_prefix, "_email_to")).val($(".form-horizontal .email-fields").map( function() {
+            $("#".concat(id_prefix, "_email_to")).val(email_fields.map( function() {
                 return this.value;
               }).get().join(","));
         });
