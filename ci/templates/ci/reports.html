@@ -173,11 +173,11 @@
         var form = $("#"+dropdown.val());
         $(".report-form:visible").hide();
         form.show();
-        dropdown.attr("form", dropdown.val());
+        form.find("[name='report_type']").val(dropdown.val().replace("_form", ""));
       });
 
-      $("#report_type").val("{{ report_type }}");
-      $("#{{ report_type }}").show();
+      $("#report_type").val("{{ report_type }}_form");
+      $("#{{ report_type }}_form").show();
 
     });
 
