@@ -204,9 +204,21 @@ class MsisdnReportGenerationForm(ReportGenerationForm):
             if value is None:
                 # Skip empty Rows
                 continue
+
             value = str(value)
             if value.lower() == 'phone number':
                 # Skip the header row
                 continue
-            msisdns.append(value)
+
+            # Clean the msisdn
+            msisdn = value.replace(" ", "")
+            if not msisdn.replace("+", "").isdigit():
+                raise forms.ValidationError(
+                    "Invalid contents for: %(file)s. 'Phone number' column "
+                    "must only contain valid phone numbers",
+                    code='invalid',
+                    params={'file': self.cleaned_data['msisdn_list']})
+            if msisdn[:1] != '+':
+                msisdn = ''.join('+', msisdn)
+            msisdns.append(msisdn)
         return msisdns
