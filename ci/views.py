@@ -1021,13 +1021,13 @@ def report_generation(request):
     if request.method == "POST":
         report_type = request.POST['report_type']
         if report_type == 'registration':
-            reg_form = ReportGenerationForm(request.POST,
-                                            auto_id='registration_%s')
+            reg_form = ReportGenerationForm(
+                request.POST, auto_id='registration_%s')
             posted_form = reg_form
             msisdn_form = MsisdnReportGenerationForm(auto_id='cohort_%s')
         elif report_type == 'cohort':
-            msisdn_form = MsisdnReportGenerationForm(request.POST,
-                                                     auto_id='cohort_%s')
+            msisdn_form = MsisdnReportGenerationForm(
+                request.POST, request.FILES, auto_id='cohort_%s')
             posted_form = msisdn_form
             reg_form = ReportGenerationForm(auto_id='registration_%s')
 
