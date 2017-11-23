@@ -219,6 +219,6 @@ class MsisdnReportGenerationForm(ReportGenerationForm):
                     code='invalid',
                     params={'file': self.cleaned_data['msisdn_list']})
             if msisdn[:1] != '+':
-                msisdn = ''.join('+', msisdn)
+                msisdn = ''.join(('+', msisdn))
             msisdns.append(msisdn)
         return msisdns
