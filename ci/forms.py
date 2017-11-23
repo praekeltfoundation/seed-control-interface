@@ -5,6 +5,7 @@ from seed_services_client.auth import AuthApiClient
 from demands import HTTPServiceError
 from bootstrap_datepicker.widgets import DatePicker
 from django.contrib.postgres.forms import SimpleArrayField
+from openpyxl import load_workbook
 
 
 class AuthenticationForm(forms.Form):
@@ -176,3 +177,36 @@ class ReportGenerationForm(forms.Form):
 
 class MsisdnReportGenerationForm(ReportGenerationForm):
     msisdn_list = forms.FileField()
+
+    def clean_msisdn_list(self):
+        msisdns = []
+        wb = load_workbook(self.cleaned_data['msisdn_list'])
+        ws = wb[wb.sheetnames[0]]  # There should only be one sheet
+        # Get msisdn column
+        msisdn_column = None
+        for i, column in enumerate(ws.columns):
+            if column[0].value is None:
+                # Skip untitled columns
+                continue
+            value = str(column[0].value)
+            if value.lower() == 'phone number':
+                msisdn_column = i
+                break
+        if msisdn_column is None:
+            raise forms.ValidationError(
+                "Invalid contents for: %(file)s. File must contain "
+                "'Phone number' column",
+                code='invalid',
+                params={'file': self.cleaned_data['msisdn_list']})
+
+        for row in ws.rows:
+            value = row[msisdn_column].value
+            if value is None:
+                # Skip empty Rows
+                continue
+            value = str(value)
+            if value.lower() == 'phone number':
+                # Skip the header row
+                continue
+            msisdns.append(value)
+        return msisdns
