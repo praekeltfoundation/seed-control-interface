@@ -195,7 +195,7 @@ class MsisdnReportGenerationForm(ReportGenerationForm):
         if msisdn_column is None:
             raise forms.ValidationError(
                 "Invalid contents for: %(file)s. File must contain "
-                "'Phone number' column",
+                "'Phone number' column in the first sheet",
                 code='invalid',
                 params={'file': self.cleaned_data['msisdn_list']})
 
