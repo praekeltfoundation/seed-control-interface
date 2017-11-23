@@ -133,6 +133,11 @@ COMPLETED_CHOICES = (
     ("False", "Incompleted")
 )
 
+REPORT_CHOICES = (
+    ("registration", "Registration Report"),
+    ("cohort", "Cohort Report")
+)
+
 
 class SubscriptionFilterForm(forms.Form):
     identity = forms.CharField(
@@ -147,6 +152,8 @@ class SubscriptionFilterForm(forms.Form):
 
 
 class ReportGenerationForm(forms.Form):
+    report_type = forms.ChoiceField(
+        choices=REPORT_CHOICES, widget=forms.HiddenInput(), required=True)
     start_date = forms.DateField(
         widget=DatePicker(options={
             'placeholder': 'YYYY-MM-DD', 'format': 'yyyy-mm-dd',
@@ -165,3 +172,7 @@ class ReportGenerationForm(forms.Form):
     email_subject = forms.CharField(
         widget=forms.TextInput(attrs={'placeholder': 'Subject for email'}),
         required=False)
+
+
+class MsisdnReportGenerationForm(ReportGenerationForm):
+    msisdn_list = forms.FileField()
