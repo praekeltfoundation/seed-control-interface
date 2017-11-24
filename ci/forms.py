@@ -218,7 +218,5 @@ class MsisdnReportGenerationForm(ReportGenerationForm):
                     "must only contain valid phone numbers",
                     code='invalid',
                     params={'file': self.cleaned_data['msisdn_list']})
-            if msisdn[:1] != '+':
-                msisdn = ''.join(('+', msisdn))
             msisdns.append(msisdn)
         return msisdns
