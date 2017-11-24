@@ -37,7 +37,7 @@ from .forms import (AuthenticationForm, IdentitySearchForm,
                     RegistrationFilterForm, SubscriptionFilterForm,
                     ChangeFilterForm, ReportGenerationForm,
                     AddSubscriptionForm, DeactivateSubscriptionForm,
-                    ChangeSubscriptionForm)
+                    ChangeSubscriptionForm, MsisdnReportGenerationForm)
 from . import utils
 
 logger = logging.getLogger(__name__)
@@ -1019,23 +1019,33 @@ def report_generation(request):
         api_url=request.session["user_tokens"]["HUB"]["url"])
 
     if request.method == "POST":
-        form = ReportGenerationForm(request.POST, auto_id='report_%s')
         report_type = request.POST['report_type']
+        if report_type == 'registration':
+            reg_form = ReportGenerationForm(
+                request.POST, auto_id='registration_%s')
+            posted_form = reg_form
+            msisdn_form = MsisdnReportGenerationForm(auto_id='cohort_%s')
+        elif report_type == 'cohort':
+            msisdn_form = MsisdnReportGenerationForm(
+                request.POST, request.FILES, auto_id='cohort_%s')
+            posted_form = msisdn_form
+            reg_form = ReportGenerationForm(auto_id='registration_%s')
 
-        if form.is_valid():
+        if posted_form.is_valid():
             # Remove fields that weren't supplied
-            if form.cleaned_data.get('start_date') is None:
-                del form.cleaned_data['start_date']
-            if form.cleaned_data.get('end_date') is None:
-                del form.cleaned_data['end_date']
-            if form.cleaned_data.get('email_to') == []:
-                del form.cleaned_data['email_to']
-            if form.cleaned_data.get('email_from') == "":
-                del form.cleaned_data['email_from']
-            if form.cleaned_data.get('email_subject') == "":
-                del form.cleaned_data['email_subject']
+            if posted_form.cleaned_data.get('start_date') is None:
+                del posted_form.cleaned_data['start_date']
+            if posted_form.cleaned_data.get('end_date') is None:
+                del posted_form.cleaned_data['end_date']
+            if posted_form.cleaned_data.get('email_to') == []:
+                del posted_form.cleaned_data['email_to']
+            if posted_form.cleaned_data.get('email_from') == "":
+                del posted_form.cleaned_data['email_from']
+            if posted_form.cleaned_data.get('email_subject') == "":
+                del posted_form.cleaned_data['email_subject']
 
-            results = hubApi.trigger_report_generation(form.cleaned_data)
+            results = hubApi.trigger_report_generation(
+                    posted_form.cleaned_data)
             if 'report_generation_requested' in results:
                 messages.add_message(
                     request,
@@ -1049,13 +1059,14 @@ def report_generation(request):
                     'Could not start report generation'
                 )
     else:
-        form = ReportGenerationForm(auto_id='report_%s')
+        reg_form = ReportGenerationForm(auto_id='registration_%s')
+        msisdn_form = MsisdnReportGenerationForm(auto_id='cohort_%s')
         report_type = ""
 
     report_tasks = hubApi.get_report_tasks()
 
     context = {
-        "forms": {"report_form": form},
+        "forms": {"registration_form": reg_form, "cohort_form": msisdn_form},
         "report_tasks": report_tasks,
         "report_type": report_type
     }

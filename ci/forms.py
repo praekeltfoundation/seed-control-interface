@@ -5,6 +5,7 @@ from seed_services_client.auth import AuthApiClient
 from demands import HTTPServiceError
 from bootstrap_datepicker.widgets import DatePicker
 from django.contrib.postgres.forms import SimpleArrayField
+from openpyxl import load_workbook
 
 
 class AuthenticationForm(forms.Form):
@@ -133,6 +134,11 @@ COMPLETED_CHOICES = (
     ("False", "Incompleted")
 )
 
+REPORT_CHOICES = (
+    ("registration", "Registration Report"),
+    ("cohort", "Cohort Report")
+)
+
 
 class SubscriptionFilterForm(forms.Form):
     identity = forms.CharField(
@@ -147,6 +153,8 @@ class SubscriptionFilterForm(forms.Form):
 
 
 class ReportGenerationForm(forms.Form):
+    report_type = forms.ChoiceField(
+        choices=REPORT_CHOICES, widget=forms.HiddenInput(), required=True)
     start_date = forms.DateField(
         widget=DatePicker(options={
             'placeholder': 'YYYY-MM-DD', 'format': 'yyyy-mm-dd',
@@ -165,3 +173,50 @@ class ReportGenerationForm(forms.Form):
     email_subject = forms.CharField(
         widget=forms.TextInput(attrs={'placeholder': 'Subject for email'}),
         required=False)
+
+
+class MsisdnReportGenerationForm(ReportGenerationForm):
+    msisdn_list = forms.FileField()
+
+    def clean_msisdn_list(self):
+        msisdns = []
+        wb = load_workbook(self.cleaned_data['msisdn_list'])
+        ws = wb[wb.sheetnames[0]]  # There should only be one sheet
+        # Get msisdn column
+        msisdn_column = None
+        for i, column in enumerate(ws.columns):
+            if column[0].value is None:
+                # Skip untitled columns
+                continue
+            value = str(column[0].value)
+            if value.lower() == 'phone number':
+                msisdn_column = i
+                break
+        if msisdn_column is None:
+            raise forms.ValidationError(
+                "Invalid contents for: %(file)s. File must contain "
+                "'Phone number' column in the first sheet",
+                code='invalid',
+                params={'file': self.cleaned_data['msisdn_list']})
+
+        for row in ws.rows:
+            value = row[msisdn_column].value
+            if value is None:
+                # Skip empty Rows
+                continue
+
+            value = str(value)
+            if value.lower() == 'phone number':
+                # Skip the header row
+                continue
+
+            # Clean the msisdn
+            msisdn = value.replace(" ", "")
+            if not msisdn.replace("+", "").isdigit():
+                raise forms.ValidationError(
+                    "Invalid contents for: %(file)s. 'Phone number' column "
+                    "must only contain valid phone numbers",
+                    code='invalid',
+                    params={'file': self.cleaned_data['msisdn_list']})
+            msisdns.append(msisdn)
+        return msisdns
