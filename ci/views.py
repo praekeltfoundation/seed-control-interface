@@ -3,6 +3,7 @@ import logging
 import json
 from datetime import timedelta
 
+from demands import HTTPServiceError
 from django.shortcuts import render, redirect, resolve_url
 from django.utils.decorators import available_attrs
 from django.utils.six.moves.urllib.parse import urlparse
@@ -1044,20 +1045,29 @@ def report_generation(request):
             if posted_form.cleaned_data.get('email_subject') == "":
                 del posted_form.cleaned_data['email_subject']
 
-            results = hubApi.trigger_report_generation(
-                    posted_form.cleaned_data)
-            if 'report_generation_requested' in results:
-                messages.add_message(
-                    request,
-                    messages.INFO,
-                    'Successfully started report generation'
-                )
-            else:
+            try:
+                results = hubApi.trigger_report_generation(
+                        posted_form.cleaned_data)
+            except HTTPServiceError as e:
+                logger.error('Report generation failed: %s' % e.details)
                 messages.add_message(
                     request,
                     messages.ERROR,
                     'Could not start report generation'
                 )
+            else:
+                if 'report_generation_requested' in results:
+                    messages.add_message(
+                        request,
+                        messages.INFO,
+                        'Successfully started report generation'
+                    )
+                else:
+                    messages.add_message(
+                        request,
+                        messages.ERROR,
+                        'Could not start report generation'
+                    )
     else:
         reg_form = ReportGenerationForm(auto_id='registration_%s')
         msisdn_form = MsisdnReportGenerationForm(auto_id='cohort_%s')
