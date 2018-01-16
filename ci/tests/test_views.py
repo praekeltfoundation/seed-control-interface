@@ -72,24 +72,27 @@ class ViewTestsTemplate(TestCase):
             responses.GET, url, json=data, status=200,
             content_type='application/json', match_querystring=bool(qs))
 
-    def add_identity_callback(self, identity='operator_id'):
+    def add_identity_callback(self, identity='operator_id', details=None):
+        if details is None:
+            details = {
+                'personnel_code': 'personnel_code',
+                'facility_name': 'facility_name',
+                'default_addr_type': 'msisdn',
+                'receiver_role': 'role',
+                'state': 'state',
+                'addresses': {
+                    'msisdn': {
+                        '+2340000000000': {}
+                    }
+                }
+            }
+
         responses.add(
             responses.GET,
             'http://idstore.example.com/identities/{}/'.format(identity),
             json={
                 'identity': identity,
-                'details': {
-                    'personnel_code': 'personnel_code',
-                    'facility_name': 'facility_name',
-                    'default_addr_type': 'msisdn',
-                    'receiver_role': 'role',
-                    'state': 'state',
-                    'addresses': {
-                        'msisdn': {
-                            '+2340000000000': {}
-                        }
-                    }
-                },
+                'details': details,
                 'created_at': '2016-01-01T10:30:21.0Z',
                 'updated_at': '2016-01-01T10:30:21.0Z',
             },
@@ -354,7 +357,8 @@ class ViewTests(ViewTestsTemplate):
 
 
 class IdentityViewTest(ViewTestsTemplate):
-    def add_message_sender_inbound_responses(self, count=1):
+    def add_message_sender_inbound_responses(
+            self, count=1, identity='operator_id'):
         message = {
             'content': 'Inbound message',
             'created_at': '2017-09-12T00:00Z',
@@ -363,14 +367,15 @@ class IdentityViewTest(ViewTestsTemplate):
 
         responses.add(
             responses.GET,
-            ('http://ms.example.com/inbound/?from_identity=operator_id'
-             '&ordering=-created_at'),
+            ('http://ms.example.com/inbound/?from_identity={}'
+             '&ordering=-created_at'.format(identity)),
             match_querystring=True,
             json={'results': [message for i in range(count)]},
             status=200,
             content_type='application/json')
 
-    def add_message_sender_outbound_responses(self, count=1):
+    def add_message_sender_outbound_responses(
+            self, count=1, identity='operator_id'):
         message = {
             'content': 'Outbound message',
             'created_at': '2017-09-12T00:00Z',
@@ -379,8 +384,8 @@ class IdentityViewTest(ViewTestsTemplate):
 
         responses.add(
             responses.GET,
-            ('http://ms.example.com/outbound/?to_identity=operator_id'
-             '&ordering=-created_at'),
+            ('http://ms.example.com/outbound/?to_identity={}'
+             '&ordering=-created_at'.format(identity)),
             match_querystring=True,
             json={'results': [message for i in range(count)]},
             status=200,
@@ -389,7 +394,11 @@ class IdentityViewTest(ViewTestsTemplate):
     def setUp(self):
         self.login()
         self.set_session_user_tokens()
-        self.add_messagesets_callback()
+        self.add_messagesets_callback([{
+            'id': 1,
+            'short_name': 'ms.1',
+            'default_schedule': 2,
+        }])
         self.add_identity_callback()
         self.add_registrations_callback(
             num=0, qs='?{}=operator_id'.format(settings.IDENTITY_FIELD))
@@ -498,6 +507,93 @@ class IdentityViewTest(ViewTestsTemplate):
         self.assertEqual(response.status_code, 200)
         messages = list(response.context['messages'])
         self.assertEqual(messages[0].message, 'Successfully opted out.')
+
+    @responses.activate
+    def test_add_subscription_to_identity(self):
+        """
+        A POST request to the identities endpoint for adding a subscription
+        should return a success message, and POST the correct data to the
+        stage based messaging application to create the new subscription.
+        """
+        self.add_identity_callback(
+            'identity_id', {'preferred_language': "zul_ZA"})
+        self.add_message_sender_outbound_responses(identity='identity_id')
+        self.add_message_sender_inbound_responses(identity='identity_id')
+        self.add_registrations_callback(qs="?mother_id=identity_id")
+        self.add_changes_callback(qs="?mother_id=identity_id")
+
+        responses.add(
+            responses.POST,
+            'http://sbm.example.com/subscriptions/',
+            json={}, status=201, content_type='application/json'
+        )
+
+        response = self.client.post(
+            reverse('identities-detail', kwargs={'identity': 'identity_id'}),
+            {'add_subscription': '', 'messageset': 1}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            list(response.context['messages'])[0].message,
+            "Successfully created a subscription.")
+        [request] = filter(
+            lambda r: r.method == 'POST',
+            (r.request for r in responses.calls))
+        self.assertEqual(json.loads(request.body), {
+            'active': True,
+            'completed': False,
+            'identity': 'identity_id',
+            'lang': 'zul_ZA',
+            'messageset': 1,
+            'next_sequence_number': 1,
+            'process_status': 0,
+            'schedule': 2,
+        })
+
+    @responses.activate
+    @override_settings(LANGUAGE_FIELD='lang')
+    def test_add_subscription_to_identity_language_field(self):
+        """
+        If there is a custom language field set in the django settings, then
+        that field should determine what the language should be for the new
+        subscription.
+        """
+        self.add_identity_callback(
+            'identity_id', {'lang': "zul_ZA"})
+        self.add_message_sender_outbound_responses(identity='identity_id')
+        self.add_message_sender_inbound_responses(identity='identity_id')
+        self.add_registrations_callback(qs="?mother_id=identity_id")
+        self.add_changes_callback(qs="?mother_id=identity_id")
+
+        responses.add(
+            responses.POST,
+            'http://sbm.example.com/subscriptions/',
+            json={}, status=201, content_type='application/json'
+        )
+
+        response = self.client.post(
+            reverse('identities-detail', kwargs={'identity': 'identity_id'}),
+            {'add_subscription': '', 'messageset': 1}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            list(response.context['messages'])[0].message,
+            "Successfully created a subscription.")
+        [request] = filter(
+            lambda r: r.method == 'POST',
+            (r.request for r in responses.calls))
+        self.assertEqual(json.loads(request.body), {
+            'active': True,
+            'completed': False,
+            'identity': 'identity_id',
+            'lang': 'zul_ZA',
+            'messageset': 1,
+            'next_sequence_number': 1,
+            'process_status': 0,
+            'schedule': 2,
+        })
 
 
 class IdentitiesViewTest(ViewTestsTemplate):

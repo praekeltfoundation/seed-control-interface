@@ -169,6 +169,7 @@ IDENTITY_STORE_TOKEN = os.environ.get(
 
 IDENTITY_FIELD = os.environ.get('IDENTITY_FIELD', 'mother_id')
 STAGE_FIELD = os.environ.get('STAGE_FIELD', 'stage')
+LANGUAGE_FIELD = os.environ.get('LANGUAGE_FIELD', 'preferred_language')
 _stage_string = os.environ.get(
     'STAGES',
     'prebirth:Mother is pregnant,postbirth:Baby has been born,loss:Baby loss')
