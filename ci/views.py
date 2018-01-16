@@ -519,16 +519,16 @@ def identity(request, identity):
     if request.method == "POST":
         if 'add_subscription' in request.POST:
             form = AddSubscriptionForm(request.POST)
+            language = results['details'].get(settings.LANGUAGE_FIELD)
 
-            if results['details'].get('preferred_language'):
+            if language:
 
                 if form.is_valid():
                     subscription = {
                         "active": True,
                         "identity": identity,
                         "completed": False,
-                        "lang":
-                            results['details'].get('preferred_language'),
+                        "lang": language,
                         "messageset": form.cleaned_data['messageset'],
                         "next_sequence_number": 1,
                         "schedule":
@@ -547,7 +547,8 @@ def identity(request, identity):
                 messages.add_message(
                     request,
                     messages.ERROR,
-                    'No preferred language on the identity.',
+                    'No language value in {} on the identity.'.format(
+                        settings.LANGUAGE_FIELD),
                     extra_tags='danger'
                 )
 
