@@ -583,6 +583,8 @@ def identity(request, identity):
                             "address": address,
                             "request_source": "ci"})
 
+                        info['optedout'] = True
+
                 hubApi.create_optout_admin({
                     settings.IDENTITY_FIELD: identity
                 })

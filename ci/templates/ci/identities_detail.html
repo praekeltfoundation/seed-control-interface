@@ -66,10 +66,27 @@
 </div>
 
 {% if optout_visible == True %}
+  <script src="{% static "ci/js/jquery-confirm.js" %}"></script>
+  <script type="text/javascript">
+    function do_optout(){
+        $.confirm({
+            title: '',
+            content: 'Are you sure you want to optout this user?',
+            buttons: {
+                confirm: function () {
+                    $('.optout_form')[0].submit();
+                },
+                cancel: function () {}
+            }
+        });
+        return false;
+    }
+  </script>
   <div class="call-to-action call-to-action__new-section">
-    <form class="form-inline" method="post" action=".">
-    {% csrf_token %}
-      <button type="submit" name="optout_identity" class="call-to-action__item call-to-action__item--submit-entry">Optout</button>
+    <form class="form-inline optout_form" method="post" action=".">
+      {% csrf_token %}
+      <input type="hidden" name="optout_identity" value="true">
+      <button type="button" onClick="do_optout()" class="call-to-action__item">Optout</button>
       <br/>
     </form>
   </div>
@@ -92,7 +109,7 @@
         <tr>
           <td>{{ address_type }}</td>
           <td>{{ address }}</td>
-          <td>{% for k, v in info.items %}{{ k|title }}: {{ v }}{% endfor %}</td>
+          <td>{% for k, v in info.items %}{{ k|title }}: {{ v }}<br />{% endfor %}</td>
         </tr>
           {% endfor %}
         {% endfor %}
