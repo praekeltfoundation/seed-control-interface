@@ -188,17 +188,18 @@ def login(request, template_name='ci/login.html',
             request.session['user_permissions'] = user["permissions"]
             request.session['user_id'] = user["id"]
 
-            # Set user dashboards because they are slow to change
-            dashboards = ciApi.get_user_dashboards(user["id"])
-            dashboard_list = list(dashboards['results'])
-            if len(dashboard_list) > 0:
-                request.session['user_dashboards'] = \
-                    dashboard_list[0]["dashboards"]
-                request.session['user_default_dashboard'] = \
-                    dashboard_list[0]["default_dashboard"]["id"]
-            else:
-                request.session['user_dashboards'] = []
-                request.session['user_default_dashboard'] = None
+            if not settings.HIDE_DASHBOARDS:
+                # Set user dashboards because they are slow to change
+                dashboards = ciApi.get_user_dashboards(user["id"])
+                dashboard_list = list(dashboards['results'])
+                if len(dashboard_list) > 0:
+                    request.session['user_dashboards'] = \
+                        dashboard_list[0]["dashboards"]
+                    request.session['user_default_dashboard'] = \
+                        dashboard_list[0]["default_dashboard"]["id"]
+                else:
+                    request.session['user_dashboards'] = []
+                    request.session['user_default_dashboard'] = None
 
             # Get the user access tokens too and format for easy access
             tokens = ciApi.get_user_service_tokens(
@@ -246,7 +247,8 @@ def logout(request):
 @permission_required(permission='ci:view', login_url='/login/')
 def index(request):
     if "user_default_dashboard" in request.session and \
-            request.session["user_default_dashboard"] is not None:
+            request.session["user_default_dashboard"] is not None and \
+            not settings.HIDE_DASHBOARDS:
         return HttpResponseRedirect(reverse('dashboard', args=(
             request.session["user_default_dashboard"],)))
     else:
@@ -1085,3 +1087,14 @@ def report_generation(request):
     }
     context.update(csrf(request))
     return render(request, 'ci/reports.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+@tokens_required(['SEED_IDENTITY_SERVICE'])
+def user_management(request):
+    # TODO: this
+    context = {
+    }
+    context.update(csrf(request))
+    return render(request, 'ci/user_management.html', context)
