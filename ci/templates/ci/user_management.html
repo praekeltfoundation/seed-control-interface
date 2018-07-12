@@ -19,9 +19,50 @@
 
 <div class="flextable">
   <form class="form-inline" method="get" action=".">
-    <!--<button type="submit" class="btn btn-default">Search</button>-->
+   
+    <button type="submit" class="btn btn-default">Search</button>
   </form>
 </div>
 <hr class="m-t">
-TODO: this part
+<div class="table-full">
+<div class="table-responsive">
+  <table class="table">
+    <thead>
+      <tr>
+      <th>Mobile</th>
+      <th>Receiver role</th>
+      <th>Valid registration</th>
+      <th>Created date</th>
+      <th>Updated date</th>
+      <th>State</th>
+      <th>Facility</th>
+      
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for identity in usermanagement %}
+      <tr>
+        {% with addresses=identity|get_identity_addresses %}
+        <td>{% for address, info in address.items %} {{ address }} {% endfor %} </td>
+        {% endwith %}
+        {% with receiver_role=identity|get_identity_addresses %}
+        <td> {% for role, info in role.items %} {{ receiver_role }} {% endfor %} </td>
+        {% endwith %}
+        {% if registration.validated %}
+        <td> true</td>
+        {% else %}
+        <td>false</td>
+        {% endif %}
+        <td>{{ identity.created_at|get_date|date:"D d M Y H:i" }} </td>
+        <td>{{ identity.updated_at|get_date|date:"D d M Y H:i" }}</td>
+      
+      </tr>
+      {% endfor %}
+    </tbody>
+
+  </table>
+</div>
+
+</div>
 {% endblock %}
