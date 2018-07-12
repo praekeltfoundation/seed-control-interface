@@ -258,6 +258,8 @@ def index(request):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def health_messages(request):
+    if settings.HIDE_HEALTH:
+        return redirect('denied')
     if request.is_ajax():
         METRIC_SENT_SUM = 'message.sent.sum'
         client = MetricsApiClient(
@@ -320,6 +322,8 @@ def health_messages(request):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def health_subscriptions(request):
+    if settings.HIDE_HEALTH:
+        return redirect('denied')
     if request.is_ajax():
         METRIC_SUBSCRIPTIONS_SUM = 'subscriptions.created.sum'
         client = MetricsApiClient(
@@ -361,6 +365,8 @@ def health_subscriptions(request):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def health_registrations(request):
+    if settings.HIDE_HEALTH:
+        return redirect('denied')
     if request.is_ajax():
         METRIC_REGISTRATIONS_SUM = 'registrations.created.sum'
         client = MetricsApiClient(
@@ -402,6 +408,8 @@ def health_registrations(request):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def dashboard(request, dashboard_id):
+    if settings.HIDE_DASHBOARDS:
+        return redirect('denied')
     dashboard = ciApi.get_dashboard(int(dashboard_id))
     context = {"dashboard": dashboard}
     return render(request, 'ci/dashboard.html', context)
@@ -410,6 +418,8 @@ def dashboard(request, dashboard_id):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def dashboard_metric(request):
+    if settings.HIDE_DASHBOARDS:
+        return redirect('denied')
     client = MetricsApiClient(
         settings.METRIC_API_URL,
         auth=(settings.METRIC_API_USER, settings.METRIC_API_PASSWORD))
