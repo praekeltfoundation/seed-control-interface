@@ -44,6 +44,7 @@ urlpatterns = [
     url('^reports/$', views.report_generation, name='reports'),
     url(r'^services/(?P<service>[^/]+)/$', views.service,
         name='services-detail'),
+    url('^user_management/$', views.user_management, name='user_management'),
     url('^denied/$', views.denied, name='denied'),
     url('^404/$', views.denied, name='not_found'),
     url('', views.index, name='index'),
