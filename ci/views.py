@@ -187,6 +187,7 @@ def login(request, template_name='ci/login.html',
             request.session['user_email'] = user["email"]
             request.session['user_permissions'] = user["permissions"]
             request.session['user_id'] = user["id"]
+            request.session['user_list'] = user["user_list"]
 
             if not settings.HIDE_DASHBOARDS:
                 # Set user dashboards because they are slow to change
@@ -513,6 +514,7 @@ def identity(request, identity):
         api_url=request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["url"],  # noqa
         auth_token=request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["token"]  # noqa
     )
+
     messagesets_results = sbmApi.get_messagesets()
     messagesets = {}
     schedules = {}
@@ -685,7 +687,7 @@ def identity(request, identity):
     deactivate_subscription_form = DeactivateSubscriptionForm()
     add_subscription_form = AddSubscriptionForm()
     add_subscription_form.fields['messageset'] = forms.ChoiceField(
-                                                    choices=choices)
+        choices=choices)
 
     optout_visible = False
     details = results.get('details', {})
@@ -694,6 +696,7 @@ def identity(request, identity):
     optout_visible = any(
         (not d.get('optedout') for _, d in msisdns.items()))
 
+    audit_logs = ciApi.get_auditlogs({"identity_id": identity})
     context = {
         "identity": results,
         "registrations": registrations,
@@ -704,8 +707,11 @@ def identity(request, identity):
         "add_subscription_form": add_subscription_form,
         "deactivate_subscription_form": deactivate_subscription_form,
         "inbound_messages": inbound_messages,
-        "optout_visible": optout_visible
+        "optout_visible": optout_visible,
+        "audit_logs": audit_logs,
+        "users": request.session['user_list'],
     }
+
     context.update(csrf(request))
     return render(request, 'ci/identities_detail.html', context)
 

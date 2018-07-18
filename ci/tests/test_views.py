@@ -19,6 +19,7 @@ class ViewTestsTemplate(TestCase):
         session['user_permissions'] = [{"object_id": 1, "type": "ci:view"}]
         session['user_dashboards'] = []
         session['user_id'] = 123
+        session['user_list'] = {'123': "fred@something.com"}
         session.save()
 
     def set_session_user_tokens(self):
@@ -200,6 +201,33 @@ class ViewTestsTemplate(TestCase):
             status=201,
             content_type='application/json'
         )
+
+    def add_auditlog_callback(self, identity_id, num=3, auditlogs=None):
+        if auditlogs is None:
+            auditlogs = [
+                {
+                    'id': i,
+                    "identity_id": identity_id,
+                    "subscription_id": "12121212-afaa-43de-acb1-09f61ad4de99",
+                    "action_at": "2016-08-03T19:39:26.464102Z",
+                    "action_by": 123,
+                    "action": "u",
+                    "action_name": "Update",
+                    "model": "subscription",
+                    "detail": "Language changed from eng_ZA to afr_ZA"
+                }
+                for i in range(num)
+            ]
+
+        url = 'http://localhost:8003/api/v1/auditlog/?identity_id={}'.format(
+            identity_id)
+
+        responses.add(
+            responses.GET, url, status=200, match_querystring=True,
+            json={
+                'results': auditlogs,
+            },
+            content_type='application/json')
 
 
 @override_settings(IDENTITY_MESSAGES_PAGE_SIZE=100)
@@ -443,6 +471,7 @@ class IdentityViewTest(ViewTestsTemplate):
     def test_should_display_outbound_messages(self):
         self.add_message_sender_inbound_responses()
         self.add_message_sender_outbound_responses()
+        self.add_auditlog_callback("operator_id")
         response = self.client.get('/identities/operator_id/')
 
         self.assertEqual(response.status_code, 200)
@@ -453,6 +482,7 @@ class IdentityViewTest(ViewTestsTemplate):
     def test_should_paginate_outbound_messages(self):
         self.add_message_sender_inbound_responses()
         self.add_message_sender_outbound_responses(count=2)
+        self.add_auditlog_callback("operator_id")
         response = self.client.get('/identities/operator_id/')
 
         self.assertEqual(response.status_code, 200)
@@ -462,6 +492,7 @@ class IdentityViewTest(ViewTestsTemplate):
     def test_should_display_inbound_messages(self):
         self.add_message_sender_inbound_responses()
         self.add_message_sender_outbound_responses()
+        self.add_auditlog_callback("operator_id")
         response = self.client.get('/identities/operator_id/')
 
         self.assertEqual(response.status_code, 200)
@@ -472,6 +503,7 @@ class IdentityViewTest(ViewTestsTemplate):
     def test_should_paginate_inbound_messages(self):
         self.add_message_sender_inbound_responses(count=2)
         self.add_message_sender_outbound_responses()
+        self.add_auditlog_callback("operator_id")
         response = self.client.get('/identities/operator_id/')
 
         self.assertEqual(response.status_code, 200)
@@ -482,6 +514,7 @@ class IdentityViewTest(ViewTestsTemplate):
         self.add_message_sender_inbound_responses()
         self.add_message_sender_outbound_responses()
         self.add_auditlog_create_callback()
+        self.add_auditlog_callback('operator_id')
         subscription = {
             'lang': 'eng_NG',
             'created_at': '2016-11-22T08:12:45.343829Z',
@@ -568,6 +601,7 @@ class IdentityViewTest(ViewTestsTemplate):
         self.add_registrations_callback(qs="?mother_id=identity_id")
         self.add_changes_callback(qs="?mother_id=identity_id")
         self.add_auditlog_create_callback()
+        self.add_auditlog_callback('identity_id')
 
         responses.add(
             responses.POST,
@@ -620,6 +654,7 @@ class IdentityViewTest(ViewTestsTemplate):
         self.add_registrations_callback(qs="?mother_id=identity_id")
         self.add_changes_callback(qs="?mother_id=identity_id")
         self.add_auditlog_create_callback()
+        self.add_auditlog_callback('identity_id')
 
         responses.add(
             responses.POST,
@@ -672,6 +707,7 @@ class IdentityViewTest(ViewTestsTemplate):
         self.add_registrations_callback(qs="?mother_id=identity_id")
         self.add_changes_callback(qs="?mother_id=identity_id")
         self.add_auditlog_create_callback()
+        self.add_auditlog_callback('identity_id')
 
         responses.add(
             responses.PATCH,
