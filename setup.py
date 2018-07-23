@@ -44,7 +44,7 @@ setup(
         'pytz==2015.7',
         'python-dateutil==2.5.3',
         'django-bootstrap-form==3.2.1',
-        'seed-services-client==0.35.0',
+        'seed-services-client==0.36.0',
         'openpyxl==2.4.0',
         'attrs==16.3.0',
         'django-bootstrap-datepicker==1.2.2',

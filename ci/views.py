@@ -1154,8 +1154,23 @@ def report_generation(request):
 @permission_required(permission='ci:view', login_url='/login/')
 @tokens_required(['SEED_IDENTITY_SERVICE'])
 def user_management(request):
-    # TODO: this
-    context = {
-    }
-    context.update(csrf(request))
+    if not settings.SHOW_USER_DETAILS:
+        return redirect('denied')
+
+    hubApi = HubApiClient(
+        api_url=request.session["user_tokens"]["HUB"]["url"],  # noqa
+        auth_token=request.session["user_tokens"]["HUB"]["token"]  # noqa
+    )
+
+    page = int(request.GET.get('page', 1))
+
+    results = hubApi.get_user_details({"page": page})
+
+    context = {}
+    context['users'] = results['results']
+    context['has_next'] = results['has_next']
+    context['has_previous'] = results['has_previous']
+    context['next_page_number'] = page + 1
+    context['previous_page_number'] = page - 1
+
     return render(request, 'ci/user_management.html', context)
