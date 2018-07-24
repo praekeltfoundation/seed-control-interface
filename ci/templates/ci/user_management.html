@@ -22,55 +22,11 @@
 
 <div class="flextable">
   <form class="form-inline" method="get" action=".">
-<<<<<<< HEAD
-      {{ form|bootstrap_inline }}
-    <button type="submit" class="btn btn-default">Filter</button> 
-=======
     <!-- # TODO: Filters -->
->>>>>>> develop
   </form>
 </div>
 <hr class="m-t">
 <div class="table-full">
-<<<<<<< HEAD
-<div class="table-responsive">
-  <table class="table">
-    <thead>
-      <tr>
-          <th>Identity</th>
-      <th>Mobile</th>
-      <th>Receiver role</th>
-      <th>Created date</th>
-      <th>Updated date</th>
-      <th>State</th>
-      <th>Facility</th>
-      
-      </tr>
-    </thead>
-
-    <tbody>
-        {% for identity in identities %}
-        
-        <tr>
-            {% url 'user-management-detail' identity.id as url %}
-            <td><a href="{{ url }}">{{ identity.id|truncatechars:12 }}</a></td>
-          {% with addresses=identity|get_identity_addresses %}
-          <td>{% for address, info in addresses.items %}{{ address }}{% endfor %}</td>
-          {% endwith %}
-          {% if identity.communicate_through %}
-          {% url 'identities-detail' identity.communicate_through as url %}
-          <td><a href="{{ url }}">{{ identity.communicate_through|truncatechars:12 }}</a></td>
-          {% else %}
-          <td>{{ identity.communicate_through }}</td>
-          {% endif %}
-          <td>{{ identity.created_at|get_date|date:"D d M Y H:i" }}</td>
-          <td>{{ identity.updated_at|get_date|date:"D d M Y H:i" }}</td>
-          <td>{{ identity.details.state}}</td>
-          <td>{{ identity.details.facility_name}}</td>
-        </tr>
-        {% endfor %}
-        
-=======
   <div class="table-responsive">
     <table class="table">
       <thead>
@@ -106,13 +62,10 @@
             <td>{{ user.linked_to_receiver_role|default_if_none:""|title }}</td>
         </tr>
         {% endfor %}
->>>>>>> develop
       </tbody>
     </table>
   </div>
 </div>
-<<<<<<< HEAD
-=======
 <div class="pagination pagination-list">
   {% if has_previous %}
     <a href="{% replace_query_param request.build_absolute_uri 'page' previous_page_number %}" class="pagination__link pagination__link--previous">
@@ -125,5 +78,4 @@
     </a>
   {% endif %}
 </div>
->>>>>>> develop
 {% endblock %}
