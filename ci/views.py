@@ -494,6 +494,230 @@ def identities(request):
 
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
+@tokens_required(['SEED_IDENTITY_SERVICE'])
+def user_management(request):
+    context = {}
+    idApi = IdentityStoreApiClient(
+        api_url=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["url"],  # noqa
+        auth_token=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["token"]  # noqa
+    )
+    if 'address_value' in request.GET:
+        form = IdentitySearchForm(request.GET)
+        if form.is_valid():
+            results = idApi.get_identity_by_address(
+                address_type=form.cleaned_data['address_type'],
+                address_value=form.cleaned_data['address_value'])['results']
+        else:
+            results = []
+    else:
+        form = IdentitySearchForm()
+        results = idApi.get_identities()['results']
+
+    identities = utils.get_page_of_iterator(
+        results, settings.IDENTITY_LIST_PAGE_SIZE,
+        request.GET.get('page')
+    )
+
+    context['identities'] = identities
+    context['form'] = form
+    return render(request, 'ci/user_management.html', context)
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+@tokens_required(['SEED_IDENTITY_SERVICE', 'HUB',
+                  'SEED_STAGE_BASED_MESSAGING'])
+def user_management_detail(request, identity):
+    idApi = IdentityStoreApiClient(
+        api_url=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["url"],  # noqa
+        auth_token=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["token"]  # noqa
+    )
+    hubApi = HubApiClient(
+        api_url=request.session["user_tokens"]["HUB"]["url"],  # noqa
+        auth_token=request.session["user_tokens"]["HUB"]["token"]  # noqa
+    )
+    sbmApi = StageBasedMessagingApiClient(
+        api_url=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["url"],  # noqa
+        auth_token=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["token"]  # noqa
+    )
+    msApi = MessageSenderApiClient(
+        api_url=request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["url"],  # noqa
+        auth_token=request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["token"]  # noqa
+    )
+    messagesets_results = sbmApi.get_messagesets()
+    messagesets = {}
+    schedules = {}
+    choices = []
+    for messageset in messagesets_results["results"]:
+        messagesets[messageset["id"]] = messageset["short_name"]
+        schedules[messageset["id"]] = messageset["default_schedule"]
+        choices.append((messageset["id"], messageset["short_name"]))
+
+    results = idApi.get_identity(identity)
+    sbm_filter = {
+        "identity": identity
+    }
+    subscriptions = sbmApi.get_subscriptions(params=sbm_filter)
+
+    if request.method == "POST":
+        if 'add_subscription' in request.POST:
+            form = AddSubscriptionForm(request.POST)
+            language = results['details'].get(settings.LANGUAGE_FIELD)
+
+            if language:
+
+                if form.is_valid():
+                    subscription = {
+                        "active": True,
+                        "identity": identity,
+                        "completed": False,
+                        "lang": language,
+                        "messageset": form.cleaned_data['messageset'],
+                        "next_sequence_number": 1,
+                        "schedule":
+                            schedules[form.cleaned_data['messageset']],
+                        "process_status": 0,
+                    }
+                    sbmApi.create_subscription(subscription)
+
+                    messages.add_message(
+                        request,
+                        messages.INFO,
+                        'Successfully created a subscription.',
+                        extra_tags='success'
+                    )
+            else:
+                messages.add_message(
+                    request,
+                    messages.ERROR,
+                    'No language value in {} on the identity.'.format(
+                        settings.LANGUAGE_FIELD),
+                    extra_tags='danger'
+                )
+
+        elif 'deactivate_subscription' in request.POST:
+            form = DeactivateSubscriptionForm(request.POST)
+
+            if form.is_valid():
+                data = {
+                    "active": False
+                }
+                sbmApi.update_subscription(
+                    form.cleaned_data['subscription_id'], data)
+
+                messages.add_message(
+                    request,
+                    messages.INFO,
+                    'Successfully deactivated the subscription.',
+                    extra_tags='success'
+                )
+
+        elif 'optout_identity' in request.POST:
+            try:
+                details = results.get('details', {})
+                addresses = details.get('addresses', {})
+
+                for address_type, addresses in addresses.items():
+                    for address, info in addresses.items():
+                        idApi.create_optout({
+                            "identity": identity,
+                            "optout_type": "stop",
+                            "address_type": address_type,
+                            "address": address,
+                            "request_source": "ci"})
+
+                        info['optedout'] = True
+
+                hubApi.create_optout_admin({
+                    settings.IDENTITY_FIELD: identity
+                })
+
+                messages.add_message(
+                    request,
+                    messages.INFO,
+                    'Successfully opted out.',
+                    extra_tags='success'
+                )
+            except:
+                messages.add_message(
+                    request,
+                    messages.ERROR,
+                    'Optout failed.',
+                    extra_tags='danger'
+                )
+
+    hub_filter = {
+        settings.IDENTITY_FIELD: identity
+    }
+    registrations = hubApi.get_registrations(params=hub_filter)
+    changes = hubApi.get_changes(params=hub_filter)
+    if results is None:
+        return redirect('not_found')
+
+    outbound_message_params = {
+        'to_identity': identity,
+        'ordering': '-created_at',
+    }
+    outbound_messages = msApi.get_outbounds(params=outbound_message_params)
+    outbound_page = request.GET.get('outbound_page')
+    outbound_paginator = Paginator(
+        list(outbound_messages['results']),
+        settings.IDENTITY_MESSAGES_PAGE_SIZE)
+
+    try:
+        outbound_messages = outbound_paginator.page(outbound_page)
+    except PageNotAnInteger:
+        outbound_messages = outbound_paginator.page(1)
+    except EmptyPage:
+        outbound_messages = outbound_paginator.page(
+            outbound_paginator.num_pages)
+
+    inbound_message_params = {
+        'from_identity': identity,
+        'ordering': '-created_at',
+    }
+    inbound_messages = msApi.get_inbounds(inbound_message_params)
+    inbound_page = request.GET.get('inbound_page')
+    inbound_paginator = Paginator(
+        list(inbound_messages['results']),
+        settings.IDENTITY_MESSAGES_PAGE_SIZE)
+
+    try:
+        inbound_messages = inbound_paginator.page(inbound_page)
+    except PageNotAnInteger:
+        inbound_messages = inbound_paginator.page(1)
+    except EmptyPage:
+        inbound_messages = inbound_paginator.page(inbound_paginator.num_pages)
+
+    deactivate_subscription_form = DeactivateSubscriptionForm()
+    add_subscription_form = AddSubscriptionForm()
+    add_subscription_form.fields['messageset'] = forms.ChoiceField(
+                                                    choices=choices)
+
+    optout_visible = False
+    details = results.get('details', {})
+    addresses = details.get('addresses', {})
+    msisdns = addresses.get('msisdn', {})
+    optout_visible = any(
+        (not d.get('optedout') for _, d in msisdns.items()))
+
+    context = {
+        "identity": results,
+        "registrations": registrations,
+        "changes": changes,
+        "messagesets": messagesets,
+        "subscriptions": subscriptions,
+        "outbound_messages": outbound_messages,
+        "add_subscription_form": add_subscription_form,
+        "deactivate_subscription_form": deactivate_subscription_form,
+        "inbound_messages": inbound_messages,
+        "optout_visible": optout_visible
+    }
+    context.update(csrf(request))
+    return render(request, 'ci/user_management_detail.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
 @tokens_required(['SEED_IDENTITY_SERVICE', 'HUB',
                   'SEED_STAGE_BASED_MESSAGING'])
 def identity(request, identity):
@@ -1099,12 +1323,3 @@ def report_generation(request):
     return render(request, 'ci/reports.html', context)
 
 
-@login_required(login_url='/login/')
-@permission_required(permission='ci:view', login_url='/login/')
-@tokens_required(['SEED_IDENTITY_SERVICE'])
-def user_management(request):
-    # TODO: this
-    context = {
-    }
-    context.update(csrf(request))
-    return render(request, 'ci/user_management.html', context)

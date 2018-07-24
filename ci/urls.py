@@ -13,9 +13,11 @@ urlpatterns = [
     url(r'^dashboard/(?P<dashboard_id>\d+)/', views.dashboard,
         name='dashboard'),
     url('^api/v1/metric/$', views.dashboard_metric, name='dashboard_metric'),
+    
     url('^identities/$', views.identities, name='identities'),
     url(r'^identities/(?P<identity>[^/]+)/$', views.identity,
         name='identities-detail'),
+
     url('^registrations/$', views.registrations, name='registrations'),
     url(r'^registrations/(?P<registration>[^/]+)/$', views.registration,
         name='registrations-detail'),
@@ -45,6 +47,9 @@ urlpatterns = [
     url(r'^services/(?P<service>[^/]+)/$', views.service,
         name='services-detail'),
     url('^user_management/$', views.user_management, name='user_management'),
+    url(r'^user_management/(?P<identity>[^/]+)/$', views.user_management_detail,
+        name='user-management-detail'),
+    url('^user_management_detail/$', views.user_management_detail, name='user_management_detail'),
     url('^denied/$', views.denied, name='denied'),
     url('^404/$', views.denied, name='not_found'),
     url('', views.index, name='index'),

@@ -9,7 +9,8 @@
     <h2 class="dashhead-title">User Management</h2>
   </div>
 
-  <div class="btn-toolbar dashhead-toolbar">
+
+<div class="btn-toolbar dashhead-toolbar">
     <div class="btn-toolbar-item input-with-icon">
     </div>
   </div>
@@ -17,10 +18,12 @@
 
 <hr class="m-t">
 
+
+
 <div class="flextable">
   <form class="form-inline" method="get" action=".">
-   
-    <button type="submit" class="btn btn-default">Search</button>
+      {{ form|bootstrap_inline }}
+    <button type="submit" class="btn btn-default">Filter</button> 
   </form>
 </div>
 <hr class="m-t">
@@ -29,9 +32,9 @@
   <table class="table">
     <thead>
       <tr>
+          <th>Identity</th>
       <th>Mobile</th>
       <th>Receiver role</th>
-      <th>Valid registration</th>
       <th>Created date</th>
       <th>Updated date</th>
       <th>State</th>
@@ -41,28 +44,29 @@
     </thead>
 
     <tbody>
-      {% for identity in usermanagement %}
-      <tr>
-        {% with addresses=identity|get_identity_addresses %}
-        <td>{% for address, info in address.items %} {{ address }} {% endfor %} </td>
-        {% endwith %}
-        {% with receiver_role=identity|get_identity_addresses %}
-        <td> {% for role, info in role.items %} {{ receiver_role }} {% endfor %} </td>
-        {% endwith %}
-        {% if registration.validated %}
-        <td> true</td>
-        {% else %}
-        <td>false</td>
-        {% endif %}
-        <td>{{ identity.created_at|get_date|date:"D d M Y H:i" }} </td>
-        <td>{{ identity.updated_at|get_date|date:"D d M Y H:i" }}</td>
-      
-      </tr>
-      {% endfor %}
-    </tbody>
-
-  </table>
-</div>
-
+        {% for identity in identities %}
+        
+        <tr>
+            {% url 'user-management-detail' identity.id as url %}
+            <td><a href="{{ url }}">{{ identity.id|truncatechars:12 }}</a></td>
+          {% with addresses=identity|get_identity_addresses %}
+          <td>{% for address, info in addresses.items %}{{ address }}{% endfor %}</td>
+          {% endwith %}
+          {% if identity.communicate_through %}
+          {% url 'identities-detail' identity.communicate_through as url %}
+          <td><a href="{{ url }}">{{ identity.communicate_through|truncatechars:12 }}</a></td>
+          {% else %}
+          <td>{{ identity.communicate_through }}</td>
+          {% endif %}
+          <td>{{ identity.created_at|get_date|date:"D d M Y H:i" }}</td>
+          <td>{{ identity.updated_at|get_date|date:"D d M Y H:i" }}</td>
+          <td>{{ identity.details.state}}</td>
+          <td>{{ identity.details.facility_name}}</td>
+        </tr>
+        {% endfor %}
+        
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}
