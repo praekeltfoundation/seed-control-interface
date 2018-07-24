@@ -18,6 +18,8 @@ class ViewTestsTemplate(TestCase):
         session['user_token'] = 'temptoken'
         session['user_permissions'] = [{"object_id": 1, "type": "ci:view"}]
         session['user_dashboards'] = []
+        session['user_id'] = 123
+        session['user_list'] = {'123': "fred@something.com"}
         session.save()
 
     def set_session_user_tokens(self):
@@ -191,6 +193,42 @@ class ViewTestsTemplate(TestCase):
             status=200,
             content_type='application/json')
 
+    def add_auditlog_create_callback(self):
+        responses.add(
+            responses.POST,
+            'http://localhost:8003/api/v1/auditlog/',
+            json={"foo": "bar"},
+            status=201,
+            content_type='application/json'
+        )
+
+    def add_auditlog_callback(self, identity_id, num=3, auditlogs=None):
+        if auditlogs is None:
+            auditlogs = [
+                {
+                    'id': i,
+                    "identity_id": identity_id,
+                    "subscription_id": "12121212-afaa-43de-acb1-09f61ad4de99",
+                    "action_at": "2016-08-03T19:39:26.464102Z",
+                    "action_by": 123,
+                    "action": "u",
+                    "action_name": "Update",
+                    "model": "subscription",
+                    "detail": "Language changed from eng_ZA to afr_ZA"
+                }
+                for i in range(num)
+            ]
+
+        url = 'http://localhost:8003/api/v1/auditlog/?identity_id={}'.format(
+            identity_id)
+
+        responses.add(
+            responses.GET, url, status=200, match_querystring=True,
+            json={
+                'results': auditlogs,
+            },
+            content_type='application/json')
+
 
 @override_settings(IDENTITY_MESSAGES_PAGE_SIZE=100)
 class ViewTests(ViewTestsTemplate):
@@ -245,6 +283,7 @@ class ViewTests(ViewTestsTemplate):
     def test_change_subscription(self):
         self.login()
         self.set_session_user_tokens()
+        self.add_auditlog_create_callback()
 
         subscription_id = "sub12312-63e2-4acc-9b94-26663b9bc267"
         identity_id = "mother01-63e2-4acc-9b94-26663b9bc267"
@@ -310,6 +349,28 @@ class ViewTests(ViewTestsTemplate):
                 "messageset": "test2",
                 "language": "zul_ZA",
                 "subscription": subscription_id
+            })
+
+        audit_request_language = responses.calls[3].request
+        self.assertEqual(
+            json.loads(audit_request_language.body),
+            {
+                "identity_id": identity_id,
+                "action": "Update",
+                "action_by": 123,
+                "model": "subscription",
+                "detail": "Updated language: eng_ZA to zul_ZA"
+            })
+
+        audit_request_messageset = responses.calls[4].request
+        self.assertEqual(
+            json.loads(audit_request_messageset.body),
+            {
+                "identity_id": identity_id,
+                "action": "Update",
+                "action_by": 123,
+                "model": "subscription",
+                "detail": "Updated messageset: test to test2"
             })
 
     @responses.activate
@@ -410,6 +471,7 @@ class IdentityViewTest(ViewTestsTemplate):
     def test_should_display_outbound_messages(self):
         self.add_message_sender_inbound_responses()
         self.add_message_sender_outbound_responses()
+        self.add_auditlog_callback("operator_id")
         response = self.client.get('/identities/operator_id/')
 
         self.assertEqual(response.status_code, 200)
@@ -420,6 +482,7 @@ class IdentityViewTest(ViewTestsTemplate):
     def test_should_paginate_outbound_messages(self):
         self.add_message_sender_inbound_responses()
         self.add_message_sender_outbound_responses(count=2)
+        self.add_auditlog_callback("operator_id")
         response = self.client.get('/identities/operator_id/')
 
         self.assertEqual(response.status_code, 200)
@@ -429,6 +492,7 @@ class IdentityViewTest(ViewTestsTemplate):
     def test_should_display_inbound_messages(self):
         self.add_message_sender_inbound_responses()
         self.add_message_sender_outbound_responses()
+        self.add_auditlog_callback("operator_id")
         response = self.client.get('/identities/operator_id/')
 
         self.assertEqual(response.status_code, 200)
@@ -439,6 +503,7 @@ class IdentityViewTest(ViewTestsTemplate):
     def test_should_paginate_inbound_messages(self):
         self.add_message_sender_inbound_responses(count=2)
         self.add_message_sender_outbound_responses()
+        self.add_auditlog_callback("operator_id")
         response = self.client.get('/identities/operator_id/')
 
         self.assertEqual(response.status_code, 200)
@@ -448,6 +513,8 @@ class IdentityViewTest(ViewTestsTemplate):
     def test_optout_identity(self):
         self.add_message_sender_inbound_responses()
         self.add_message_sender_outbound_responses()
+        self.add_auditlog_create_callback()
+        self.add_auditlog_callback('operator_id')
         subscription = {
             'lang': 'eng_NG',
             'created_at': '2016-11-22T08:12:45.343829Z',
@@ -508,6 +575,18 @@ class IdentityViewTest(ViewTestsTemplate):
         messages = list(response.context['messages'])
         self.assertEqual(messages[0].message, 'Successfully opted out.')
 
+        [_, _, request_audit] = filter(
+            lambda r: r.method == 'POST',
+            (r.request for r in responses.calls))
+
+        self.assertEqual(json.loads(request_audit.body), {
+            "identity_id": "operator_id",
+            "action": "Update",
+            "action_by": 123,
+            "model": "identity",
+            "detail": "Optout identity"
+        })
+
     @responses.activate
     def test_add_subscription_to_identity(self):
         """
@@ -521,6 +600,8 @@ class IdentityViewTest(ViewTestsTemplate):
         self.add_message_sender_inbound_responses(identity='identity_id')
         self.add_registrations_callback(qs="?mother_id=identity_id")
         self.add_changes_callback(qs="?mother_id=identity_id")
+        self.add_auditlog_create_callback()
+        self.add_auditlog_callback('identity_id')
 
         responses.add(
             responses.POST,
@@ -537,7 +618,7 @@ class IdentityViewTest(ViewTestsTemplate):
         self.assertEqual(
             list(response.context['messages'])[0].message,
             "Successfully created a subscription.")
-        [request] = filter(
+        [request, request_audit] = filter(
             lambda r: r.method == 'POST',
             (r.request for r in responses.calls))
         self.assertEqual(json.loads(request.body), {
@@ -549,6 +630,13 @@ class IdentityViewTest(ViewTestsTemplate):
             'next_sequence_number': 1,
             'process_status': 0,
             'schedule': 2,
+        })
+
+        self.assertEqual(json.loads(request_audit.body), {
+            "identity_id": "identity_id",
+            "action": "Create",
+            "action_by": 123,
+            "model": "subscription"
         })
 
     @responses.activate
@@ -565,6 +653,8 @@ class IdentityViewTest(ViewTestsTemplate):
         self.add_message_sender_inbound_responses(identity='identity_id')
         self.add_registrations_callback(qs="?mother_id=identity_id")
         self.add_changes_callback(qs="?mother_id=identity_id")
+        self.add_auditlog_create_callback()
+        self.add_auditlog_callback('identity_id')
 
         responses.add(
             responses.POST,
@@ -581,7 +671,7 @@ class IdentityViewTest(ViewTestsTemplate):
         self.assertEqual(
             list(response.context['messages'])[0].message,
             "Successfully created a subscription.")
-        [request] = filter(
+        [request, request_audit] = filter(
             lambda r: r.method == 'POST',
             (r.request for r in responses.calls))
         self.assertEqual(json.loads(request.body), {
@@ -593,6 +683,63 @@ class IdentityViewTest(ViewTestsTemplate):
             'next_sequence_number': 1,
             'process_status': 0,
             'schedule': 2,
+        })
+
+        self.assertEqual(json.loads(request_audit.body), {
+            "identity_id": "identity_id",
+            "action": "Create",
+            "action_by": 123,
+            "model": "subscription"
+        })
+
+    @responses.activate
+    def test_deactivate_subscription(self):
+        """
+        A POST request to the identities endpoint for deactivating a
+        subscription should return a success message, and POST the correct data
+        to the stage based messaging application to deactivate the
+        subscription.
+        """
+        self.add_identity_callback(
+            'identity_id', {'preferred_language': "zul_ZA"})
+        self.add_message_sender_outbound_responses(identity='identity_id')
+        self.add_message_sender_inbound_responses(identity='identity_id')
+        self.add_registrations_callback(qs="?mother_id=identity_id")
+        self.add_changes_callback(qs="?mother_id=identity_id")
+        self.add_auditlog_create_callback()
+        self.add_auditlog_callback('identity_id')
+
+        responses.add(
+            responses.PATCH,
+            'http://sbm.example.com/subscriptions/subscription_id/',
+            json={}, status=201, content_type='application/json'
+        )
+
+        response = self.client.post(
+            reverse('identities-detail', kwargs={'identity': 'identity_id'}),
+            {
+                'deactivate_subscription': '',
+                'subscription_id': "subscription_id"
+            }
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            list(response.context['messages'])[0].message,
+            "Successfully deactivated the subscription.")
+
+        [request, request_audit] = filter(
+            lambda r: r.method in ('POST', 'PATCH'),
+            (r.request for r in responses.calls))
+
+        self.assertEqual(json.loads(request.body), {'active': False})
+        self.assertEqual(json.loads(request_audit.body), {
+            "identity_id": "identity_id",
+            "subscription_id": "subscription_id",
+            "action": "Update",
+            "action_by": 123,
+            "model": "subscription",
+            "detail": "Deactivated subscription"
         })
 
 

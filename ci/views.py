@@ -697,17 +697,14 @@ def user_management_detail(request, identity):
     details = results.get('details', {})
     addresses = details.get('addresses', {})
     msisdns = addresses.get('msisdn', {})
-
-    
     optout_visible = any(
         (not d.get('optedout') for _, d in msisdns.items()))
-
-if result['linked_to']:
-    linked_to = idApi.get_identity(result['details']['linked_to'])
+    if result['linked_to']:
+        linked_to = idApi.get_identity(result['details']['linked_to'])
 
     context = {
         "identity": results,
-        "registrations": registrations, 
+        "registrations": registrations,
         "changes": changes,
         "messagesets": messagesets,
         "subscriptions": subscriptions,
@@ -723,8 +720,6 @@ if result['linked_to']:
 
     context.update(csrf(request))
     return render(request, 'ci/user_management_detail.html', context)
-   
-    }
 
 
 @login_required(login_url='/login/')
@@ -905,12 +900,9 @@ def identity(request, identity):
     optout_visible = any(
         (not d.get('optedout') for _, d in msisdns.items()))
 
-
-
     context = {
         "identity": results,
         "registrations": registrations,
-        
         "changes": changes,
         "messagesets": messagesets,
         "subscriptions": subscriptions,
@@ -918,10 +910,8 @@ def identity(request, identity):
         "add_subscription_form": add_subscription_form,
         "deactivate_subscription_form": deactivate_subscription_form,
         "inbound_messages": inbound_messages,
-        "optout_visible": optout_visible,
-        "linked_to": linked_to
+        "optout_visible": optout_visible
     }
-
 
     context.update(csrf(request))
     return render(request, 'ci/identities_detail.html', context)

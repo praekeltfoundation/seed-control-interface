@@ -72,11 +72,13 @@
                 {% endfor %}
               {% endif %}
 
-              <li class="nav-header"><h3 class="nav-pills__heading-topic">User Management</h3></li>
-              {% url 'user_management' as url %}
-                <li{% if request.path == url %} class="active"{% endif %}>
-                  <a href="{{ url }}">Search All Users</a>
-                </li>
+              {% if show_user_details %}
+                  <li class="nav-header"><h3 class="nav-pills__heading-topic">User Management</h3></li>
+                  {% url 'user_management' as url %}
+                    <li{% if request.path == url %} class="active"{% endif %}>
+                      <a href="{{ url }}">Search All Users</a>
+                    </li>
+              {% endif %}
 
               <li class="nav-header"><h3 class="nav-pills__heading-topic">Reporting</h3></li>
               {% url 'reports' as url %}

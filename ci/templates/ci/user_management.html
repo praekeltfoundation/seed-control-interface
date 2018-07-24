@@ -22,12 +22,17 @@
 
 <div class="flextable">
   <form class="form-inline" method="get" action=".">
+<<<<<<< HEAD
       {{ form|bootstrap_inline }}
     <button type="submit" class="btn btn-default">Filter</button> 
+=======
+    <!-- # TODO: Filters -->
+>>>>>>> develop
   </form>
 </div>
 <hr class="m-t">
 <div class="table-full">
+<<<<<<< HEAD
 <div class="table-responsive">
   <table class="table">
     <thead>
@@ -65,8 +70,60 @@
         </tr>
         {% endfor %}
         
+=======
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Mobile Number</th>
+          <th>Receiver Role</th>
+          <th>Valid</th>
+          <th>Created</th>
+          <th>Updated</th>
+          <th>State</th>
+          <th>Facility</th>
+          <th>Linked To</th>
+          <th>Linked Role</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+        <tr>
+            {% url 'identities-detail' user.identity_id as url %}
+            <td><a href="{{ url }}">{{ user.msisdn }}</a></td>
+            <td>{{ user.receiver_role|title }}</td>
+            <td>{{ user.validated }}</td>
+            <td>{{ user.created_at|get_date|date:"D d M Y H:i" }}</td>
+            <td>{{ user.updated_at|get_date|date:"D d M Y H:i" }}</td>
+            <td>{{ user.state|default_if_none:"" }}</td>
+            <td>{{ user.facility_name|default_if_none:"" }}</td>
+            {% if user.linked_to_msisdn %}
+                {% url 'identities-detail' user.linked_to_id as url %}
+                <td><a href="{{ url }}">{{ user.linked_to_msisdn|default_if_none:"" }}</a></td>
+            {% else %}
+                <td></td>
+            {% endif%}
+            <td>{{ user.linked_to_receiver_role|default_if_none:""|title }}</td>
+        </tr>
+        {% endfor %}
+>>>>>>> develop
       </tbody>
     </table>
   </div>
 </div>
+<<<<<<< HEAD
+=======
+<div class="pagination pagination-list">
+  {% if has_previous %}
+    <a href="{% replace_query_param request.build_absolute_uri 'page' previous_page_number %}" class="pagination__link pagination__link--previous">
+      <span class="pagination__link--arrow">&larr;</span>Prev
+    </a>
+  {% endif %}
+  {% if has_next %}
+    <a href="{% replace_query_param request.build_absolute_uri 'page' next_page_number %}" class="pagination__link pagination__link--next">Next
+      <span class="pagination__link--arrow">&rarr;</span>
+    </a>
+  {% endif %}
+</div>
+>>>>>>> develop
 {% endblock %}

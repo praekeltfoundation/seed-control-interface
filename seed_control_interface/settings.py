@@ -109,6 +109,7 @@ TEMPLATES = [
                 'ci.context_processors.dashboards',
                 'ci.context_processors.hide_health',
                 'ci.context_processors.hide_dashboards',
+                'ci.context_processors.show_user_details',
                 'ci.context_processors.logo_url',
                 'django.contrib.auth.context_processors.auth',
                 'django.template.context_processors.debug',
@@ -193,6 +194,7 @@ ACTIONS = tuple(
 
 HIDE_DASHBOARDS = os.environ.get("HIDE_DASHBOARDS", False)
 HIDE_HEALTH = os.environ.get("HIDE_HEALTH", False)
+SHOW_USER_DETAILS = os.environ.get("SHOW_USER_DETAILS", False)
 
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'localhost')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
