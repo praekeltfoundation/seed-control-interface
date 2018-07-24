@@ -56,7 +56,7 @@
             {% else %}
                 <td></td>
             {% endif%}
-            <td>{{ user.linked_to_receiver_role|default_if_none:"" }}</td>
+            <td>{{ user.linked_to_receiver_role|default_if_none:""|title }}</td>
         </tr>
         {% endfor %}
       </tbody>
