@@ -65,6 +65,11 @@ class AuthenticationForm(forms.Form):
 ADDRESS_TYPES = (
     ("msisdn", "Cell Phone"),
 )
+STATUS_TYPES = (
+    ("*", "All"),
+    ("valid", "Valid"),
+    ("invalid", "Invalid"),
+)
 
 
 class IdentitySearchForm(forms.Form):
@@ -77,6 +82,20 @@ class IdentitySearchForm(forms.Form):
 
 class AddSubscriptionForm(forms.Form):
     messageset = forms.IntegerField()
+
+
+class UserDetailSearchForm(forms.Form):
+    msisdn = forms.CharField(
+        widget=forms.TextInput(attrs={'placeholder': 'Mobile Number'}),
+        required=False)
+    state = forms.CharField(required=False)
+    facility = forms.CharField(
+        widget=forms.TextInput(attrs={'placeholder': 'Facility'}),
+        required=False)
+    status = forms.ChoiceField(choices=STATUS_TYPES, required=False)
+    date = forms.DateField(widget=DatePicker(options={
+        'placeholder': 'YYYY-MM-DD', 'format': 'yyyy-mm-dd',
+        'autoclose': True}), required=False)
 
 
 class DeactivateSubscriptionForm(forms.Form):
