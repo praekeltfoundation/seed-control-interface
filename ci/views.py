@@ -38,7 +38,8 @@ from .forms import (AuthenticationForm, IdentitySearchForm,
                     RegistrationFilterForm, SubscriptionFilterForm,
                     ChangeFilterForm, ReportGenerationForm,
                     AddSubscriptionForm, DeactivateSubscriptionForm,
-                    ChangeSubscriptionForm, MsisdnReportGenerationForm)
+                    ChangeSubscriptionForm, MsisdnReportGenerationForm,
+                    UserDetailSearchForm)
 from . import utils
 
 logger = logging.getLogger(__name__)
@@ -1345,3 +1346,40 @@ def report_generation(request):
     return render(request, 'ci/reports.html', context)
 
 
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+@tokens_required(['SEED_IDENTITY_SERVICE'])
+def user_management(request):
+    if not settings.SHOW_USER_DETAILS:
+        return redirect('denied')
+
+    hubApi = HubApiClient(
+        api_url=request.session["user_tokens"]["HUB"]["url"],  # noqa
+        auth_token=request.session["user_tokens"]["HUB"]["token"]  # noqa
+    )
+
+    page = int(request.GET.get('page', 1))
+    filters = {"page": page}
+    form = UserDetailSearchForm(request.GET)
+    if form.is_valid():
+        for key, value in form.cleaned_data.items():
+            if value:
+                filters[key] = value
+
+    results = hubApi.get_user_details(filters)
+
+    states = [('*', 'All')]
+    for state in hubApi.get_states()['results']:
+        states.append((state['name'], state['name']))
+
+    form.fields['state'] = forms.ChoiceField(choices=states)
+
+    context = {}
+    context['users'] = results['results']
+    context['has_next'] = results['has_next']
+    context['has_previous'] = results['has_previous']
+    context['next_page_number'] = page + 1
+    context['previous_page_number'] = page - 1
+    context['form'] = form
+
+    return render(request, 'ci/user_management.html', context)
