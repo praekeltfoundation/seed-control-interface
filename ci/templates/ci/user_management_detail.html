@@ -27,15 +27,12 @@
   <div class="table-responsive">
     <table class="table" data-sort="table">
       <tbody>
-
           <tr align='center'>
               <th>Mobile number:</th>
-              
               {% with addresses=identity|get_identity_addresses %}
               <td>{% for address, info in addresses.items %}{{ address }}{% endfor %}</td>
               {% endwith %}
             </tr>
-
             <tr align='center'>
           <th>Unique ID:</th>
           {% url 'identities-detail' identity.id as url %}
@@ -58,13 +55,9 @@
           <td> <a href="{{ url }}"> {{ identity.details.linked_to }}</a></td>
           {% endif %}
         </tr>
-        <tr>
+        <tr align='center'>
             <th>Linked role:</th>
-            {% with addresses=identity|get_identity_addresses %}
-              <td>{% for address, info in addresses.items.receiver_role %}{{ address }}
-              {% endfor %}</td>
-              {% endwith %}                 
-                  
+            <td>{{ linked_to.details.receiver_role|default_if_none:""|title  }}</td>         
         </tr>
         </tbody>
       </table>   
@@ -79,15 +72,17 @@
               {% for registration in registrations.results %}
               <tr align='left'>
                   <th>Gravida:</th>               
-              <td>{{ registration.data.gravida }}</td>
+              <td>{{ registration.data.gravida |default_if_none:""|title }}</td>
             </tr>            
             <tr align='left'>
                 <th>Validated registration:</th> 
                 {% url 'registrations-detail' registration.id as url %}
                 <td><a href="{{ url }}">{{ registration.validated }}</a></td>                        
           </tr>
-          
-
+          <tr align='left'>
+              <th>Invalid fields:</th>               
+          <td>{{ registration.data.invalid_fields |default_if_none:""|title }}</td>
+        </tr>            
             {% endfor %}
           </tbody>
         </table>
@@ -164,8 +159,7 @@
                     <td>{{ identity.details.preferred_msg_times }}</td>
                     {% endif %}
                     {% endif %}
-                  </tr>
-                  
+                  </tr>               
             </tbody>
           </table>
         </div>
@@ -177,17 +171,20 @@
         <div class="table-responsive">
           <table class="table" data-sort="table">
             <tbody>                
-                <tr>
+                <tr align='center'>
                     <th>Registered by:</th>
-                    <td>{{ identity.details.receiver_id }}</td>
+                    {% url 'identities-detail' identity.id as url %}                                         
+                    <td><a href="{{ url }}">{{ operator.details.name|default_if_none:""|title }}
+                            {{ operator.details.surname|default_if_none:""|title }} </a></td>
+                    </td>
                   </tr>
-                  <tr>
+                  <tr align='center'>
                       <th>Facility Name:</th>
-                      <td>{{ identity.details.facility_name }}</td>
+                      <td>{{ operator.details.facility_name |default_if_none:""|title }}</td>
                     </tr>
-                    <tr>
+                    <tr align='center'>
                         <th>State:</th>
-                        <td>{{ identity.details.state }}</td>
+                        <td>{{ operator.details.state |default_if_none:""|title }}</td>
                       </tr>                  
       </tbody>
     </table>

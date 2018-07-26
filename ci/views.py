@@ -547,6 +547,11 @@ def user_management_detail(request, identity):
     messagesets = {}
     schedules = {}
     choices = []
+    linked_to = []
+    operator_id = []
+   
+    
+   
     for messageset in messagesets_results["results"]:
         messagesets[messageset["id"]] = messageset["short_name"]
         schedules[messageset["id"]] = messageset["default_schedule"]
@@ -699,9 +704,18 @@ def user_management_detail(request, identity):
     msisdns = addresses.get('msisdn', {})
     optout_visible = any(
         (not d.get('optedout') for _, d in msisdns.items()))
-    if result['linked_to']:
-        linked_to = idApi.get_identity(result['details']['linked_to'])
+    
+   
 
+    if results['details'].get('linked_to'):
+        linked_to = idApi.get_identity(results['details']['linked_to'])
+
+    print (results)
+    if results['details'].get('operator', results.get('operator')):
+        print ("hellllllllooooooo operator", operator_id)
+        operator_id = idApi.get_identity(results['details'].get('operator', results.get('operator')))
+         
+    
     context = {
         "identity": results,
         "registrations": registrations,
@@ -713,7 +727,8 @@ def user_management_detail(request, identity):
         "deactivate_subscription_form": deactivate_subscription_form,
         "inbound_messages": inbound_messages,
         "optout_visible": optout_visible,
-        "linked_to": linked_to
+        "linked_to": linked_to,
+        "operator": operator_id
     }
 
 
