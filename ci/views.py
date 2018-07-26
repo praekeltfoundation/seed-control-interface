@@ -492,41 +492,6 @@ def identities(request):
     context['form'] = form
     return render(request, 'ci/identities.html', context)
 
-
-@login_required(login_url='/login/')
-@permission_required(permission='ci:view', login_url='/login/')
-@tokens_required(['SEED_IDENTITY_SERVICE'])
-def user_management(request):
-    context = {}
-    idApi = IdentityStoreApiClient(
-        api_url=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["url"],  # noqa
-        auth_token=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["token"]  # noqa
-    )
-    if 'address_value' in request.GET:
-        form = IdentitySearchForm(request.GET)
-        if form.is_valid():
-            results = idApi.get_identity_by_address(
-                address_type=form.cleaned_data['address_type'],
-                address_value=form.cleaned_data['address_value'])['results']
-        else:
-            results = []
-    else:
-        form = IdentitySearchForm()
-        results = idApi.get_identities()['results']
-
-    identities = utils.get_page_of_iterator(
-        results, settings.IDENTITY_LIST_PAGE_SIZE,
-        request.GET.get('page')
-    )
-
-    context['identities'] = identities
-    context['form'] = form
-    return render(request, 'ci/user_management.html', context)
-
-@login_required(login_url='/login/')
-@permission_required(permission='ci:view', login_url='/login/')
-@tokens_required(['SEED_IDENTITY_SERVICE', 'HUB',
-                  'SEED_STAGE_BASED_MESSAGING'])
 def user_management_detail(request, identity):
     idApi = IdentityStoreApiClient(
         api_url=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["url"],  # noqa
