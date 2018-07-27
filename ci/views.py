@@ -520,7 +520,6 @@ def user_management_detail(request, identity):
     if results['details'].get('linked_to'):
         linked_to = idApi.get_identity(results['details']['linked_to'])
 
-    print(results)
     if results['details'].get('operator', results.get('operator')):
         operator_id = idApi.get_identity(
                     results['details'].get(
