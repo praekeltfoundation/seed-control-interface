@@ -568,6 +568,7 @@ def identity(request, identity):
         api_url=request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["url"],  # noqa
         auth_token=request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["token"]  # noqa
     )
+
     messagesets_results = sbmApi.get_messagesets()
     messagesets = {}
     schedules = {}
@@ -610,6 +611,13 @@ def identity(request, identity):
                         'Successfully created a subscription.',
                         extra_tags='success'
                     )
+
+                    ciApi.create_auditlog({
+                        "identity_id": identity,
+                        "action": "Create",
+                        "action_by": request.session['user_id'],
+                        "model": "subscription"
+                   })
             else:
                 messages.add_message(
                     request,
@@ -635,6 +643,15 @@ def identity(request, identity):
                     'Successfully deactivated the subscription.',
                     extra_tags='success'
                 )
+
+                ciApi.create_auditlog({
+                    "identity_id": identity,
+                    "subscription_id": form.cleaned_data['subscription_id'],
+                    "action": "Update",
+                    "action_by": request.session['user_id'],
+                    "model": "subscription",
+                    "detail": "Deactivated subscription"
+                })
 
         elif 'optout_identity' in request.POST:
             try:
@@ -662,6 +679,14 @@ def identity(request, identity):
                     'Successfully opted out.',
                     extra_tags='success'
                 )
+
+                ciApi.create_auditlog({
+                    "identity_id": identity,
+                    "action": "Update",
+                    "action_by": request.session['user_id'],
+                    "model": "identity",
+                    "detail": "Optout identity"
+                })
             except:
                 messages.add_message(
                     request,
@@ -716,7 +741,7 @@ def identity(request, identity):
     deactivate_subscription_form = DeactivateSubscriptionForm()
     add_subscription_form = AddSubscriptionForm()
     add_subscription_form.fields['messageset'] = forms.ChoiceField(
-                                                    choices=choices)
+        choices=choices)
 
     optout_visible = False
     details = results.get('details', {})
@@ -725,6 +750,7 @@ def identity(request, identity):
     optout_visible = any(
         (not d.get('optedout') for _, d in msisdns.items()))
 
+    audit_logs = ciApi.get_auditlogs({"identity_id": identity})
     context = {
         "identity": results,
         "registrations": registrations,
@@ -735,7 +761,9 @@ def identity(request, identity):
         "add_subscription_form": add_subscription_form,
         "deactivate_subscription_form": deactivate_subscription_form,
         "inbound_messages": inbound_messages,
-        "optout_visible": optout_visible
+        "optout_visible": optout_visible,
+        "audit_logs": audit_logs,
+        "users": request.session['user_list']
     }
 
     context.update(csrf(request))
@@ -944,6 +972,27 @@ def subscription(request, subscription):
                         'Successfully added change.',
                         extra_tags='success'
                     )
+
+                    if lang != results["lang"]:
+                        ciApi.create_auditlog({
+                            "identity_id": results["identity"],
+                            "action": "Update",
+                            "action_by": request.session['user_id'],
+                            "model": "subscription",
+                            "detail": "Updated language: {} to {}".format(
+                                results["lang"], lang)
+                        })
+                    if messageset != results["messageset"]:
+                        ciApi.create_auditlog({
+                            "identity_id": results["identity"],
+                            "action": "Update",
+                            "action_by": request.session['user_id'],
+                            "model": "subscription",
+                            "detail": "Updated messageset: {} to {}".format(
+                                messagesets[results["messageset"]],
+                                messagesets[messageset])
+                        })
+                        
         except:
             messages.add_message(
                 request,
