@@ -515,9 +515,7 @@ def user_management_detail(request, identity):
     choices = []
     linked_to = []
     operator_id = []
-   
-    
-   
+
     for messageset in messagesets_results["results"]:
         messagesets[messageset["id"]] = messageset["short_name"]
         schedules[messageset["id"]] = messageset["default_schedule"]
@@ -527,150 +525,6 @@ def user_management_detail(request, identity):
     sbm_filter = {
         "identity": identity
     }
-    subscriptions = sbmApi.get_subscriptions(params=sbm_filter)
-
-    if request.method == "POST":
-        if 'add_subscription' in request.POST:
-            form = AddSubscriptionForm(request.POST)
-            language = results['details'].get(settings.LANGUAGE_FIELD)
-
-            if language:
-
-                if form.is_valid():
-                    subscription = {
-                        "active": True,
-                        "identity": identity,
-                        "completed": False,
-                        "lang": language,
-                        "messageset": form.cleaned_data['messageset'],
-                        "next_sequence_number": 1,
-                        "schedule":
-                            schedules[form.cleaned_data['messageset']],
-                        "process_status": 0,
-                    }
-                    sbmApi.create_subscription(subscription)
-
-                    messages.add_message(
-                        request,
-                        messages.INFO,
-                        'Successfully created a subscription.',
-                        extra_tags='success'
-                    )
-            else:
-                messages.add_message(
-                    request,
-                    messages.ERROR,
-                    'No language value in {} on the identity.'.format(
-                        settings.LANGUAGE_FIELD),
-                    extra_tags='danger'
-                )
-
-        elif 'deactivate_subscription' in request.POST:
-            form = DeactivateSubscriptionForm(request.POST)
-
-            if form.is_valid():
-                data = {
-                    "active": False
-                }
-                sbmApi.update_subscription(
-                    form.cleaned_data['subscription_id'], data)
-
-                messages.add_message(
-                    request,
-                    messages.INFO,
-                    'Successfully deactivated the subscription.',
-                    extra_tags='success'
-                )
-
-        elif 'optout_identity' in request.POST:
-            try:
-                details = results.get('details', {})
-                addresses = details.get('addresses', {})
-
-                for address_type, addresses in addresses.items():
-                    for address, info in addresses.items():
-                        idApi.create_optout({
-                            "identity": identity,
-                            "optout_type": "stop",
-                            "address_type": address_type,
-                            "address": address,
-                            "request_source": "ci"})
-
-                        info['optedout'] = True
-
-                hubApi.create_optout_admin({
-                    settings.IDENTITY_FIELD: identity
-                })
-
-                messages.add_message(
-                    request,
-                    messages.INFO,
-                    'Successfully opted out.',
-                    extra_tags='success'
-                )
-            except:
-                messages.add_message(
-                    request,
-                    messages.ERROR,
-                    'Optout failed.',
-                    extra_tags='danger'
-                )
-
-    hub_filter = {
-        settings.IDENTITY_FIELD: identity
-    }
-    registrations = hubApi.get_registrations(params=hub_filter)
-    changes = hubApi.get_changes(params=hub_filter)
-    if results is None:
-        return redirect('not_found')
-
-    outbound_message_params = {
-        'to_identity': identity,
-        'ordering': '-created_at',
-    }
-    outbound_messages = msApi.get_outbounds(params=outbound_message_params)
-    outbound_page = request.GET.get('outbound_page')
-    outbound_paginator = Paginator(
-        list(outbound_messages['results']),
-        settings.IDENTITY_MESSAGES_PAGE_SIZE)
-
-    try:
-        outbound_messages = outbound_paginator.page(outbound_page)
-    except PageNotAnInteger:
-        outbound_messages = outbound_paginator.page(1)
-    except EmptyPage:
-        outbound_messages = outbound_paginator.page(
-            outbound_paginator.num_pages)
-
-    inbound_message_params = {
-        'from_identity': identity,
-        'ordering': '-created_at',
-    }
-    inbound_messages = msApi.get_inbounds(inbound_message_params)
-    inbound_page = request.GET.get('inbound_page')
-    inbound_paginator = Paginator(
-        list(inbound_messages['results']),
-        settings.IDENTITY_MESSAGES_PAGE_SIZE)
-
-    try:
-        inbound_messages = inbound_paginator.page(inbound_page)
-    except PageNotAnInteger:
-        inbound_messages = inbound_paginator.page(1)
-    except EmptyPage:
-        inbound_messages = inbound_paginator.page(inbound_paginator.num_pages)
-
-    deactivate_subscription_form = DeactivateSubscriptionForm()
-    add_subscription_form = AddSubscriptionForm()
-    add_subscription_form.fields['messageset'] = forms.ChoiceField(
-                                                    choices=choices)
-
-    optout_visible = False
-    details = results.get('details', {})
-    addresses = details.get('addresses', {})
-    msisdns = addresses.get('msisdn', {})
-    optout_visible = any(
-        (not d.get('optedout') for _, d in msisdns.items()))
-    
    
 
     if results['details'].get('linked_to'):
@@ -678,30 +532,20 @@ def user_management_detail(request, identity):
 
     print (results)
     if results['details'].get('operator', results.get('operator')):
-        print ("hellllllllooooooo operator", operator_id)
-        operator_id = idApi.get_identity(results['details'].get('operator', results.get('operator')))
+        operator_id = idApi.get_identity(
+                    results['details'].get('operator', results.get('operator')))
          
-    
     context = {
         "identity": results,
         "registrations": registrations,
-        "changes": changes,
         "messagesets": messagesets,
         "subscriptions": subscriptions,
-        "outbound_messages": outbound_messages,
-        "add_subscription_form": add_subscription_form,
-        "deactivate_subscription_form": deactivate_subscription_form,
-        "inbound_messages": inbound_messages,
-        "optout_visible": optout_visible,
         "linked_to": linked_to,
         "operator": operator_id
     }
 
-
-
     context.update(csrf(request))
     return render(request, 'ci/user_management_detail.html', context)
-
 
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')

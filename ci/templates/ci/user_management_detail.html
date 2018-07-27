@@ -73,59 +73,56 @@
         <table class="table" data-sort="table">
           <tbody>
             {% for registration in registrations.results %}
-            <tr align='left'>
+            <tr align='center'>
               <th>Gravida:</th>
               <td>{{ registration.data.gravida |default_if_none:""|title }}</td>
             </tr>
-            <tr align='left'>
+            <tr align='center'>
               <th>Validated registration:</th>
               {% url 'registrations-detail' registration.id as url %}
               <td>
                 <a href="{{ url }}">{{ registration.validated }}</a>
               </td>
             </tr>
-            <tr align='left'>
+            <tr align='center'>
               <th>Invalid fields:</th>
-              <td>{{ registration.data.invalid_fields |default_if_none:""|title }}</td>
-            </tr>
+              <td>{{ registration.data.invalid_fields |default_if_none:""|title }}</td>            
             {% endfor %}
+          </tr>
           </tbody>
         </table>
       </div>
     </div>
 
 
-      <h3>Message Details</h3>
-      <div class="table-full">
-        <div class="table-responsive">
-          <table class="table" data-sort="table">
+    <h3>Message Details</h3>
+    <div class="table-full">
+      <div class="table-responsive">
+        <table class="table" data-sort="table">
+          <tbody>
             {% for subscription in subscriptions.results|dictsortreversed:'active' %}
-            <tbody>
-              <tr align='center'>
-                {% if subscription.active == True %}
-                <th>Current Message Set</th>
-                <td>{{ messagesets|get_item:subscription.messageset }}</td>
-                {% elif subscription.active == False %}
-                <th>Current Message Set</th>
-                <td>No active subscription</td>
-                {% else %}
-                <td>User was never assigned a susbcription</td>
-                {% endif %}
-              </tr>
+            <tr align='center'>
+              {% if subscription.active %}
+              <th>Current Message Set</th>
+              <td>{{ messagesets|get_item:subscription.messageset }}</td>
+            </tr>
+            {% endif %} {% empty %}
+            <tr align='center'>
+              <th>Current Message Set</th>
+              <td>User has no subscriptions</td>
               {% endfor %}
-      
-            </tbody>
-          </table>
-        </div>
+            </tr>
+          </tbody>
+        </table>
       </div>
+    </div>
 
 
       <div class="table-full">
         <div class="table-responsive">
           <table class="table" data-sort="table">
-      
             <tbody>
-              <tr>
+                <tr align='center'>
                 <th>Message Type</th>
                 {% if identity.details.preferred_msg_type == none %}
                 <td>User has no message type</td>
@@ -134,7 +131,7 @@
                 {% endif %} {% endif %}
               </tr>
       
-              <tr>
+              <tr align='center'>
                 <th>Preferred Language</th>
                 {% if identity.details.preferred_language == none %}
                 <td>User has no language preference</td>
@@ -142,7 +139,7 @@
                 <td>{{ identity.details.preferred_language }}</td>
                 {% endif %} {% endif %}
               </tr>
-              <tr>
+              <tr align='center'>
                 <th>Preferred Message Days</th>
                 {% if identity.details.preferred_msg_days == none %}
                 <td>User has no message day preference</td>
@@ -150,7 +147,7 @@
                 <td>{{ identity.details.preferred_msg_days }}</td>
                 {% endif %} {% endif %}
               </tr>
-              <tr>
+              <tr align='center'>
                 <th>Preferred Message Time</th>
                 {% if identity.details.preferred_msg_times == none %}
                 <td>User has no message time preference</td>
