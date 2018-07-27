@@ -188,6 +188,7 @@ def login(request, template_name='ci/login.html',
             request.session['user_email'] = user["email"]
             request.session['user_permissions'] = user["permissions"]
             request.session['user_id'] = user["id"]
+            request.session['user_list'] = user["user_list"]
 
             if not settings.HIDE_DASHBOARDS:
                 # Set user dashboards because they are slow to change
@@ -492,22 +493,15 @@ def identities(request):
     context['form'] = form
     return render(request, 'ci/identities.html', context)
 
+
 def user_management_detail(request, identity):
     idApi = IdentityStoreApiClient(
         api_url=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["url"],  # noqa
         auth_token=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["token"]  # noqa
     )
-    hubApi = HubApiClient(
-        api_url=request.session["user_tokens"]["HUB"]["url"],  # noqa
-        auth_token=request.session["user_tokens"]["HUB"]["token"]  # noqa
-    )
     sbmApi = StageBasedMessagingApiClient(
         api_url=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["url"],  # noqa
         auth_token=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["token"]  # noqa
-    )
-    msApi = MessageSenderApiClient(
-        api_url=request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["url"],  # noqa
-        auth_token=request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["token"]  # noqa
     )
     messagesets_results = sbmApi.get_messagesets()
     messagesets = {}
@@ -522,19 +516,16 @@ def user_management_detail(request, identity):
         choices.append((messageset["id"], messageset["short_name"]))
 
     results = idApi.get_identity(identity)
-    sbm_filter = {
-        "identity": identity
-    }
-   
 
     if results['details'].get('linked_to'):
         linked_to = idApi.get_identity(results['details']['linked_to'])
 
-    print (results)
+    print(results)
     if results['details'].get('operator', results.get('operator')):
         operator_id = idApi.get_identity(
-                    results['details'].get('operator', results.get('operator')))
-         
+                    results['details'].get(
+                        'operator', results.get('operator')))
+
     context = {
         "identity": results,
         "registrations": registrations,
@@ -546,6 +537,7 @@ def user_management_detail(request, identity):
 
     context.update(csrf(request))
     return render(request, 'ci/user_management_detail.html', context)
+
 
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
@@ -617,7 +609,7 @@ def identity(request, identity):
                         "action": "Create",
                         "action_by": request.session['user_id'],
                         "model": "subscription"
-                   })
+                    })
             else:
                 messages.add_message(
                     request,
@@ -992,7 +984,7 @@ def subscription(request, subscription):
                                 messagesets[results["messageset"]],
                                 messagesets[messageset])
                         })
-                        
+
         except:
             messages.add_message(
                 request,

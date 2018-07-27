@@ -106,9 +106,12 @@ class ChangeSubscriptionForm(forms.Form):
     language = forms.CharField()
     messageset = forms.IntegerField()
 
+
 default_stage = (
     ('', "Stage - all"),
 )
+
+
 STAGE_CHOICES = default_stage + settings.STAGES
 
 VALIDATED_CHOICES = (
