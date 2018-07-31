@@ -976,3 +976,45 @@ class SubscriptionsViewTest(ViewTestsTemplate):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(context['subscriptions']), 5)
+
+
+class UserDetailViewTest(ViewTestsTemplate):
+
+    def setUp(self):
+        self.login()
+        self.set_session_user_tokens()
+
+    @responses.activate
+    def test_get_user_detail(self):
+        """
+        Doing a GET request should return a page of the user detail.
+        """
+        self.add_identity_callback(
+            'identity_id', {
+                'preferred_language': "zul_ZA",
+                'linked_to': "linked_to_identity",
+                'operator': "operator_id"
+            })
+        self.add_identity_callback('linked_to_identity', {})
+        self.add_identity_callback('operator_id')
+        self.add_messagesets_callback([{
+            'id': 1,
+            'short_name': 'ms.1',
+            'default_schedule': 2,
+        }])
+        self.add_registrations_callback(qs="?mother_id=identity_id")
+        self.add_subscriptions_callback(num=10, qs="?identity=identity_id")
+
+        response = self.client.get(reverse('user-management-detail',
+                                   kwargs={'identity': 'identity_id'}))
+        context = response.context
+
+        self.assertEqual(response.status_code, 200)
+
+        self.assertEqual(context['identity']['details']['preferred_language'],
+                         "zul_ZA")
+        self.assertEqual(context['messagesets'], {1: "ms.1"})
+        self.assertEqual(context['linked_to']['identity'],
+                         "linked_to_identity")
+        self.assertEqual(context['operator']['identity'],
+                         "operator_id")

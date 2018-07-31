@@ -1,0 +1,192 @@
+{% extends "ci/base.html" %}
+{% load staticfiles %}
+{% load bootstrap %}
+{% load seed %}
+{% block pagetitle %}User Management{% endblock %}
+{% block content %}
+<div class="dashhead">
+  <div class="dashhead-titles">
+    <h6 class="dashhead-subtitle">Seed Control Interface</h6>
+    <h2 class="dashhead-title">User Management</h2>
+  </div>
+
+  <div class="btn-toolbar dashhead-toolbar">
+    <div class="btn-toolbar-item input-with-icon">
+    </div>
+  </div>
+</div>
+
+<hr class="m-t">
+
+{% for message in messages %}
+<div class="alert alert-{{ message.tags }}">{{ message }}</div>
+{% endfor %}
+
+<h3>User Details</h3>
+<div class="table-full">
+  <div class="table-responsive">
+    <table class="table" data-sort="table">
+      <tbody>
+        <tr align='center'>
+          <th>Mobile number:</th>
+          {% with addresses=identity|get_identity_addresses %}
+          <td>{% for address, info in addresses.items %}{{ address }}{% endfor %}</td>
+          {% endwith %}
+        </tr>
+        <tr align='center'>
+          <th>Unique ID:</th>
+          {% url 'identities-detail' identity.id as url %}
+          <td>
+            <a href="{{ url }}">{{ identity.id|truncatechars:12 }}</a>
+          </td>
+        </tr>
+        <tr align='center'>
+          <th>Receiver role</th>
+          <td> {{ identity.details.receiver_role|title }}</td>
+        </tr>
+        <tr align='center'>
+          <th>Registration date</th>
+          <td>{{ identity.created_at|get_date|date:"D d M Y H:i" }} </td>
+        </tr>
+        <tr align='center'>
+          <th>Linked to:</th>
+          {% if identity.details.linked_to == None %}
+          <td>Mother is not linked to a gatekeeper </td>
+          {% else %} {% url 'identities-detail' identity.details.linked_to as url %}
+          <td>
+            <a href="{{ url }}"> {{ identity.details.linked_to }}</a>
+          </td>
+          {% endif %}
+        </tr>
+        <tr align='center'>
+          <th>Linked role:</th>
+          <td>{{ linked_to.details.receiver_role|default_if_none:""|title }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+    <div class="table-full">
+      <div class="table-responsive">
+        <table class="table" data-sort="table">
+          <tbody>
+            {% for registration in registrations.results %}
+            <tr align='center'>
+              <th>Gravida:</th>
+              <td>{{ registration.data.gravida |default_if_none:""|title }}</td>
+            </tr>
+            <tr align='center'>
+              <th>Validated registration:</th>
+              {% url 'registrations-detail' registration.id as url %}
+              <td>
+                <a href="{{ url }}">{{ registration.validated }}</a>
+              </td>
+            </tr>
+            <tr align='center'>
+              <th>Invalid fields:</th>
+              <td>{{ registration.data.invalid_fields |default_if_none:""|title }}</td>
+            {% endfor %}
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+
+    <h3>Message Details</h3>
+    <div class="table-full">
+      <div class="table-responsive">
+        <table class="table" data-sort="table">
+          <tbody>
+            {% for subscription in subscriptions.results|dictsortreversed:'active' %}
+            <tr align='center'>
+              {% if subscription.active %}
+              <th>Current Message Set</th>
+              <td>{{ messagesets|get_item:subscription.messageset }}</td>
+            </tr>
+            {% endif %} {% empty %}
+            <tr align='center'>
+              <th>Current Message Set</th>
+              <td>User has no subscriptions</td>
+              {% endfor %}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+
+      <div class="table-full">
+        <div class="table-responsive">
+          <table class="table" data-sort="table">
+            <tbody>
+                <tr align='center'>
+                <th>Message Type</th>
+                {% if identity.details.preferred_msg_type == none %}
+                <td>User has no message type</td>
+                {% else %} {% if identity.details.preferred_msg_type != none %}
+                <td>{{ identity.details.preferred_msg_type|title }}</td>
+                {% endif %} {% endif %}
+              </tr>
+
+              <tr align='center'>
+                <th>Preferred Language</th>
+                {% if identity.details.preferred_language == none %}
+                <td>User has no language preference</td>
+                {% else %} {% if identity.details.preferred_language != none %}
+                <td>{{ identity.details.preferred_language }}</td>
+                {% endif %} {% endif %}
+              </tr>
+              <tr align='center'>
+                <th>Preferred Message Days</th>
+                {% if identity.details.preferred_msg_days == none %}
+                <td>User has no message day preference</td>
+                {% else %} {% if identity.details.preferred_msg_days != none %}
+                <td>{{ identity.details.preferred_msg_days }}</td>
+                {% endif %} {% endif %}
+              </tr>
+              <tr align='center'>
+                <th>Preferred Message Time</th>
+                {% if identity.details.preferred_msg_times == none %}
+                <td>User has no message time preference</td>
+                {% else %} {% if identity.details.preferred_msg_times != none %}
+                <td>{{ identity.details.preferred_msg_times }}</td>
+                {% endif %} {% endif %}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+
+          <h3>Facility Details</h3>
+          <div class="table-full">
+            <div class="table-responsive">
+              <table class="table" data-sort="table">
+                <tbody>
+                  <tr align='center'>
+                    <th>Registered by:</th>
+                    {% url 'identities-detail' identity.id as url %}
+                    <td>
+                      <a href="{{ url }}">{{ operator.details.name|default_if_none:""|title }} {{ operator.details.surname|default_if_none:""|title }}
+                        </a>
+                    </td>
+                    </td>
+                  </tr>
+                  <tr align='center'>
+                    <th>Facility Name:</th>
+                    <td>{{ operator.details.facility_name |default_if_none:""|title }}</td>
+                  </tr>
+                  <tr align='center'>
+                    <th>State:</th>
+                    <td>{{ operator.details.state |default_if_none:""|title }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+
+{% endblock %}

@@ -43,7 +43,7 @@
       <tbody>
         {% for user in users %}
         <tr>
-            {% url 'identities-detail' user.identity_id as url %}
+            {% url 'user-management-detail' user.identity_id as url %}
             <td><a href="{{ url }}">{{ user.msisdn }}</a></td>
             <td>{{ user.receiver_role|title }}</td>
             <td>{{ user.validated }}</td>
@@ -52,7 +52,7 @@
             <td>{{ user.state|default_if_none:"" }}</td>
             <td>{{ user.facility_name|default_if_none:"" }}</td>
             {% if user.linked_to_msisdn %}
-                {% url 'identities-detail' user.linked_to_id as url %}
+                {% url 'user-management-detail' user.linked_to_id as url %}
                 <td><a href="{{ url }}">{{ user.linked_to_msisdn|default_if_none:"" }}</a></td>
             {% else %}
                 <td></td>
