@@ -42,7 +42,7 @@
         </tr>
         <tr align='center'>
           <th>Receiver role</th>
-          <td> {{ identity.details.receiver_role }}</td>
+          <td> {{ identity.details.receiver_role|title }}</td>
         </tr>
         <tr align='center'>
           <th>Registration date</th>
@@ -66,7 +66,7 @@
     </table>
   </div>
 </div>
-      
+
 
     <div class="table-full">
       <div class="table-responsive">
@@ -86,7 +86,7 @@
             </tr>
             <tr align='center'>
               <th>Invalid fields:</th>
-              <td>{{ registration.data.invalid_fields |default_if_none:""|title }}</td>            
+              <td>{{ registration.data.invalid_fields |default_if_none:""|title }}</td>
             {% endfor %}
           </tr>
           </tbody>
@@ -127,10 +127,10 @@
                 {% if identity.details.preferred_msg_type == none %}
                 <td>User has no message type</td>
                 {% else %} {% if identity.details.preferred_msg_type != none %}
-                <td>{{ identity.details.preferred_msg_type }}</td>
+                <td>{{ identity.details.preferred_msg_type|title }}</td>
                 {% endif %} {% endif %}
               </tr>
-      
+
               <tr align='center'>
                 <th>Preferred Language</th>
                 {% if identity.details.preferred_language == none %}
@@ -160,7 +160,7 @@
         </div>
       </div>
 
-        
+
           <h3>Facility Details</h3>
           <div class="table-full">
             <div class="table-responsive">
