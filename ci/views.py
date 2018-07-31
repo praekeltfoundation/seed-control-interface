@@ -1189,6 +1189,7 @@ def user_management(request):
 
     return render(request, 'ci/user_management.html', context)
 
+
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 @tokens_required(['SEED_IDENTITY_SERVICE', 'HUB',
