@@ -38,7 +38,8 @@ from .forms import (AuthenticationForm, IdentitySearchForm,
                     RegistrationFilterForm, SubscriptionFilterForm,
                     ChangeFilterForm, ReportGenerationForm,
                     AddSubscriptionForm, DeactivateSubscriptionForm,
-                    ChangeSubscriptionForm, MsisdnReportGenerationForm)
+                    ChangeSubscriptionForm, MsisdnReportGenerationForm,
+                    UserDetailSearchForm)
 from . import utils
 
 logger = logging.getLogger(__name__)
@@ -187,18 +188,20 @@ def login(request, template_name='ci/login.html',
             request.session['user_email'] = user["email"]
             request.session['user_permissions'] = user["permissions"]
             request.session['user_id'] = user["id"]
+            request.session['user_list'] = user["user_list"]
 
-            # Set user dashboards because they are slow to change
-            dashboards = ciApi.get_user_dashboards(user["id"])
-            dashboard_list = list(dashboards['results'])
-            if len(dashboard_list) > 0:
-                request.session['user_dashboards'] = \
-                    dashboard_list[0]["dashboards"]
-                request.session['user_default_dashboard'] = \
-                    dashboard_list[0]["default_dashboard"]["id"]
-            else:
-                request.session['user_dashboards'] = []
-                request.session['user_default_dashboard'] = None
+            if not settings.HIDE_DASHBOARDS:
+                # Set user dashboards because they are slow to change
+                dashboards = ciApi.get_user_dashboards(user["id"])
+                dashboard_list = list(dashboards['results'])
+                if len(dashboard_list) > 0:
+                    request.session['user_dashboards'] = \
+                        dashboard_list[0]["dashboards"]
+                    request.session['user_default_dashboard'] = \
+                        dashboard_list[0]["default_dashboard"]["id"]
+                else:
+                    request.session['user_dashboards'] = []
+                    request.session['user_default_dashboard'] = None
 
             # Get the user access tokens too and format for easy access
             tokens = ciApi.get_user_service_tokens(
@@ -246,7 +249,8 @@ def logout(request):
 @permission_required(permission='ci:view', login_url='/login/')
 def index(request):
     if "user_default_dashboard" in request.session and \
-            request.session["user_default_dashboard"] is not None:
+            request.session["user_default_dashboard"] is not None and \
+            not settings.HIDE_DASHBOARDS:
         return HttpResponseRedirect(reverse('dashboard', args=(
             request.session["user_default_dashboard"],)))
     else:
@@ -256,6 +260,8 @@ def index(request):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def health_messages(request):
+    if settings.HIDE_HEALTH:
+        return redirect('denied')
     if request.is_ajax():
         METRIC_SENT_SUM = 'message.sent.sum'
         client = MetricsApiClient(
@@ -318,6 +324,8 @@ def health_messages(request):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def health_subscriptions(request):
+    if settings.HIDE_HEALTH:
+        return redirect('denied')
     if request.is_ajax():
         METRIC_SUBSCRIPTIONS_SUM = 'subscriptions.created.sum'
         client = MetricsApiClient(
@@ -359,6 +367,8 @@ def health_subscriptions(request):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def health_registrations(request):
+    if settings.HIDE_HEALTH:
+        return redirect('denied')
     if request.is_ajax():
         METRIC_REGISTRATIONS_SUM = 'registrations.created.sum'
         client = MetricsApiClient(
@@ -400,6 +410,8 @@ def health_registrations(request):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def dashboard(request, dashboard_id):
+    if settings.HIDE_DASHBOARDS:
+        return redirect('denied')
     dashboard = ciApi.get_dashboard(int(dashboard_id))
     context = {"dashboard": dashboard}
     return render(request, 'ci/dashboard.html', context)
@@ -408,6 +420,8 @@ def dashboard(request, dashboard_id):
 @login_required(login_url='/login/')
 @permission_required(permission='ci:view', login_url='/login/')
 def dashboard_metric(request):
+    if settings.HIDE_DASHBOARDS:
+        return redirect('denied')
     client = MetricsApiClient(
         settings.METRIC_API_URL,
         auth=(settings.METRIC_API_USER, settings.METRIC_API_PASSWORD))
@@ -501,6 +515,7 @@ def identity(request, identity):
         api_url=request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["url"],  # noqa
         auth_token=request.session["user_tokens"]["SEED_MESSAGE_SENDER"]["token"]  # noqa
     )
+
     messagesets_results = sbmApi.get_messagesets()
     messagesets = {}
     schedules = {}
@@ -543,6 +558,13 @@ def identity(request, identity):
                         'Successfully created a subscription.',
                         extra_tags='success'
                     )
+
+                    ciApi.create_auditlog({
+                        "identity_id": identity,
+                        "action": "Create",
+                        "action_by": request.session['user_id'],
+                        "model": "subscription"
+                    })
             else:
                 messages.add_message(
                     request,
@@ -569,6 +591,15 @@ def identity(request, identity):
                     extra_tags='success'
                 )
 
+                ciApi.create_auditlog({
+                    "identity_id": identity,
+                    "subscription_id": form.cleaned_data['subscription_id'],
+                    "action": "Update",
+                    "action_by": request.session['user_id'],
+                    "model": "subscription",
+                    "detail": "Deactivated subscription"
+                })
+
         elif 'optout_identity' in request.POST:
             try:
                 details = results.get('details', {})
@@ -583,6 +614,8 @@ def identity(request, identity):
                             "address": address,
                             "request_source": "ci"})
 
+                        info['optedout'] = True
+
                 hubApi.create_optout_admin({
                     settings.IDENTITY_FIELD: identity
                 })
@@ -593,6 +626,14 @@ def identity(request, identity):
                     'Successfully opted out.',
                     extra_tags='success'
                 )
+
+                ciApi.create_auditlog({
+                    "identity_id": identity,
+                    "action": "Update",
+                    "action_by": request.session['user_id'],
+                    "model": "identity",
+                    "detail": "Optout identity"
+                })
             except:
                 messages.add_message(
                     request,
@@ -647,7 +688,7 @@ def identity(request, identity):
     deactivate_subscription_form = DeactivateSubscriptionForm()
     add_subscription_form = AddSubscriptionForm()
     add_subscription_form.fields['messageset'] = forms.ChoiceField(
-                                                    choices=choices)
+        choices=choices)
 
     optout_visible = False
     details = results.get('details', {})
@@ -656,6 +697,7 @@ def identity(request, identity):
     optout_visible = any(
         (not d.get('optedout') for _, d in msisdns.items()))
 
+    audit_logs = ciApi.get_auditlogs({"identity_id": identity})
     context = {
         "identity": results,
         "registrations": registrations,
@@ -666,8 +708,11 @@ def identity(request, identity):
         "add_subscription_form": add_subscription_form,
         "deactivate_subscription_form": deactivate_subscription_form,
         "inbound_messages": inbound_messages,
-        "optout_visible": optout_visible
+        "optout_visible": optout_visible,
+        "audit_logs": audit_logs,
+        "users": request.session['user_list']
     }
+
     context.update(csrf(request))
     return render(request, 'ci/identities_detail.html', context)
 
@@ -874,6 +919,27 @@ def subscription(request, subscription):
                         'Successfully added change.',
                         extra_tags='success'
                     )
+
+                    if lang != results["lang"]:
+                        ciApi.create_auditlog({
+                            "identity_id": results["identity"],
+                            "action": "Update",
+                            "action_by": request.session['user_id'],
+                            "model": "subscription",
+                            "detail": "Updated language: {} to {}".format(
+                                results["lang"], lang)
+                        })
+                    if messageset != results["messageset"]:
+                        ciApi.create_auditlog({
+                            "identity_id": results["identity"],
+                            "action": "Update",
+                            "action_by": request.session['user_id'],
+                            "model": "subscription",
+                            "detail": "Updated messageset: {} to {}".format(
+                                messagesets[results["messageset"]],
+                                messagesets[messageset])
+                        })
+
         except:
             messages.add_message(
                 request,
@@ -1083,3 +1149,100 @@ def report_generation(request):
     }
     context.update(csrf(request))
     return render(request, 'ci/reports.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+@tokens_required(['SEED_IDENTITY_SERVICE'])
+def user_management(request):
+    if not settings.SHOW_USER_DETAILS:
+        return redirect('denied')
+
+    hubApi = HubApiClient(
+        api_url=request.session["user_tokens"]["HUB"]["url"],  # noqa
+        auth_token=request.session["user_tokens"]["HUB"]["token"]  # noqa
+    )
+
+    page = int(request.GET.get('page', 1))
+    filters = {"page": page}
+    form = UserDetailSearchForm(request.GET)
+    if form.is_valid():
+        for key, value in form.cleaned_data.items():
+            if value:
+                filters[key] = value
+
+    results = hubApi.get_user_details(filters)
+
+    states = [('*', 'All')]
+    for state in hubApi.get_states()['results']:
+        states.append((state['name'], state['name']))
+
+    form.fields['state'] = forms.ChoiceField(choices=states)
+
+    context = {}
+    context['users'] = results['results']
+    context['has_next'] = results['has_next']
+    context['has_previous'] = results['has_previous']
+    context['next_page_number'] = page + 1
+    context['previous_page_number'] = page - 1
+    context['form'] = form
+
+    return render(request, 'ci/user_management.html', context)
+
+
+@login_required(login_url='/login/')
+@permission_required(permission='ci:view', login_url='/login/')
+@tokens_required(['SEED_IDENTITY_SERVICE', 'HUB',
+                  'SEED_STAGE_BASED_MESSAGING'])
+def user_management_detail(request, identity):
+    idApi = IdentityStoreApiClient(
+        api_url=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["url"],  # noqa
+        auth_token=request.session["user_tokens"]["SEED_IDENTITY_SERVICE"]["token"]  # noqa
+    )
+    sbmApi = StageBasedMessagingApiClient(
+        api_url=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["url"],  # noqa
+        auth_token=request.session["user_tokens"]["SEED_STAGE_BASED_MESSAGING"]["token"]  # noqa
+    )
+    hubApi = HubApiClient(
+        api_url=request.session["user_tokens"]["HUB"]["url"],  # noqa
+        auth_token=request.session["user_tokens"]["HUB"]["token"]  # noqa
+    )
+    messagesets_results = sbmApi.get_messagesets()
+
+    messagesets = {}
+    linked_to = {}
+    operator_id = {}
+
+    for messageset in messagesets_results["results"]:
+        messagesets[messageset["id"]] = messageset["short_name"]
+
+    results = idApi.get_identity(identity)
+
+    if results['details'].get('linked_to'):
+        linked_to = idApi.get_identity(results['details']['linked_to'])
+
+    operator_id = results['details'].get('operator', results.get('operator'))
+    if operator_id:
+        operator_id = idApi.get_identity(operator_id)
+
+    hub_filter = {
+        settings.IDENTITY_FIELD: identity
+    }
+    registrations = hubApi.get_registrations(params=hub_filter)
+
+    sbm_filter = {
+        "identity": identity
+    }
+    subscriptions = sbmApi.get_subscriptions(params=sbm_filter)
+
+    context = {
+        "identity": results,
+        "registrations": registrations,
+        "messagesets": messagesets,
+        "subscriptions": subscriptions,
+        "linked_to": linked_to,
+        "operator": operator_id
+    }
+
+    context.update(csrf(request))
+    return render(request, 'ci/user_management_detail.html', context)

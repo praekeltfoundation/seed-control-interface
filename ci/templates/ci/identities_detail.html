@@ -23,283 +23,384 @@
 <div class="alert alert-{{ message.tags }}">{{ message }}</div>
 {% endfor %}
 
-<h3>User Details</h3>
-<div class="table-full">
-  <div class="table-responsive">
-    <table class="table" data-sort="table">
-      <tbody>
-        <tr>
-          <th>Unique ID:</th><td>{{ identity.id }}</td>
-        </tr>
-        <tr>
-          <th>Created:</th><td>{{ identity.created_at|get_date|date:"D d M Y H:i" }}</td>
-        </tr>
-        <tr>
-          <th>Last Updated:</th><td>{{ identity.updated_at|get_date|date:"D d M Y H:i" }}</td>
-        </tr>
-        <tr>
-          <th>Communicate Through:</th>
-          {% if identity.communicate_through %}
-          {% url 'identities-detail' identity.communicate_through as url %}
-          <td><a href="{{ url }}">{{ identity.communicate_through|truncatechars:12 }}</a></td>
-          {% else %}
-          <td>{{ identity.communicate_through }}</td>
-          {% endif %}
-        </tr>
-        <tr>
-          <th>Default Address:</th>
-          {% with addresses=identity|get_identity_addresses %}
-          <td>{% for address, info in addresses.items %}{{ address }}{% endfor %}</td>
-          {% endwith %}
-        </tr>
-        {% for key, value in identity.details.items %}
-          {% if not value|is_dict %}
-            <tr>
-              <th>{{ key|unslug|title }}:</th>
-              <td>{{ value }}</td>
-            </tr>
-          {% endif %}
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
+<script type="text/javascript">
+    update_hash = function(){
+        $("a.update_hash").each(function(){
+            new_href = $(this).attr("href").split('#')[0];
+            $(this).attr("href", new_href + location.hash)
+        });
+    }
 
-{% if optout_visible == True %}
-  <div class="call-to-action call-to-action__new-section">
-    <form class="form-inline" method="post" action=".">
-    {% csrf_token %}
-      <button type="submit" name="optout_identity" class="call-to-action__item call-to-action__item--submit-entry">Optout</button>
-      <br/>
-    </form>
-  </div>
-{% endif %}
+    $(document).ready(function() {
+        if (location.hash) {
+            $("a[href='" + location.hash + "']").tab("show");
+            update_hash();
+        }
+        $(document.body).on("click", "a[data-toggle]", function(event) {
+            location.hash = this.getAttribute("href");
 
-<h3 class="identity__heading">Addresses</h3>
-<div class="table-full">
-  <div class="table-responsive">
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Address Type</th>
-          <th>Address</th>
-          <th>Extra Information</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for address_type, addresses in identity.details.addresses.items %}
-          {% for address, info in addresses.items %}
-        <tr>
-          <td>{{ address_type }}</td>
-          <td>{{ address }}</td>
-          <td>{% for k, v in info.items %}{{ k|title }}: {{ v }}{% endfor %}</td>
-        </tr>
-          {% endfor %}
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
+            update_hash();
+        });
+    });
+</script>
 
-<h3 class="identity__heading">Registrations</h3>
-<div class="table-full">
-  <div class="table-responsive">
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Registration</th>
-          <th>Validated</th>
-          <th>Stage</th>
-          <th>Created</th>
-          <th>Updated</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for registration in registrations.results %}
-        <tr>
-          {% url 'registrations-detail' registration.id as url %}
-          <td><a href="{{ url }}">{{ registration.id|truncatechars:12 }}</a></td>
-          <td>{{ registration.validated }}</td>
-          <td>{{ registration.stage }}</td>
-          <td>{{ registration.created_at|get_date|date:"D d M Y H:i" }}</td>
-          <td>{{ registration.updated_at|get_date|date:"D d M Y H:i" }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
+<ul class="nav nav-tabs">
+  <li class="active"><a data-toggle="tab" href="#identity">Identity</a></li>
+  <li><a data-toggle="tab" href="#registrations">Registrations</a></li>
+  <li><a data-toggle="tab" href="#changes">Changes</a></li>
+  <li><a data-toggle="tab" href="#subscriptions">Subscriptions</a></li>
+  <li><a data-toggle="tab" href="#messages">Messages</a></li>
+  <li><a data-toggle="tab" href="#audit">History</a></li>
+</ul>
 
-<h3 class="identity__heading">Changes</h3>
-<div class="table-full">
-  <div class="table-responsive">
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Change</th>
-          <th>Validated</th>
-          <th>Action</th>
-          <th>Created</th>
-          <th>Updated</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for change in changes.results %}
-        <tr>
-          {% url 'changes-detail' change.id as url %}
-          <td><a href="{{ url }}">{{ change.id|truncatechars:12 }}</a></td>
-          <td>{{ change.validated }}</td>
-          <td>{{ change.action }}</td>
-          <td>{{ change.created_at|get_date|date:"D d M Y H:i" }}</td>
-          <td>{{ change.updated_at|get_date|date:"D d M Y H:i" }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
+<div class="tab-content">
+  <div id="identity" class="tab-pane active">
+      <h3 class="identity__heading">User Details</h3>
+      <div class="table-full">
+        <div class="table-responsive">
+          <table class="table" data-sort="table">
+            <tbody>
+              <tr>
+                <th>Unique ID:</th><td>{{ identity.id }}</td>
+              </tr>
+              <tr>
+                <th>Created:</th><td>{{ identity.created_at|get_date|date:"D d M Y H:i" }}</td>
+              </tr>
+              <tr>
+                <th>Last Updated:</th><td>{{ identity.updated_at|get_date|date:"D d M Y H:i" }}</td>
+              </tr>
+              <tr>
+                <th>Communicate Through:</th>
+                {% if identity.communicate_through %}
+                {% url 'identities-detail' identity.communicate_through as url %}
+                <td><a href="{{ url }}">{{ identity.communicate_through|truncatechars:12 }}</a></td>
+                {% else %}
+                <td>{{ identity.communicate_through }}</td>
+                {% endif %}
+              </tr>
+              <tr>
+                <th>Default Address:</th>
+                {% with addresses=identity|get_identity_addresses %}
+                <td>{% for address, info in addresses.items %}{{ address }}{% endfor %}</td>
+                {% endwith %}
+              </tr>
+              {% for key, value in identity.details.items %}
+                {% if not value|is_dict %}
+                  <tr>
+                    <th>{{ key|unslug|title }}:</th>
+                    <td>{{ value }}</td>
+                  </tr>
+                {% endif %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-<h3 class="identity__heading">Subscriptions</h3>
-<div class="call-to-action call-to-action__new-section">
-  <form class="form-inline" method="post" action=".">
-  {% csrf_token %}
-    <fieldset>
-    {{ add_subscription_form|bootstrap_inline }}
-    </fieldset>
-    <button type="submit" name="add_subscription" class="call-to-action__item call-to-action__item--submit-entry">Add</button>
-    <br/>
-  </form>
-</div>
-<div class="table-full">
-  <div class="table-responsive">
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Subscription</th>
-          <th>Set</th>
-          <th>Next</th>
-          <th>Language</th>
-          <th>Active</th>
-          <th>Completed</th>
-          <th>Created</th>
-          <th>Last Updated</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for subscription in subscriptions.results|dictsortreversed:'active' %}
-        <tr>
-          {% url 'subscriptions-detail' subscription.id as url %}
-          <td><a href="{{ url }}">{{ subscription.id|truncatechars:12 }}</a></td>
-          <td>{{ messagesets|get_item:subscription.messageset }}</td>
-          <td>{{ subscription.next_sequence_number }}</td>
-          <td>{{ subscription.lang }}</td>
-          <td>{{ subscription.active }}</td>
-          <td>{{ subscription.completed }}</td>
-          <td>{{ subscription.created_at|get_date|date:"D d M Y H:i" }}</td>
-          <td>{{ subscription.updated_at|get_date|date:"D d M Y H:i" }}</td>
-          <td>
-          {% if subscription.active == True %}
-          <form class="form-inline" method="post" action=".">
-          {% csrf_token %}
-            <fieldset>
-              <input id="id_subscription_id" name="subscription_id" type="hidden" value={{ subscription.id }} />
-            </fieldset>
-            <button type="submit" name="deactivate_subscription" class="call-to-action__item call-to-action__item--subscription">Deactivate</button>
+      {% if optout_visible == True %}
+        <script src="{% static "ci/js/jquery-confirm.js" %}"></script>
+        <script type="text/javascript">
+          function do_optout(){
+              $.confirm({
+                  title: '',
+                  content: 'Are you sure you want to optout this user?',
+                  buttons: {
+                      confirm: function () {
+                          $('.optout_form')[0].submit();
+                      },
+                      cancel: function () {}
+                  }
+              });
+              return false;
+          }
+        </script>
+        <div class="call-to-action call-to-action__new-section">
+          <form class="form-inline optout_form" method="post" action=".">
+            {% csrf_token %}
+            <input type="hidden" name="optout_identity" value="true">
+            <button type="button" onClick="do_optout()" class="call-to-action__item">Optout</button>
+            <br/>
           </form>
-          {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+        </div>
+      {% endif %}
+
+      <h3 class="identity__heading">Addresses</h3>
+      <div class="table-full">
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Address Type</th>
+                <th>Address</th>
+                <th>Extra Information</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for address_type, addresses in identity.details.addresses.items %}
+                {% for address, info in addresses.items %}
+              <tr>
+                <td>{{ address_type }}</td>
+                <td>{{ address }}</td>
+                <td>{% for k, v in info.items %}{{ k|title }}: {{ v }}<br />{% endfor %}</td>
+              </tr>
+                {% endfor %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+  </div>
+  <div id="registrations" class="tab-pane">
+      <h3 class="identity__heading">Registrations</h3>
+      <div class="table-full">
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Registration</th>
+                <th>Validated</th>
+                <th>Stage</th>
+                <th>Created</th>
+                <th>Updated</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for registration in registrations.results %}
+              <tr>
+                {% url 'registrations-detail' registration.id as url %}
+                <td><a href="{{ url }}">{{ registration.id|truncatechars:12 }}</a></td>
+                <td>{{ registration.validated }}</td>
+                <td>{{ registration.stage }}</td>
+                <td>{{ registration.created_at|get_date|date:"D d M Y H:i" }}</td>
+                <td>{{ registration.updated_at|get_date|date:"D d M Y H:i" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+  </div>
+  <div id="changes" class="tab-pane">
+      <h3 class="identity__heading">Changes</h3>
+      <div class="table-full">
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Change</th>
+                <th>Validated</th>
+                <th>Action</th>
+                <th>Created</th>
+                <th>Updated</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for change in changes.results %}
+              <tr>
+                {% url 'changes-detail' change.id as url %}
+                <td><a href="{{ url }}">{{ change.id|truncatechars:12 }}</a></td>
+                <td>{{ change.validated }}</td>
+                <td>{{ change.action }}</td>
+                <td>{{ change.created_at|get_date|date:"D d M Y H:i" }}</td>
+                <td>{{ change.updated_at|get_date|date:"D d M Y H:i" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+  </div>
+  <div id="subscriptions" class="tab-pane">
+      <h3 class="identity__heading">Subscriptions</h3>
+      <div class="call-to-action call-to-action__new-section">
+        <form class="form-inline" method="post" action=".">
+        {% csrf_token %}
+          <fieldset>
+          {{ add_subscription_form|bootstrap_inline }}
+          </fieldset>
+          <button type="submit" name="add_subscription" class="call-to-action__item call-to-action__item--submit-entry">Add</button>
+          <br/>
+        </form>
+      </div>
+      <div class="table-full">
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Subscription</th>
+                <th>Set</th>
+                <th>Next</th>
+                <th>Language</th>
+                <th>Active</th>
+                <th>Completed</th>
+                <th>Created</th>
+                <th>Last Updated</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for subscription in subscriptions.results|dictsortreversed:'active' %}
+              <tr>
+                {% url 'subscriptions-detail' subscription.id as url %}
+                <td><a href="{{ url }}">{{ subscription.id|truncatechars:12 }}</a></td>
+                <td>{{ messagesets|get_item:subscription.messageset }}</td>
+                <td>{{ subscription.next_sequence_number }}</td>
+                <td>{{ subscription.lang }}</td>
+                <td>{{ subscription.active }}</td>
+                <td>{{ subscription.completed }}</td>
+                <td>{{ subscription.created_at|get_date|date:"D d M Y H:i" }}</td>
+                <td>{{ subscription.updated_at|get_date|date:"D d M Y H:i" }}</td>
+                <td>
+                {% if subscription.active == True %}
+                <form class="form-inline" method="post" action=".">
+                {% csrf_token %}
+                  <fieldset>
+                    <input id="id_subscription_id" name="subscription_id" type="hidden" value={{ subscription.id }} />
+                  </fieldset>
+                  <button type="submit" name="deactivate_subscription" class="call-to-action__item call-to-action__item--subscription">Deactivate</button>
+                </form>
+                {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+  </div>
+  <div id="messages" class="tab-pane">
+      <h3 class="identity__heading">Messages sent to user</h3>
+      <div class="table-full">
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Delivered</th>
+                <th>Attempts</th>
+                <th>Content</th>
+                <th>Created</th>
+                <th>Last Updated</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for outbound in outbound_messages %}
+              <tr>
+                <td>{{ outbound.delivered }}</td>
+                <td>{{ outbound.attempts }}</td>
+                <td>
+                   {% if outbound.content %}
+                      {{ outbound.content }}
+                   {% elif outbound.metadata.voice_speech_url %}
+                      <a href="{{outbound.metadata.voice_speech_url}}" target="_blank">{{outbound.metadata.voice_speech_url}}</a>
+                   {% else %}
+                      Content not found.
+                   {% endif %}
+                </td>
+                <td>{{ outbound.created_at|get_date|date:"D d M Y H:i" }}</td>
+                <td>{{ outbound.updated_at|get_date|date:"D d M Y H:i" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="pagination pagination-list">
+        {% if outbound_messages.has_previous %}
+          <a href="{% replace_query_param request.build_absolute_uri 'outbound_page' outbound_messages.previous_page_number %}" class="pagination__link pagination__link--previous update_hash">
+            <span class="pagination__link--arrow">&larr;</span> Prev
+          </a>
+        {% endif %}
+        {% if outbound_messages.has_next %}
+          <a href="{% replace_query_param request.build_absolute_uri 'outbound_page' outbound_messages.next_page_number %}" class="pagination__link pagination__link--next update_hash">Next
+            <span class="pagination__link--arrow">&rarr;</span>
+          </a>
+        {% endif %}
+      </div>
+
+      <h3 class="identity__heading">Inbound Messages</h3>
+      <div class="table-full">
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>To Address</th>
+                <th>Content</th>
+                <th>Created Date</th>
+                <th>Last Updated Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for inbound in inbound_messages %}
+              <tr>
+                <td>{{ inbound.to_addr }}</td>
+                <td>{{ inbound.content }}</td>
+                <td>{{ inbound.created_at|get_date|date:"D d M Y H:i" }}</td>
+                <td>{{ inbound.updated_at|get_date|date:"D d M Y H:i" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="pagination pagination-list">
+        {% if inbound_messages.has_previous %}
+          <a href="{% replace_query_param request.build_absolute_uri 'inbound_page' inbound_messages.previous_page_number %}" class="pagination__link pagination__link--previous update_hash">
+            <span class="pagination__link--arrow">&larr;</span> Prev
+          </a>
+        {% endif %}
+        {% if inbound_messages.has_next %}
+          <a href="{% replace_query_param request.build_absolute_uri 'inbound_page' inbound_messages.next_page_number %}" class="pagination__link pagination__link--next update_hash">Next
+            <span class="pagination__link--arrow">&rarr;</span>
+          </a>
+        {% endif %}
+      </div>
+  </div>
+  <div id="audit" class="tab-pane">
+      <h3 class="identity__heading">History</h3>
+      <div class="table-full">
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Action</th>
+                <th>Model</th>
+                <th>User</th>
+                <th>Subscription</th>
+                <th>Detail</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for audit in audit_logs.results %}
+              <tr>
+                <td>{{ audit.action_at|get_date|date:"D d M Y H:i" }}</td>
+                <td>{{ audit.action_name }}</td>
+                <td>{{ audit.model|title }}</td>
+                <td>{{ audit|get_user:users }}</td>
+                {% if audit.subscription_id %}
+                    {% url 'subscriptions-detail' audit.subscription_id as url %}
+                    <td><a href="{{ url }}">{{ audit.subscription_id|truncatechars:12 }}</a></td>
+                {% else %}
+                    <td></td>
+                {% endif %}
+                <td>{% if audit.detail %} {{ audit.detail }} {% endif %}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
   </div>
 </div>
 
-<h3 class="identity__heading">Messages sent to user</h3>
-<div class="table-full">
-  <div class="table-responsive">
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Delivered</th>
-          <th>Attempts</th>
-          <th>Content</th>
-          <th>Created</th>
-          <th>Last Updated</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for outbound in outbound_messages %}
-        <tr>
-          <td>{{ outbound.delivered }}</td>
-          <td>{{ outbound.attempts }}</td>
-          <td>
-             {% if outbound.content %}
-                {{ outbound.content }}
-             {% elif outbound.metadata.voice_speech_url %}
-                <a href="{{outbound.metadata.voice_speech_url}}" target="_blank">{{outbound.metadata.voice_speech_url}}</a>
-             {% else %}
-                Content not found.
-             {% endif %}
-          </td>
-          <td>{{ outbound.created_at|get_date|date:"D d M Y H:i" }}</td>
-          <td>{{ outbound.updated_at|get_date|date:"D d M Y H:i" }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
-<div class="pagination pagination-list">
-  {% if outbound_messages.has_previous %}
-    <a href="{% replace_query_param request.build_absolute_uri 'outbound_page' outbound_messages.previous_page_number %}" class="pagination__link pagination__link--previous">
-      <span class="pagination__link--arrow">&larr;</span> Prev
-    </a>
-  {% endif %}
-  {% if outbound_messages.has_next %}
-    <a href="{% replace_query_param request.build_absolute_uri 'outbound_page' outbound_messages.next_page_number %}" class="pagination__link pagination__link--next">Next
-      <span class="pagination__link--arrow">&rarr;</span>
-    </a>
-  {% endif %}
-</div>
 
-<h3 class="identity__heading">Inbound Messages</h3>
-<div class="table-full">
-  <div class="table-responsive">
-    <table class="table">
-      <thead>
-        <tr>
-          <th>To Address</th>
-          <th>Content</th>
-          <th>Created Date</th>
-          <th>Last Updated Date</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for inbound in inbound_messages %}
-        <tr>
-          <td>{{ inbound.to_addr }}</td>
-          <td>{{ inbound.content }}</td>
-          <td>{{ inbound.created_at|get_date|date:"D d M Y H:i" }}</td>
-          <td>{{ inbound.updated_at|get_date|date:"D d M Y H:i" }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
-<div class="pagination pagination-list">
-  {% if inbound_messages.has_previous %}
-    <a href="{% replace_query_param request.build_absolute_uri 'inbound_page' inbound_messages.previous_page_number %}" class="pagination__link pagination__link--previous">
-      <span class="pagination__link--arrow">&larr;</span> Prev
-    </a>
-  {% endif %}
-  {% if inbound_messages.has_next %}
-    <a href="{% replace_query_param request.build_absolute_uri 'inbound_page' inbound_messages.next_page_number %}" class="pagination__link pagination__link--next">Next
-      <span class="pagination__link--arrow">&rarr;</span>
-    </a>
-  {% endif %}
-</div>
+
+
+
+
+
+
+
+
 
 {% endblock %}

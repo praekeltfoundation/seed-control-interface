@@ -16,6 +16,7 @@ urlpatterns = [
     url('^identities/$', views.identities, name='identities'),
     url(r'^identities/(?P<identity>[^/]+)/$', views.identity,
         name='identities-detail'),
+
     url('^registrations/$', views.registrations, name='registrations'),
     url(r'^registrations/(?P<registration>[^/]+)/$', views.registration,
         name='registrations-detail'),
@@ -44,6 +45,9 @@ urlpatterns = [
     url('^reports/$', views.report_generation, name='reports'),
     url(r'^services/(?P<service>[^/]+)/$', views.service,
         name='services-detail'),
+    url('^user_management/$', views.user_management, name='user_management'),
+    url(r'^user_management/(?P<identity>[^/]+)/$',
+        views.user_management_detail, name='user-management-detail'),
     url('^denied/$', views.denied, name='denied'),
     url('^404/$', views.denied, name='not_found'),
     url('', views.index, name='index'),

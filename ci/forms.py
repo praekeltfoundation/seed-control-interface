@@ -38,8 +38,14 @@ class AuthenticationForm(forms.Form):
         if username and password:
             # do remote login
             auth_url = settings.AUTH_SERVICE_URL
+            user_data = {}
             try:
                 auth_api = AuthApiClient(username, password, auth_url)
+
+                users = auth_api.get_users()
+                for user in users:
+                    user_data[user['id']] = user['email']
+
             except HTTPServiceError:
                 raise forms.ValidationError(
                     self.error_messages['invalid_login'],
@@ -48,6 +54,7 @@ class AuthenticationForm(forms.Form):
                 )
             self.user_cache = auth_api.get_permissions()
             self.user_cache["token"] = auth_api.token
+            self.user_cache["user_list"] = user_data
 
         return self.cleaned_data
 
@@ -57,6 +64,11 @@ class AuthenticationForm(forms.Form):
 
 ADDRESS_TYPES = (
     ("msisdn", "Cell Phone"),
+)
+STATUS_TYPES = (
+    ("*", "All"),
+    ("valid", "Valid"),
+    ("invalid", "Invalid"),
 )
 
 
@@ -70,6 +82,20 @@ class IdentitySearchForm(forms.Form):
 
 class AddSubscriptionForm(forms.Form):
     messageset = forms.IntegerField()
+
+
+class UserDetailSearchForm(forms.Form):
+    msisdn = forms.CharField(
+        widget=forms.TextInput(attrs={'placeholder': 'Mobile Number'}),
+        required=False)
+    state = forms.CharField(required=False)
+    facility = forms.CharField(
+        widget=forms.TextInput(attrs={'placeholder': 'Facility'}),
+        required=False)
+    status = forms.ChoiceField(choices=STATUS_TYPES, required=False)
+    date = forms.DateField(widget=DatePicker(options={
+        'placeholder': 'YYYY-MM-DD', 'format': 'yyyy-mm-dd',
+        'autoclose': True}), required=False)
 
 
 class DeactivateSubscriptionForm(forms.Form):

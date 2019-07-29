@@ -43,3 +43,8 @@ def get_stage(obj):
 @register.filter
 def get_action(obj):
     return _get_label_for_key(settings.ACTIONS, obj.get('action'))
+
+
+@register.filter
+def get_user(obj, users):
+    return users[str(obj["action_by"])]
