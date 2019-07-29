@@ -11,7 +11,7 @@ from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.contrib.sites.shortcuts import get_current_site
 from django.contrib import messages
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.utils.http import is_safe_url
 from django.utils.timezone import now
 from django.http import HttpResponseRedirect, JsonResponse

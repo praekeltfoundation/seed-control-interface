@@ -36,7 +36,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        'Django==1.11.22',
+        'Django==2.2.3',
         'dj-database-url==0.3.0',
         'psycopg2==2.7.1',
         'raven==5.32.0',
@@ -46,7 +46,7 @@ setup(
         'django-bootstrap-form==3.2.1',
         'seed-services-client==0.37.2',
         'openpyxl==2.4.0',
-        'attrs==16.3.0',
+        'attrs==19.1.0',
         'django-bootstrap-datepicker==1.2.2',
         'URLObject>=2.4.3,<3.0',
     ],

@@ -2,7 +2,7 @@ import json
 import responses
 
 from django.conf import settings
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.test import TestCase, Client, override_settings
 
 from ..views import get_identity_addresses
