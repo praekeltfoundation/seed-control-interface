@@ -17,7 +17,7 @@ from django.utils.timezone import now
 from django.http import HttpResponseRedirect, JsonResponse
 from django.template.defaulttags import register
 from django.template.response import TemplateResponse
-from django.core.context_processors import csrf
+from django.template.context_processors import csrf
 from django.conf import settings
 from django import forms
 import dateutil.parser
