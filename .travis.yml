@@ -1,14 +1,13 @@
 language: python
 python:
-  - "2.7"
-  - "3.4"
+  - "3.6"
 addons:
   postgresql: "9.4"
 services:
   - postgresql
 install:
   - "pip install -e ."
-  - "pip install -r requirements-dev.txt --use-wheel"
+  - "pip install -r requirements-dev.txt"
 script:
   - flake8 .
   - py.test
