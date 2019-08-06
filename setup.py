@@ -36,7 +36,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        'Django==2.2.3',
+        'Django==2.2.4',
         'dj-database-url==0.3.0',
         'psycopg2==2.7.1',
         'raven==5.32.0',
