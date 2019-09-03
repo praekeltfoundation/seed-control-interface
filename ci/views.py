@@ -179,7 +179,8 @@ def login(request, template_name='ci/login.html',
         if form.is_valid():
 
             # Ensure the user-originating redirection url is safe.
-            if not is_safe_url(url=redirect_to, host=request.get_host()):
+            if not is_safe_url(
+                    url=redirect_to, allowed_hosts={request.get_host()}):
                 redirect_to = resolve_url(settings.LOGIN_REDIRECT_URL)
 
             # Okay, security check complete. Get the user object from auth api.
